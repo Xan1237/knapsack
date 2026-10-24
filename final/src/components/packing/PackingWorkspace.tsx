@@ -141,6 +141,7 @@ export default function PackingWorkspace() {
     [resetConfirm, setResetConfirm] = useState(false);
   const [mergeWith, setMergeWith] = useState("");
   const [astraOpen, setAstraOpen] = useState(false),
+    [moveMode, setMoveMode] = useState(false),
     [wantedId, setWantedId] = useState<string | null>(null),
     [view, setView] = useState<"perspective" | "top">("perspective");
   const collectionInput = useRef<HTMLInputElement>(null);
@@ -899,6 +900,20 @@ export default function PackingWorkspace() {
               resetKey={resetKey}
               view={view}
               onModelError={setNotice}
+              moveMode={
+                moveMode &&
+                current &&
+                !effectivePlayback.playing &&
+                !exploded &&
+                step <= (plan?.placements.length ?? 0)
+              }
+              onMove={(id, anchor) => {
+                dispatch({ type: "move", id, anchor });
+                setSelected(id);
+                setNotice(
+                  "Position saved. Your other belongings are adjusting around it.",
+                );
+              }}
             />
             <div className="scene-controls">
               <button
@@ -941,8 +956,10 @@ export default function PackingWorkspace() {
               </button>
             </div>
             <div className="canvas-caption">
-              <MousePointer2 size={13} /> Drag to orbit <span>·</span> Scroll to
-              zoom <span>·</span> Click to edit
+              <MousePointer2 size={13} />{" "}
+              {moveMode
+                ? "Drag items to move · Drop to repack"
+                : "Drag to orbit · Scroll to zoom · Click to edit"}
             </div>
             {busy && (
               <div className="packing-overlay" role="status">
@@ -958,6 +975,30 @@ export default function PackingWorkspace() {
             )}
           </div>
           <div className="scene-inspection">
+            <button
+              className={`text-button ${moveMode ? "active" : ""}`}
+              aria-pressed={moveMode}
+              onClick={() => {
+                setMoveMode((value) => !value);
+                setExploded(false);
+                setLayer(100);
+                setPlayback({
+                  revision,
+                  step: plan?.placements.length ?? 0,
+                  playing: false,
+                });
+              }}
+            >
+              <Move3D size={16} /> {moveMode ? "Finish moving" : "Move items"}
+            </button>
+            {state.items.some((item) => item.anchor) && (
+              <button
+                className="text-button"
+                onClick={() => dispatch({ type: "auto-layout" })}
+              >
+                Auto arrange
+              </button>
+            )}
             <div className="layer-control">
               <Layers3 size={16} />
               <label htmlFor="layers">Peek inside</label>
@@ -1326,6 +1367,39 @@ export default function PackingWorkspace() {
                   <span>Bigger</span>
                 </div>
               </div>
+              {active.category === "clothing" && (
+                <div className="resize-control compression-control">
+                  <div>
+                    <label htmlFor="compression-slider">
+                      Clothing compression
+                    </label>
+                    <span>{Math.round((active.compression ?? 0) * 100)}%</span>
+                  </div>
+                  <p>Press folded clothes flatter to make room.</p>
+                  <input
+                    id="compression-slider"
+                    aria-label="Clothing compression"
+                    type="range"
+                    min={0}
+                    max={40}
+                    step={5}
+                    value={Math.round((active.compression ?? 0) * 100)}
+                    onChange={(event) =>
+                      dispatch({
+                        type: "edit",
+                        id: active.id,
+                        patch: {
+                          compression: Number(event.target.value) / 100,
+                        },
+                      })
+                    }
+                  />
+                  <div className="range-labels">
+                    <span>Relaxed</span>
+                    <span>40% flatter</span>
+                  </div>
+                </div>
+              )}
               <button
                 className="axis-toggle"
                 aria-expanded={advanced}

@@ -41,6 +41,16 @@ export const analysisSchema = z.object({
   items: z.array(proposalSchema).max(30),
 });
 export type Proposal = z.infer<typeof proposalSchema>;
+export const anchorSchema = z.object({
+  position: z.tuple([
+    z.number().finite().min(0).max(2000),
+    z.number().finite().min(0).max(2000),
+    z.number().finite().min(0).max(2000),
+  ]),
+  orientation: z.number().int().min(0).max(5),
+  compartment: z.enum(["base", "lid"]).optional(),
+});
+export type ItemAnchor = z.infer<typeof anchorSchema>;
 export const itemSchema = proposalSchema.extend({
   id: z.string(),
   sourceIds: z.array(z.string()),
@@ -57,6 +67,8 @@ export const itemSchema = proposalSchema.extend({
   proposalId: z.string().optional(),
   required: z.boolean().optional(),
   priority: z.number().int().min(1).max(5).optional(),
+  compression: z.number().finite().min(0).max(0.4).optional(),
+  anchor: anchorSchema.optional(),
   modelUrl: z
     .string()
     .max(2048)
@@ -187,8 +199,12 @@ export function createItem(category: Category, id = crypto.randomUUID()): Item {
   };
 }
 export function sizeOf(item: Item): Vec3 {
+  const compression =
+    item.category === "clothing" ? (item.compression ?? 0) : 0;
   return item.estimate.map(
-    (n, i) => Math.round(n * item.scale[i] * 100) / 100,
+    (n, i) =>
+      Math.round(n * item.scale[i] * (i === 2 ? 1 - compression : 1) * 100) /
+      100,
   ) as Vec3;
 }
 export type Placement = {
@@ -221,6 +237,7 @@ export function revisionOf(items: Item[], bag: Suitcase): string {
       i.orientations,
       !!i.required,
       i.priority ?? 3,
+      i.anchor ?? null,
     ]),
   ]);
 }

@@ -34,6 +34,12 @@ For a live API check against a server on another port, use `KNAPSACK_BASE_URL=ht
 
 ## Two-sided suitcase
 
+The landing animation opens sideways from a closed suitcase, compresses folded clothes as they settle, and closes again once all eight items land. Scrolling back reverses the sequence.
+
+In the workspace, choose **Move items** and drag a belonging to a new spot in either half. Dropping reserves that floor position and repacks the other belongings around it. The latest moved item takes precedence; moving another item releases the previous reservation. **Auto arrange** returns everything to automatic packing. Drag empty space to orbit; Top view makes precise moves easier.
+
+Clothing has a separate **Clothing compression** slider from 0–40%, reducing folded thickness while preserving width and length. The scene, solver and validator use the same compressed envelope. Compression and the latest manual position survive saving and native export/import. Changing suitcases or editing an anchored item's size/rotations releases its position.
+
 The preset suitcases open flat with a main compartment and a lid compartment, each using half the total interior depth. Packing results identify the half containing each item; clearance, overlap and orientation checks run within that half. Capacity is not doubled. The demo uses folded clothing dimensions and packs all nine items across both sides.
 
 Packing playback ends with an additional **close suitcase** step. **Open suitcase**, **Show all**, the layer slider, and exploded inspection reopen the interior for review. The landing story uses the same hinged shell and closes after its eight items settle. Imported bags without the clamshell flag retain their existing asset layout.

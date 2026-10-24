@@ -8,6 +8,9 @@ Both source implementations remain in their original locations. New work stays i
 
 ## Combined behavior
 
+- The landing case starts closed, opens sideways as scrolling begins, compresses folded garments as they land, and closes when packing finishes. Workspace clothing can be compressed up to 40% along its native thickness axis without shrinking hard objects.
+- **Move items** enables captured pointer dragging across the open case. The latest drop reserves one floor placement, including its compartment and orientation; the worker searches around that item and animates the other placements. **Auto arrange** releases it. Manual positions and compression participate in revision checks and native persistence/export. Bag changes and geometry edits clear outdated positions.
+
 - One reducer and IndexedDB inventory connect photo uploads, manual edits, essential pins and packing. A separate database preserves the original app's saved sessions.
 - On `bug-bash`, both model paths share `OPENAI_MODEL` (default `gpt-6-astra`). Photo analysis now returns validated indexed triangle meshes, rendered directly in the suitcase and item editor. Mesh data and model provenance survive persistence, resizing, duplication, native import and export. Invalid generated geometry produces an explicit retryable error. Existing manual/demo items and imported assets remain compatible.
 - Native and step2 collection imports preserve IDs, geometry, permitted rotations and model URLs. Export includes the current inventory and its packing plan.

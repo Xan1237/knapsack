@@ -13,7 +13,7 @@ import { ContactShadows, RoundedBox } from "@react-three/drei";
 import { Group, MathUtils, Vector3, type Mesh } from "three";
 import ClamshellCase from "@/components/packing/ClamshellCase";
 import type { Suitcase as SuitcaseDefinition } from "@/lib/domain";
-import { landingReadyToClose } from "@/lib/landing-timeline";
+import { landingClosure } from "@/lib/landing-timeline";
 
 type V3 = [number, number, number];
 type SceneProps = {
@@ -313,6 +313,7 @@ function PackingItem({
   end,
   rotation = [0, 0, 0],
   index,
+  compress = false,
   progress,
   reducedMotion,
   children,
@@ -321,6 +322,7 @@ function PackingItem({
   end: V3;
   rotation?: V3;
   index: number;
+  compress?: boolean;
   children: ReactNode;
 }) {
   const group = useRef<Group>(null);
@@ -345,6 +347,7 @@ function PackingItem({
       MathUtils.lerp(rotation[1], 0, t),
       MathUtils.lerp(rotation[2], 0, t),
     );
+    group.current.scale.y = compress ? MathUtils.lerp(1, 0.6, t) : 1;
   });
   return (
     <group ref={group} position={start} rotation={rotation}>
@@ -354,16 +357,17 @@ function PackingItem({
 }
 
 function Suitcase({ progress, reducedMotion }: SceneProps) {
-  const closing = useRef(0);
+  const closing = useRef(1);
   useFrame(() => {
-    closing.current = landingReadyToClose(progress.current) ? 1 : 0;
+    closing.current = landingClosure(progress.current);
   });
   const itemProps = { progress, reducedMotion };
   return (
-    <group position={[0, -1.0, 0]} scale={0.8} rotation={[0, -0.12, -0.025]}>
+    <group position={[0, -1.0, 0]} scale={0.8}>
       <ClamshellCase
         bag={landingBag}
         closing={closing}
+        initiallyClosed
         base={
           <>
             <PackingItem
@@ -371,15 +375,17 @@ function Suitcase({ progress, reducedMotion }: SceneProps) {
               end={[-1.62, 0.16, 0.78]}
               rotation={[0.09, -0.25, -0.16]}
               index={0}
+              compress
               {...itemProps}
             >
               <Shirt color="#aebc98" />
             </PackingItem>
             <PackingItem
               start={[-1.3, 3.16, 1.1]}
-              end={[-1.62, 0.61, 0.78]}
+              end={[-1.62, 0.45, 0.78]}
               rotation={[0.04, 0.18, -0.12]}
               index={1}
+              compress
               {...itemProps}
             >
               <Shirt color="#e0d5be" knit />
@@ -453,11 +459,7 @@ function Scene(props: SceneProps) {
   const light = useRef<Mesh>(null);
   useFrame(({ camera, size }, delta) => {
     const mobile = size.width < 600;
-    const destination = new Vector3(
-      mobile ? 8.5 : 7.5,
-      mobile ? 9.5 : 9,
-      mobile ? 12.5 : 11.5,
-    );
+    const destination = new Vector3(0, mobile ? 9.5 : 9, mobile ? 12.5 : 11.5);
     camera.position.lerp(destination, 1 - Math.exp(-delta * 3));
     camera.lookAt(0, 0.75, -0.1);
   });

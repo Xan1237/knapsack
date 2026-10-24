@@ -8,6 +8,7 @@ import {
   sizeOf,
   revisionOf,
 } from "./domain";
+import { anchoredPlacement } from "./manual-layout";
 
 const volume = (d: Vec3) => d[0] * d[1] * d[2];
 const overlap = (a: Placement, b: Placement, gap: number) =>
@@ -123,11 +124,16 @@ export function pack(items: Item[], bag: Suitcase, budget = 80000): Plan {
   let best: Placement[] = [],
     attempts = 0,
     exhausted = false;
+  // The latest moved item is reserved first; every other item may move around it.
+  const anchor = included
+    .map((item) => anchoredPlacement(item, bag))
+    .find((p) => p !== null);
   for (const order of orders) {
     attempts++;
-    const placed: Placement[] = [];
+    const placed: Placement[] = anchor ? [{ ...anchor }] : [];
     let evaluations = 0;
     for (const item of order) {
+      if (item.id === anchor?.id) continue;
       if (conflicts.includes(item.id)) continue;
       const d = sizeOf(item);
       let found: Placement | undefined;
@@ -146,6 +152,15 @@ export function pack(items: Item[], bag: Suitcase, budget = 80000): Plan {
           [
             ...new Set([
               gap,
+              ...(anchor
+                ? sameSide
+                    .flatMap((p) =>
+                      item.orientations.map(
+                        (o) => p.position[k] - d[permutations[o][k]] - gap,
+                      ),
+                    )
+                    .filter((n) => n >= gap)
+                : []),
               ...sameSide.map((p) => p.position[k] + p.dimensions[k] + gap),
             ]),
           ].sort((a, b) => a - b),

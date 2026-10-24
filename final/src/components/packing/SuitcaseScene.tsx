@@ -24,12 +24,15 @@ import {
   type Plan,
   type Suitcase,
   type Vec3,
+  type ItemAnchor,
   permutations,
   sizeOf,
 } from "@/lib/domain";
 import { itemQuaternion } from "@/lib/render-transform";
 import GeneratedMesh from "./GeneratedMesh";
 import ClamshellCase from "./ClamshellCase";
+import { anchorAtPoint } from "@/lib/manual-layout";
+import { useItemDrag } from "./useItemDrag";
 
 const unit = 100;
 function Block({
@@ -248,6 +251,8 @@ function Belonging({
   selected,
   onSelect,
   onModelError,
+  draggable = false,
+  onDrop,
 }: {
   item: Item;
   position: Vec3;
@@ -255,6 +260,8 @@ function Belonging({
   selected: boolean;
   onSelect: (id: string) => void;
   onModelError?: (message: string) => void;
+  draggable?: boolean;
+  onDrop?: (item: Item, worldPoint: Vector3, orientation: number) => boolean;
 }) {
   const quaternion = useMemo(() => itemQuaternion(orientation), [orientation]);
   const d = sizeOf(item);
@@ -266,14 +273,21 @@ function Belonging({
   const motion = useRef<Group>(null),
     target = useRef(new Vector3(...position)),
     reduced = useRef(false);
+  const drag = useItemDrag(
+    motion,
+    target,
+    draggable,
+    () => onSelect(item.id),
+    onDrop ? (point) => onDrop(item, point, orientation) : undefined,
+  );
   const [start] = useState<Vec3>(() => [
     position[0],
     position[1] + 2,
     position[2],
   ]);
   useLayoutEffect(() => {
-    target.current.fromArray(position);
-  }, [position]);
+    if (!drag.active.current) target.current.fromArray(position);
+  }, [position, drag.active]);
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => {
@@ -284,7 +298,7 @@ function Belonging({
     return () => preference.removeEventListener("change", update);
   }, []);
   useFrame((_, delta) => {
-    if (motion.current) {
+    if (motion.current && !drag.active.current) {
       if (reduced.current) motion.current.position.copy(target.current);
       else
         motion.current.position.lerp(target.current, 1 - Math.exp(-delta * 10));
@@ -296,14 +310,19 @@ function Belonging({
       position={start}
       quaternion={quaternion}
       onClick={click}
+      {...drag.handlers}
       onPointerOver={(e) => {
         e.stopPropagation();
         setHover(true);
-        document.body.style.cursor = "pointer";
+        document.body.style.cursor = drag.active.current
+          ? "grabbing"
+          : draggable
+            ? "grab"
+            : "pointer";
       }}
       onPointerOut={() => {
         setHover(false);
-        document.body.style.cursor = "auto";
+        if (!drag.active.current) document.body.style.cursor = "auto";
       }}
     >
       <group scale={[d[0] / unit, d[2] / unit, d[1] / unit]}>
@@ -471,14 +490,18 @@ type Props = {
   resetKey: number;
   view?: "perspective" | "top";
   onModelError?: (message: string) => void;
+  moveMode?: boolean;
+  onMove?: (id: string, anchor: ItemAnchor) => void;
 };
 
 function PackedItems({
   props,
   compartment,
+  onDrop,
 }: {
   props: Props;
   compartment?: "base" | "lid";
+  onDrop: (item: Item, worldPoint: Vector3, orientation: number) => boolean;
 }) {
   const { items, bag, plan, selected, onSelect, layer, step, exploded } = props;
   const w = bag.dimensions[0] / unit,
@@ -513,6 +536,8 @@ function PackedItems({
               selected={selected === p.id}
               onSelect={onSelect}
               onModelError={props.onModelError}
+              draggable={props.moveMode}
+              onDrop={onDrop}
             />
           );
         })}
@@ -525,6 +550,25 @@ function Scene(props: Props) {
   const w = bag.dimensions[0] / unit,
     l = bag.dimensions[1] / unit;
   const controls = useRef<OrbitControlsImpl>(null);
+  const caseFrame = useRef<Group>(null);
+  const drop = (item: Item, worldPoint: Vector3, orientation: number) => {
+    if (!caseFrame.current || !props.onMove) return false;
+    const local = caseFrame.current.worldToLocal(worldPoint.clone());
+    const anchor = anchorAtPoint(
+      item,
+      bag,
+      local.toArray() as Vec3,
+      orientation,
+    );
+    if (!anchor) {
+      props.onModelError?.(
+        "This item cannot fit here in its current orientation. Resize it or allow another rotation.",
+      );
+      return false;
+    }
+    props.onMove(item.id, anchor);
+    return true;
+  };
   const unplaced =
     plan?.unplaced ??
     items.filter((i) => i.included).map((i) => ({ id: i.id, reason: "" }));
@@ -544,20 +588,22 @@ function Scene(props: Props) {
         shadow-bias={-0.001}
       />
       <directionalLight position={[-5, 4, -4]} intensity={1.2} />
-      <group position={[-0.5, 0, 0.6]}>
+      <group ref={caseFrame} position={[-0.5, 0, 0.6]}>
         {bag.clamshell ? (
           <ClamshellCase
             bag={bag}
             closed={
               props.step > (plan?.placements.length ?? 0) && !props.exploded
             }
-            base={<PackedItems props={props} compartment="base" />}
-            lid={<PackedItems props={props} compartment="lid" />}
+            base={
+              <PackedItems props={props} compartment="base" onDrop={drop} />
+            }
+            lid={<PackedItems props={props} compartment="lid" onDrop={drop} />}
           />
         ) : (
           <>
             <BagModel bag={bag} onModelError={props.onModelError} />
-            <PackedItems props={props} />
+            <PackedItems props={props} onDrop={drop} />
           </>
         )}
         {unplaced.map((u, index) => {
@@ -577,6 +623,8 @@ function Scene(props: Props) {
               selected={selected === u.id}
               onSelect={onSelect}
               onModelError={props.onModelError}
+              draggable={props.moveMode}
+              onDrop={drop}
             />
           );
         })}
@@ -668,7 +716,7 @@ export default function SuitcaseScene(props: Props) {
         }}
         dpr={[1, 1.8]}
         gl={{ antialias: true, preserveDrawingBuffer: true }}
-        aria-label="Interactive 3D packed suitcase. Drag to orbit, scroll to zoom, click an object to select it."
+        aria-label="Interactive 3D packed suitcase. Enable Move items to drag belongings and repack around them. Drag empty space to orbit, scroll to zoom."
       >
         <Scene {...props} />
         <ContextMonitor onLost={setContextLost} />

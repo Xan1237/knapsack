@@ -9,3 +9,12 @@ export function landingPackedCount(progress: number): number {
 export function landingReadyToClose(progress: number): boolean {
   return landingPackedCount(progress) === 8;
 }
+
+/** Start closed, open around the long side, then close after the last item lands. */
+export function landingClosure(progress: number): number {
+  if (progress < 0.12) {
+    const t = Math.max(0, progress / 0.12);
+    return 1 - t * t * (3 - 2 * t);
+  }
+  return landingReadyToClose(progress) ? 1 : 0;
+}

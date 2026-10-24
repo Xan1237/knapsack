@@ -4,6 +4,7 @@ import {
   type Category,
   type Proposal,
   type Vec3,
+  type ItemAnchor,
   createItem,
   sizeOf,
   demoItems,
@@ -29,6 +30,8 @@ export type Action =
   | { type: "reset" }
   | { type: "demo" }
   | { type: "bag"; id: string }
+  | { type: "move"; id: string; anchor: ItemAnchor }
+  | { type: "auto-layout" }
   | { type: "add"; category: Category; id?: string }
   | {
       type: "edit";
@@ -42,6 +45,7 @@ export type Action =
           | "orientations"
           | "required"
           | "priority"
+          | "compression"
         >
       >;
     }
@@ -76,7 +80,27 @@ export function reducer(
     case "demo":
       return initialState();
     case "bag":
-      return { ...state, bagId: action.id };
+      return {
+        ...state,
+        bagId: action.id,
+        items: state.items.map((i) => ({ ...i, anchor: undefined })),
+      };
+    case "auto-layout":
+      return {
+        ...state,
+        items: state.items.map((i) => ({ ...i, anchor: undefined })),
+      };
+    case "move":
+      if (!state.items.some((i) => i.id === action.id && i.included))
+        return state;
+      return {
+        ...state,
+        items: state.items.map((i) => ({
+          ...i,
+          anchor: i.id === action.id ? action.anchor : undefined,
+          edited: i.id === action.id || i.edited,
+        })),
+      };
     case "selection": {
       const selectedIds = new Set(action.includeIds);
       return {
@@ -104,6 +128,12 @@ export function reducer(
             ? {
                 ...i,
                 ...action.patch,
+                anchor:
+                  action.patch.scale ||
+                  action.patch.orientations ||
+                  action.patch.compression !== undefined
+                    ? undefined
+                    : i.anchor,
                 included:
                   (action.patch.required ?? i.required)
                     ? true
@@ -139,6 +169,8 @@ export function reducer(
                 label: `${item.label.slice(0, 53)} copy`,
                 estimate: [...sizeOf(item)] as Vec3,
                 scale: [1, 1, 1],
+                compression: 0,
+                anchor: undefined,
                 edited: true,
               },
             ],

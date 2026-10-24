@@ -142,18 +142,20 @@ export default function ClamshellCase({
   bag,
   closed = false,
   closing,
+  initiallyClosed = false,
   base,
   lid,
 }: {
   bag: Suitcase;
   closed?: boolean;
   closing?: RefObject<number>;
+  initiallyClosed?: boolean;
   base?: ReactNode;
   lid?: ReactNode;
 }) {
   const root = useRef<Group>(null),
     hinge = useRef<Group>(null),
-    amount = useRef(0);
+    amount = useRef(initiallyClosed ? 1 : 0);
   const reduced = useRef(false);
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -177,10 +179,17 @@ export default function ClamshellCase({
     if (root.current) root.current.position.x = pose.rootX;
   });
   return (
-    <group ref={root} position={[clamshellPose(w, h, 0).rootX, 0, 0]}>
+    <group
+      ref={root}
+      position={[clamshellPose(w, h, initiallyClosed ? 1 : 0).rootX, 0, 0]}
+    >
       <Half w={w} l={l} h={h} color={bag.color || "#76876c"} />
       {base}
-      <group ref={hinge} position={clamshellPose(w, h, 0).hinge}>
+      <group
+        ref={hinge}
+        position={clamshellPose(w, h, 0).hinge}
+        rotation={[0, 0, clamshellPose(w, h, initiallyClosed ? 1 : 0).lidAngle]}
+      >
         <group position={clamshellPose(w, h, 0).lidOrigin}>
           <Half w={w} l={l} h={h} color={bag.color || "#76876c"} lid />
           {lid}

@@ -723,6 +723,7 @@ input[type="checkbox"] {
 }
 .scene-inspection {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   margin: 0 25px 16px;
@@ -753,6 +754,11 @@ input[type="checkbox"] {
 .scene-inspection .text-button {
   font-size: 9px;
   white-space: nowrap;
+}
+.scene-inspection .text-button[aria-pressed="true"] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 .plan-card {
   display: flex;
@@ -1461,6 +1467,9 @@ input[type="checkbox"] {
   .editor-panel > .resize-control {
     grid-column: 3;
     grid-row: 2/5;
+  }
+  .editor-panel > .compression-control {
+    grid-row: auto;
   }
   .editor-panel > .axis-toggle {
     grid-column: 3;
