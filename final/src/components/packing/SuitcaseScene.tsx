@@ -16,7 +16,7 @@ import {
   useThree,
   type ThreeEvent,
 } from "@react-three/fiber";
-import { OrbitControls, RoundedBox, Html, useGLTF } from "@react-three/drei";
+import { OrbitControls, RoundedBox, useGLTF } from "@react-three/drei";
 import { Box3, Group, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
@@ -255,6 +255,7 @@ function Belonging({
   onModelError,
   draggable = false,
   onDrop,
+  onHover,
 }: {
   item: Item;
   position: Vec3;
@@ -264,6 +265,7 @@ function Belonging({
   onModelError?: (message: string) => void;
   draggable?: boolean;
   onDrop?: (item: Item, worldPoint: Vector3, orientation: number) => boolean;
+  onHover?: (label: string | null) => void;
 }) {
   const quaternion = useMemo(() => itemQuaternion(orientation), [orientation]);
   const d = sizeOf(item);
@@ -271,7 +273,6 @@ function Belonging({
     event.stopPropagation();
     onSelect(item.id);
   };
-  const [hover, setHover] = useState(false);
   const motion = useRef<Group>(null),
     target = useRef(new Vector3(...position)),
     reduced = useRef(false);
@@ -315,7 +316,7 @@ function Belonging({
       {...drag.handlers}
       onPointerOver={(e) => {
         e.stopPropagation();
-        setHover(true);
+        onHover?.(item.label);
         document.body.style.cursor = drag.active.current
           ? "grabbing"
           : draggable
@@ -323,7 +324,7 @@ function Belonging({
             : "pointer";
       }}
       onPointerOut={() => {
-        setHover(false);
+        onHover?.(null);
         if (!drag.active.current) document.body.style.cursor = "auto";
       }}
     >
@@ -360,15 +361,6 @@ function Belonging({
           <ItemModel item={item} selected={selected} />
         )}
       </group>
-      {hover && (
-        <Html
-          center
-          position={[0, d[2] / unit / 2 + 0.2, 0]}
-          style={{ pointerEvents: "none" }}
-        >
-          <div className="scene-tooltip">{item.label}</div>
-        </Html>
-      )}
     </group>
   );
 }
@@ -494,6 +486,7 @@ type Props = {
   onModelError?: (message: string) => void;
   moveMode?: boolean;
   onMove?: (id: string, anchor: ItemAnchor) => void;
+  onHover?: (label: string | null) => void;
 };
 
 function PackedItems({
@@ -540,6 +533,7 @@ function PackedItems({
               onModelError={props.onModelError}
               draggable={props.moveMode}
               onDrop={onDrop}
+              onHover={props.onHover}
             />
           );
         })}
@@ -611,17 +605,6 @@ function Scene(props: Props) {
             <PackedItems props={props} onDrop={drop} />
           </>
         )}
-        {overflow.length > 0 && (
-          <Html
-            position={[bounds.max[0] - 0.45, 0.1, bounds.min[2]]}
-            center
-            style={{ pointerEvents: "none" }}
-          >
-            <div className="scene-tooltip">
-              Outside the suitcase · {overflow.length} items
-            </div>
-          </Html>
-        )}
         {overflow.map((u) => {
           const item = items.find((i) => i.id === u.id);
           if (!item) return null;
@@ -636,6 +619,7 @@ function Scene(props: Props) {
               onModelError={props.onModelError}
               draggable={props.moveMode}
               onDrop={drop}
+              onHover={props.onHover}
             />
           );
         })}
@@ -703,6 +687,11 @@ function ContextMonitor({ onLost }: { onLost: (lost: boolean) => void }) {
 }
 export default function SuitcaseScene(props: Props) {
   const [contextLost, setContextLost] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const overflowCount =
+    props.plan?.unplaced.filter((entry) =>
+      props.items.some((item) => item.id === entry.id && item.included),
+    ).length ?? 0;
   if (contextLost)
     return (
       <div className="scene-error" role="alert">
@@ -721,22 +710,51 @@ export default function SuitcaseScene(props: Props) {
     );
   return (
     <SceneBoundary>
-      <Canvas
-        key={props.resetKey}
-        shadows
-        camera={{
-          position: props.view === "top" ? [0, 13, 0.01] : [7.2, 8.8, 10.8],
-          fov: 39,
-          near: 0.1,
-          far: 150,
-        }}
-        dpr={[1, 1.8]}
-        gl={{ antialias: true, preserveDrawingBuffer: true }}
-        aria-label="Interactive 3D packed suitcase. Enable Move items to drag belongings and repack around them. Drag empty space to orbit, scroll to zoom."
-      >
-        <Scene {...props} />
-        <ContextMonitor onLost={setContextLost} />
-      </Canvas>
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        <Canvas
+          key={props.resetKey}
+          shadows
+          camera={{
+            position: props.view === "top" ? [0, 13, 0.01] : [7.2, 8.8, 10.8],
+            fov: 39,
+            near: 0.1,
+            far: 150,
+          }}
+          dpr={[1, 1.8]}
+          gl={{ antialias: true, preserveDrawingBuffer: true }}
+          aria-label="Interactive 3D packed suitcase. Enable Move items to drag belongings and repack around them. Drag empty space to orbit, scroll to zoom."
+        >
+          <Scene {...props} onHover={setHovered} />
+          <ContextMonitor onLost={setContextLost} />
+        </Canvas>
+        {overflowCount > 0 && (
+          <div
+            className="scene-tooltip"
+            style={{
+              position: "absolute",
+              left: 16,
+              top: 16,
+              pointerEvents: "none",
+            }}
+          >
+            Outside the suitcase · {overflowCount} items
+          </div>
+        )}
+        {hovered && (
+          <div
+            className="scene-tooltip"
+            style={{
+              position: "absolute",
+              bottom: 44,
+              left: "50%",
+              transform: "translateX(-50%)",
+              pointerEvents: "none",
+            }}
+          >
+            {hovered}
+          </div>
+        )}
+      </div>
     </SceneBoundary>
   );
 }

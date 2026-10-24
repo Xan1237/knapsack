@@ -138,13 +138,13 @@ After installing `final/`'s own locked dependencies with `npm ci`:
 
 The initial build attempt before installing those dependencies could not resolve Next inside the package's explicit Turbopack root. Installing the package's dependencies resolved it without code changes.
 
-The root `npm run typecheck` failed in the initial post-pull check with 56 diagnostics: its broad `**/*.ts` / `**/*.tsx` inclusion picks up final-app source while `@/*` resolves to root `src/`. This is a package-boundary problem, not a failure of final-app typechecking.
+Root TypeScript and ESLint now exclude the independent `final/` and `step2/` packages. This fixes the earlier cross-package diagnostics caused by interpreting final-app imports with the root `@/*` alias. Both Next.js applications pass their own type checks, lint, and production builds.
 
 This review did not make paid provider calls or rerun browser journeys. Existing final-app evidence records one passing journey and six failures in the initial seven-test suite. A partial rerun again passed overflow/essential protection; other journeys were interrupted or unstarted. The recorded initial requirement coverage is 11%, and the partial rerun is not a complete regression pass. See `final/artifacts/validation.md` and `final/artifacts/kane-recheck-partial.json` for their actual scope.
 
 ## Architecture findings and recommended sequence
 
-1. **Establish package ownership.** `final/` is already the documented combined target, but the repository still has three source copies, separate lockfiles, and root commands that cross package boundaries. Scope root tooling to its own package, then either introduce explicit workspaces or archive the originals outside active source discovery. Keep existing sessions and import compatibility during any consolidation.
+1. **Establish package ownership.** `final/` is already the documented combined target, but the repository still has three source copies and separate lockfiles. Root TypeScript and lint now stay within their package. Explicit workspaces or archiving the originals could further clarify ownership. Keep existing sessions and import compatibility during any consolidation.
 2. **Split workspace orchestration.** The 1,520-line `PackingWorkspace.tsx` owns UI, worker lifecycle, uploads, saving, imports, exports, and editing. Extract focused hooks for inventory persistence, photo analysis, and packing computation, then separate inventory/editor/scene panels. Preserve the single reducer and pure solver contracts.
 3. **Separate advice freshness from geometry freshness.** `revisionOf()` includes solver inputs but omits labels/categories that Astra also consumes. Renaming an item leaves a prior advice revision current even though its semantic input changed. Use a distinct advice revision or inventory generation token while retaining the narrower geometry revision.
 4. **Make collection formats explicit.** The current importer treats a supplied `bag` with any units other than `mm` as step2 centimeters. Use a discriminated, versioned contract so unknown units/axes are rejected rather than interpreted as a supported format.

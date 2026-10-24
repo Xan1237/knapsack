@@ -9,7 +9,7 @@ import {
   useEffect,
 } from "react";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
-import { OrbitControls, RoundedBox, Html } from "@react-three/drei";
+import { OrbitControls, RoundedBox } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
   type Item,
@@ -157,12 +157,14 @@ function Belonging({
   orientation,
   selected,
   onSelect,
+  onHover,
 }: {
   item: Item;
   position: Vec3;
   orientation: number;
   selected: boolean;
   onSelect: (id: string) => void;
+  onHover?: (label: string | null) => void;
 }) {
   const quaternion = useMemo(() => itemQuaternion(orientation), [orientation]);
   const d = sizeOf(item);
@@ -170,7 +172,6 @@ function Belonging({
     event.stopPropagation();
     onSelect(item.id);
   };
-  const [hover, setHover] = useState(false);
   return (
     <group
       position={position}
@@ -178,26 +179,17 @@ function Belonging({
       onClick={click}
       onPointerOver={(e) => {
         e.stopPropagation();
-        setHover(true);
+        onHover?.(item.label);
         document.body.style.cursor = "pointer";
       }}
       onPointerOut={() => {
-        setHover(false);
+        onHover?.(null);
         document.body.style.cursor = "auto";
       }}
     >
       <group scale={[d[0] / unit, d[2] / unit, d[1] / unit]}>
         <ItemModel item={item} selected={selected} />
       </group>
-      {hover && (
-        <Html
-          center
-          position={[0, d[2] / unit / 2 + 0.2, 0]}
-          style={{ pointerEvents: "none" }}
-        >
-          <div className="scene-tooltip">{item.label}</div>
-        </Html>
-      )}
     </group>
   );
 }
@@ -211,6 +203,7 @@ type Props = {
   step: number;
   exploded: boolean;
   resetKey: number;
+  onHover?: (label: string | null) => void;
 };
 function Scene(props: Props) {
   const { items, bag, plan, selected, onSelect, layer, step, exploded } = props;
@@ -327,6 +320,7 @@ function Scene(props: Props) {
               orientation={p.orientation}
               selected={selected === p.id}
               onSelect={onSelect}
+              onHover={props.onHover}
             />
           );
         })}
@@ -346,6 +340,7 @@ function Scene(props: Props) {
               orientation={0}
               selected={selected === u.id}
               onSelect={onSelect}
+              onHover={props.onHover}
             />
           );
         })}
@@ -408,6 +403,7 @@ function ContextMonitor({ onLost }: { onLost: (lost: boolean) => void }) {
 }
 export default function SuitcaseScene(props: Props) {
   const [contextLost, setContextLost] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
   if (contextLost)
     return (
       <div className="scene-error" role="alert">
@@ -426,17 +422,33 @@ export default function SuitcaseScene(props: Props) {
     );
   return (
     <SceneBoundary>
-      <Canvas
-        key={props.resetKey}
-        shadows
-        camera={{ position: [7.2, 8.8, 10.8], fov: 39, near: 0.1, far: 150 }}
-        dpr={[1, 1.8]}
-        gl={{ antialias: true, preserveDrawingBuffer: true }}
-        aria-label="Interactive 3D packed suitcase. Drag to orbit, scroll to zoom, click an object to select it."
-      >
-        <Scene {...props} />
-        <ContextMonitor onLost={setContextLost} />
-      </Canvas>
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        <Canvas
+          key={props.resetKey}
+          shadows
+          camera={{ position: [7.2, 8.8, 10.8], fov: 39, near: 0.1, far: 150 }}
+          dpr={[1, 1.8]}
+          gl={{ antialias: true, preserveDrawingBuffer: true }}
+          aria-label="Interactive 3D packed suitcase. Drag to orbit, scroll to zoom, click an object to select it."
+        >
+          <Scene {...props} onHover={setHovered} />
+          <ContextMonitor onLost={setContextLost} />
+        </Canvas>
+        {hovered && (
+          <div
+            className="scene-tooltip"
+            style={{
+              position: "absolute",
+              bottom: 44,
+              left: "50%",
+              transform: "translateX(-50%)",
+              pointerEvents: "none",
+            }}
+          >
+            {hovered}
+          </div>
+        )}
+      </div>
     </SceneBoundary>
   );
 }

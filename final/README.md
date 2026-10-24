@@ -40,6 +40,8 @@ In the workspace, choose **Move items** and drag a belonging to a new spot in ei
 
 Items that cannot fit are placed in separate empty floor spaces beside the suitcase in the 3D explorer. Their actual sizes determine spacing, and the camera expands to show the suitcase and overflow together. Overflow items remain selectable and draggable for another packing attempt.
 
+Explorer labels and hover tooltips are rendered in the page's React tree, outside the Three canvas. This avoids nested HTML roots being synchronously unmounted during React scene updates.
+
 Clothing has a separate **Clothing compression** slider from 0–40%, reducing folded thickness while preserving width and length. The scene, solver and validator use the same compressed envelope. Compression and the latest manual position survive saving and native export/import. Changing suitcases or editing an anchored item's size/rotations releases its position.
 
 The preset suitcases open flat with a main compartment and a lid compartment, each using half the total interior depth. Packing results identify the half containing each item; clearance, overlap and orientation checks run within that half. Capacity is not doubled. The demo uses folded clothing dimensions and packs all nine items across both sides.
