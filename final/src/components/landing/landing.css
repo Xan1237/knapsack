@@ -1271,7 +1271,8 @@
   width: 100%;
   height: 150px;
   display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr;
+  grid-template-columns: 1.4fr 0.7fr 0.7fr 1.2fr;
+  grid-template-rows: repeat(2, 1fr);
   gap: 7px;
   padding: 13px;
   border: 10px solid #78856b;
@@ -1285,28 +1286,12 @@
 }
 .lp-flat-case i:first-child {
   background: #a6b88c;
-  grid-row: span 2;
 }
 .lp-flat-case i:nth-child(3) {
   background: #a7b4c4;
 }
 .lp-flat-case i:nth-child(5) {
   background: #bf8061;
-}
-.lp-flat-lid {
-  width: 100%;
-  height: 130px;
-  background: #a4b094;
-  border: 10px solid #78856b;
-  border-radius: 13px;
-  transform: perspective(300px) rotateX(-25deg);
-  margin-bottom: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #e2e6d3;
-  font-size: 12px;
-  letter-spacing: 1px;
 }
 .lp-fallback-caption {
   font-family: Georgia, serif;
@@ -2212,9 +2197,6 @@
   }
   .lp-scene-fallback {
     inset: 15% 17% 20%;
-  }
-  .lp-flat-lid {
-    height: 105px;
   }
   .lp-flat-case {
     height: 120px;

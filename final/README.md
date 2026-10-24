@@ -38,7 +38,7 @@ For a live API check against a server on another port, use `KNAPSACK_BASE_URL=ht
 
 ## Two-sided suitcase
 
-The landing animation opens sideways from a closed suitcase, compresses folded clothes as they settle, and closes again once all eight items land. Scrolling back reverses the sequence.
+The landing animation shows a single open suitcase compartment. Eight travel essentials settle into a fitted arrangement one by one as you scroll, and the completed interior stays visible. Scrolling back reverses the sequence; reduced motion reveals each item directly in its final position.
 
 In the workspace, choose **Move items** and drag a belonging to a new spot in either half. Dropping reserves that floor position and repacks the other belongings around it. The latest moved item takes precedence; moving another item releases the previous reservation. **Auto arrange** returns everything to automatic packing. Drag empty space to orbit; Top view makes precise moves easier.
 
@@ -50,6 +50,6 @@ Clothing has a separate **Clothing compression** slider from 0–40%, reducing f
 
 The preset suitcases open flat with a main compartment and a lid compartment, each using half the total interior depth. Packing results identify the half containing each item; clearance, overlap and orientation checks run within that half. Capacity is not doubled. The demo uses folded clothing dimensions and packs all nine items across both sides.
 
-Packing playback ends with an additional **close suitcase** step. **Open suitcase**, **Show all**, the layer slider, and exploded inspection reopen the interior for review. The landing story uses the same hinged shell and closes after its eight items settle. Imported bags without the clamshell flag retain their existing asset layout.
+Packing playback ends with an additional **close suitcase** step. **Open suitcase**, **Show all**, the layer slider, and exploded inspection reopen the interior for review. Imported bags without the clamshell flag retain their existing asset layout.
 
 Validation: 41 direct tests, TypeScript, lint, production build and a live two-photo API check pass. Kane's initial seven-test browser run passed the overflow/essential workflow and failed six journeys. Its findings led to individual demo labels, automatic demo-item selection and an HTTP attachment download for plans, plus CLI-generated test-flow refinements. Full browser verification is still incomplete; see [the validation record](artifacts/validation.md) and [INTEGRATION.md](INTEGRATION.md).
