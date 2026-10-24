@@ -1,0 +1,11 @@
+services:
+  knapsack:
+    image: knapsack:${KNAPSACK_IMAGE_TAG:-local}
+    build:
+      context: ..
+    init: true
+    restart: unless-stopped
+    env_file:
+      - ${KNAPSACK_ENV_FILE:-../.env.production}
+    ports:
+      - "${KNAPSACK_BIND_ADDRESS:-127.0.0.1}:3100:3000"

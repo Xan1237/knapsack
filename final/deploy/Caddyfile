@@ -1,0 +1,4 @@
+knapsack.pontrolcanel.top {
+    encode zstd gzip
+    reverse_proxy 100.64.0.3:3100
+}
