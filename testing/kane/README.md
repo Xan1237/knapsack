@@ -1,10 +1,10 @@
 # Kane smoke setup
 
-The automatic gate is exactly **ten small Kane-generated smoke tests**. Each checks one visible workspace behavior; [CASES.md](CASES.md) lists their plain-English purpose and generated identities. Application code remains identical to the merged `main` baseline.
+The automatic gate is exactly **nine small Kane-generated smoke tests**. Each checks one visible workspace behavior; [CASES.md](CASES.md) lists their plain-English purpose and generated identities. Application code remains identical to the merged `main` baseline.
 
 ## GitHub Actions
 
-The [workflow](../../.github/workflows/kane.yml) builds the application once, then starts ten separate matrix jobs with `max-parallel: 10`. Each gets its own production server and one headless Chrome session. A failed test does not cancel the other nine, so every result is visible.
+The [workflow](../../.github/workflows/kane.yml) builds the application once, then starts nine separate matrix jobs with `max-parallel: 9`. Each gets its own production server and one headless Chrome session. A failed test does not cancel the other eight, so every result is visible.
 
 - Ordinary pushes and PRs always use strict replay, with repair disabled.
 - Kane reports actual assertion results and elapsed time. Custom test, batch and CI job deadlines have been removed at the user's request.
@@ -38,12 +38,14 @@ npm run run --prefix testing/kane -- --suite smoke --mode record --start-server 
 npm run run --prefix testing/kane -- --suite smoke --mode check --start-server --parallel 1
 ```
 
-Local smoke runs use one browser at a time. CI runs all ten simultaneously on separate machines. `--test <id>` selects one case. The managed server defaults to port 3100 and closes only its own process; an existing development server on port 3000 is left alone. `--base-url` or `KANE_BASE_URL` can target an existing server when `--start-server` is omitted.
+Local smoke runs use one browser at a time. CI runs all nine simultaneously on separate machines. `--test <id>` selects one case. The managed server defaults to port 3100 and closes only its own process; an existing development server on port 3000 is left alone. `--base-url` or `KANE_BASE_URL` can target an existing server when `--start-server` is omitted.
 
 ## Scope and maintenance
 
-`smoke` is the automatic ten-case set. `regression`, `live` and `all` are optional manual suites containing earlier saved designs, including known unresolved assertions; a green smoke run does not establish those broader behaviors as passing. Historical landing-animation and visual 3D checks are outside the small gate.
+`smoke` is the automatic nine-case set. `regression`, `live` and `all` are optional manual suites containing earlier saved designs, including known unresolved assertions; a green smoke run does not establish those broader behaviors as passing. Historical landing-animation and visual 3D checks are outside the small gate.
 
-Tests must be generated/refined through Kane assurance, never handwritten. The current requirements are [ten-smoke.md](requirements/ten-smoke.md). Generated files retain their assurance headers and criterion links. Recording directories, account profiles, local environment files and raw evidence stay out of git; GitHub retains evidence artifacts for seven days. Increment `recording-version.txt` to discard recordings deliberately.
+Tests must be generated/refined through Kane assurance, never handwritten. The current requirements are [nine-smoke.md](requirements/nine-smoke.md). Generated files retain their assurance headers and criterion links. Recording directories, account profiles, local environment files and raw evidence stay out of git; GitHub retains evidence artifacts for seven days. Increment `recording-version.txt` to discard recordings deliberately.
 
 Implementation follows the official [Kane CI guide](https://github.com/LambdaTest/kane-cli/blob/main/docs/user-guide/cicd.md) and [GitHub cache scoping](https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows).
+
+The pinning smoke test was deleted at the user's request; the automatic gate has nine checks and makes no pinning-coverage claim. Current scope: [nine-smoke.md](requirements/nine-smoke.md).

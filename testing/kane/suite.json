@@ -117,30 +117,23 @@
       "designRef": "t-67"
     },
     {
-      "id": "pin-sage-linen-shirt-disables-its-include-checkbox",
-      "file": "pin-sage-linen-shirt-disables-its-include-checkbox_test.md",
-      "label": "07 Pin essential",
-      "live": false,
-      "designRef": "t-72"
-    },
-    {
       "id": "top-view-offers-perspective-view",
       "file": "top-view-offers-perspective-view_test.md",
-      "label": "08 Top view",
+      "label": "07 Top view",
       "live": false,
       "designRef": "t-63"
     },
     {
       "id": "exploded-view-becomes-pressed",
       "file": "exploded-view-becomes-pressed_test.md",
-      "label": "09 Exploded toggle",
+      "label": "08 Exploded toggle",
       "live": false,
       "designRef": "t-64"
     },
     {
       "id": "move-items-offers-finish-moving",
       "file": "move-items-offers-finish-moving_test.md",
-      "label": "10 Move items mode",
+      "label": "09 Move items mode",
       "live": false,
       "designRef": "t-65"
     }
@@ -154,7 +147,6 @@
         "load-demo-restores-nine-items-including-sage-linen-shirt",
         "select-cream-knit-fills-item-name-with-cream-knit",
         "exclude-cream-knit-unchecks-its-include-checkbox",
-        "pin-sage-linen-shirt-disables-its-include-checkbox",
         "top-view-offers-perspective-view",
         "exploded-view-becomes-pressed",
         "move-items-offers-finish-moving"
@@ -179,7 +171,6 @@
         "load-demo-restores-nine-items-including-sage-linen-shirt",
         "select-cream-knit-fills-item-name-with-cream-knit",
         "exclude-cream-knit-unchecks-its-include-checkbox",
-        "pin-sage-linen-shirt-disables-its-include-checkbox",
         "top-view-offers-perspective-view",
         "exploded-view-becomes-pressed",
         "move-items-offers-finish-moving"
@@ -210,7 +201,6 @@
         "load-demo-restores-nine-items-including-sage-linen-shirt",
         "select-cream-knit-fills-item-name-with-cream-knit",
         "exclude-cream-knit-unchecks-its-include-checkbox",
-        "pin-sage-linen-shirt-disables-its-include-checkbox",
         "top-view-offers-perspective-view",
         "exploded-view-becomes-pressed",
         "move-items-offers-finish-moving"

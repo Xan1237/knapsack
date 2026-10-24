@@ -48,8 +48,8 @@ for (const id of manifest.suites.smoke.tests) {
   if (test.file !== `${test.id}_test.md` || !test.label)
     throw new Error("Smoke cases need a clear matrix label and matching recording-folder ID");
 }
-if (manifest.suites.smoke.tests.length !== 10)
-  throw new Error("Automatic smoke must contain exactly ten small checks");
+if (manifest.suites.smoke.tests.length !== 9)
+  throw new Error("Automatic smoke must contain exactly nine small checks");
 const workflow = parseDocument(
   await fs.readFile(
     path.resolve(harnessDir, "../../.github/workflows/kane.yml"),
@@ -70,8 +70,8 @@ if (yaml.permissions?.contents !== "read")
   throw new Error("The workflow must use read-only repository permissions");
 if (yaml.env?.KANE_MODE !== "${{ inputs.mode || 'check' }}")
   throw new Error("Pushes and PRs must always use strict check mode");
-if (yaml.jobs.browser?.strategy?.["max-parallel"] !== 10 || yaml.jobs.browser.strategy["fail-fast"] !== false)
-  throw new Error("Run all ten smoke matrix jobs independently in parallel");
+if (yaml.jobs.browser?.strategy?.["max-parallel"] !== 9 || yaml.jobs.browser.strategy["fail-fast"] !== false)
+  throw new Error("Run all nine smoke matrix jobs independently in parallel");
 if (!yaml.jobs.build || yaml.jobs.browser.needs !== "build")
   throw new Error("Build the exact application once before the browser matrix");
 for (const job of Object.values(yaml.jobs)) {

@@ -1,4 +1,4 @@
-# Ten parallel, isolated Kane smoke jobs. Recording/repair is manual.
+# Nine parallel, isolated Kane smoke jobs. Recording/repair is manual.
 name: Kane smoke
 on:
   pull_request:
@@ -143,7 +143,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      max-parallel: 10
+      max-parallel: 9
       matrix: ${{ fromJSON(needs.build.outputs.matrix) }}
     env:
       KANE_APPLICATION_REF: ${{ needs.build.outputs.application_sha }}
