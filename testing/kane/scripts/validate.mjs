@@ -47,6 +47,8 @@ for (const id of manifest.suites.smoke.tests) {
   if (manifest.tests.find((test) => test.id === id).live)
     throw new Error("Smoke tests must not require live provider calls");
 }
+if (manifest.suites.smoke.tests.length > 3 || manifest.suites.smoke.timeoutSeconds > 90)
+  throw new Error("Automatic smoke must stay at three tests or fewer and 90 seconds or less");
 const workflow = parseDocument(
   await fs.readFile(
     path.resolve(harnessDir, "../../.github/workflows/kane.yml"),
@@ -65,6 +67,10 @@ if (yaml.on?.pull_request_target)
   );
 if (yaml.permissions?.contents !== "read")
   throw new Error("The workflow must use read-only repository permissions");
+if (yaml.env?.KANE_MODE !== "${{ inputs.mode || 'check' }}")
+  throw new Error("Pushes and PRs must always use strict check mode");
+if (Object.keys(yaml.jobs).length !== 1)
+  throw new Error("Keep smoke in one job to avoid duplicate setup/build transfers");
 for (const job of Object.values(yaml.jobs)) {
   if (!job["timeout-minutes"]) throw new Error("Every job needs a timeout");
   for (const step of job.steps || []) {

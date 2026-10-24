@@ -39,6 +39,8 @@ test("suite selection rejects misspellings, duplicate files and duplicate member
     suites: { smoke: { tests: ["choices"] } },
   };
   assert.deepEqual(selectSuite(manifest, "smoke"), [selected[0]]);
+  assert.deepEqual(selectSuite(manifest, "smoke", "choices"), [selected[0]]);
+  assert.throws(() => selectSuite(manifest, "smoke", "export"), /not in suite/);
   assert.throws(() => selectSuite(manifest, "smok"), /Unknown/);
   assert.throws(
     () =>

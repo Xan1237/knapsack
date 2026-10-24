@@ -24,6 +24,7 @@ const { values } = parseArgs({
   options: {
     suite: { type: "string", default: process.env.KANE_SUITE || "smoke" },
     mode: { type: "string", default: process.env.KANE_MODE || "check" },
+    test: { type: "string", default: process.env.KANE_TEST_ID || "" },
     "app-dir": {
       type: "string",
       default: process.env.KANE_APP_DIR || "../../final",
@@ -42,7 +43,7 @@ if (!["check", "record"].includes(values.mode))
   throw new Error("Mode must be check or record");
 
 const manifest = await loadManifest();
-const selected = selectSuite(manifest, values.suite);
+const selected = selectSuite(manifest, values.suite, values.test);
 const parallel = Number(values.parallel || manifest.parallel);
 const timeout = Number(
   values.timeout ||
@@ -232,7 +233,7 @@ async function startServer(appDir, baseUrl) {
     "ACTIONS_RUNTIME_TOKEN",
   ])
     delete env[key];
-  if (!selected.some((test) => test.live)) delete env.OPENAI_API_KEY;
+  if (!selected.some((test) => test.live)) env.OPENAI_API_KEY = "";
   server = spawn(
     process.execPath,
     [

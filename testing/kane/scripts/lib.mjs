@@ -12,7 +12,7 @@ export const recordingFile = path.join(
   "recordings.json",
 );
 
-export function selectSuite(manifest, name) {
+export function selectSuite(manifest, name, testId = "") {
   const suite = manifest.suites?.[name];
   if (!suite || !Array.isArray(suite.tests) || !suite.tests.length)
     throw new Error(`Unknown or empty suite: ${name}`);
@@ -31,11 +31,15 @@ export function selectSuite(manifest, name) {
   }
   if (new Set(suite.tests).size !== suite.tests.length)
     throw new Error(`Duplicate test in suite ${name}`);
-  return suite.tests.map((id) => {
+  const selected = suite.tests.map((id) => {
     const test = manifest.tests.find((test) => test.id === id);
     if (!test) throw new Error(`Suite ${name} references unknown test ${id}`);
     return test;
   });
+  if (!testId) return selected;
+  const test = selected.find((test) => test.id === testId);
+  if (!test) throw new Error(`Test ${testId} is not in suite ${name}`);
+  return [test];
 }
 
 export async function loadManifest() {

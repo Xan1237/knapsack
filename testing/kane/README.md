@@ -33,34 +33,36 @@ Every generated test file contains one small, independent intent step. Strict ch
 
 | Suite | Coverage | Provider calls |
 | --- | --- | --- |
-| `smoke` | A small set of packing/accounting/selection checks | None |
-| `regression` | Deterministic packing, inventory, 3D, import and export checks | None |
-| `live` | Small checks that actually need Astra or photo recognition | Real OpenAI calls |
-| `all` | All configured small checks across the seven approved workflows | Real OpenAI calls |
+| `smoke` | Landing → workspace, demo inventory labels, populated 3D bag | None |
+| `regression` | Smoke plus packing overflow and selection checks | None |
+| `live` | Pinned-item behavior in live Astra advice | Real OpenAI calls |
+| `all` | All currently configured checks | Real OpenAI calls |
 
-Dependency installation and the shared production build are separate CI steps. `suite.json` also caps the whole suite. Recording/repair mode has a 40-minute limit because first authoring is substantially slower than replay; the 30-second check budget applies to recorded checks, not first-time authoring. `--timeout <seconds>` sets the whole-run limit and `--parallel <1–4>` sets isolated workers; neither relaxes the per-test check limit. Default parallelism is two.
+Automatic runs target **under five minutes from push to success**, including installs and build. The single CI job has a four-minute limit; GitHub queue delays remain outside our control. The smoke browser batch is capped at 90 seconds, with at most three tests and a 30-second limit per test. Recording/repair is manual and has a 40-minute runner limit because first authoring is substantially slower than replay. `--timeout <seconds>` sets the whole-run limit and `--parallel <1–4>` sets isolated workers; neither relaxes the per-test check limit. Default parallelism is two.
 
 Check mode uses `--no-adaptive-heal` and fail-fast. It refuses missing or changed recordings before starting paid browser work. Record mode permits Kane to author or repair recordings. Successful cases are retained even if another repair fails; failed cases lose their recording approval. A failed or interrupted run always fails the job.
 
 ## GitHub Actions
 
-The [Kane workflow](../../.github/workflows/kane.yml) runs on relevant pushes to `main` and `kane-cli`, and on PRs into `main` after the workflow is merged there. It:
+The [Kane smoke workflow](../../.github/workflows/kane.yml) runs on relevant pushes to `main` and `kane-cli`, and on PRs into `main` after the workflow is merged there. One job:
 
 1. Checks the harness, lints/tests the selected application, and builds it once with TypeScript checking.
-2. Hands that exact build and application commit to the browser job.
+2. Runs that exact build and application commit in the same job, avoiding a second install and build transfer.
 3. Restores npm, Next build and Kane recording caches.
 4. Runs the strict smoke suite for ordinary pushes/PRs. Outdated runs are cancelled.
 5. Publishes a job summary, JSON, JUnit and sealed Kane evidence even on a test failure.
 
-Use **Actions → Kane CLI → Run workflow** for wider suites or record mode. `application_ref` accepts your friend's branch name or commit; the test harness stays on the workflow branch, and the application is checked out separately. `application_directory` defaults to `final` and can select the repository root if the app moves there.
+Use **Actions → Kane smoke → Run workflow** for wider suites or record mode. `test_id` optionally selects a single test for a focused repair; it must belong to the selected suite. `application_ref` accepts your friend's branch name or commit; the test harness stays on the workflow branch, and the application is checked out separately. `application_directory` defaults to `final` and can select the repository root if the app moves there.
 
-Select `kane-cli` as the workflow branch while this setup is being developed. Manual REST workflow dispatch has been verified on that branch. A trusted push whose commit message includes **`[kane:record]`** also runs smoke in record mode to bootstrap recordings. Ordinary commits run strict check mode. This marker is ignored for PR events; fork PRs receive source checks without secret-backed browser execution. Check and record runs use separate cancellation groups, so a routine PR check cannot cancel a recording run.
+Select `kane-cli` as the workflow branch while this setup is being developed. Manual REST workflow dispatch has been verified on that branch. **Pushes and PRs always run strict smoke check mode**, regardless of commit message. Record mode and larger suites require manual dispatch; fork PRs receive source checks without secret-backed browser execution. Check and record runs use separate cancellation groups, so a routine PR check cannot cancel a recording run.
 
 After merging the workflow into `main`, run record mode there once. GitHub's default-branch cache can then be restored by application PR branches. A cache produced only on `kane-cli` is scoped to that branch. A cache miss is an explicit setup failure, not a skipped green test.
 
 ## Updating tests
 
 The `_test.md` files are Kane-generated designs for the previously approved app workflows, split into small checks. Do not write or rewrite their steps by hand. Use Kane assurance (`context`, `design`, `maintain evolve`), review the proposed changes, and run record mode before using them as a PR gate. `suite.json` selects tests without changing their generated bodies. Validation rejects multi-step files from the active suite.
+
+The active smoke designs and approval are listed in [CASES.md](CASES.md). Broader regression tests can expose unresolved failures; they are not implied to pass by a green smoke run.
 
 Recordings live under ignored `.testmuai/tests/output-*` folders and have a content/version approval file, `.testmuai/recordings.json`. GitHub stores them in its cache, not git. Account profiles, credentials and `.env` files are never cached. Increment `recording-version.txt` to deliberately discard the existing recording pool.
 

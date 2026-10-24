@@ -1,4 +1,4 @@
-﻿{
+{
   "cliVersion": "0.10.0-rc.3",
   "parallel": 2,
   "testTimeoutSeconds": 30,
@@ -50,15 +50,33 @@
       "file": "explicit-leave-out-excludes-the-selected-unplaced-item_test.md",
       "live": false,
       "designRef": "t-29"
+    },
+    {
+      "id": "landing-packing-link-opens-the-combined-workspace",
+      "file": "landing-packing-link-opens-the-combined-workspace_test.md",
+      "live": false,
+      "designRef": "t-33"
+    },
+    {
+      "id": "loaded-demo-rows-identify-their-provenance",
+      "file": "loaded-demo-rows-identify-their-provenance_test.md",
+      "live": false,
+      "designRef": "t-32"
+    },
+    {
+      "id": "current-demo-inventory-drives-the-webgl-bag",
+      "file": "current-demo-inventory-drives-the-webgl-bag_test.md",
+      "live": false,
+      "designRef": "t-31"
     }
   ],
   "suites": {
     "smoke": {
-      "timeoutSeconds": 120,
+      "timeoutSeconds": 90,
       "tests": [
-        "smallest-bag-demo-result-accounts-for-included-items",
-        "workspace-bounded-search-wording-does-not-claim",
-        "explicit-leave-out-excludes-the-selected-unplaced-item"
+        "landing-packing-link-opens-the-combined-workspace",
+        "loaded-demo-rows-identify-their-provenance",
+        "current-demo-inventory-drives-the-webgl-bag"
       ]
     },
     "regression": {
@@ -70,12 +88,17 @@
         "make-room-dialog-identifies-displaced-demo-items",
         "workspace-bounded-search-wording-does-not-claim",
         "chosen-make-room-swap-is-reflected-in-the-selection",
-        "explicit-leave-out-excludes-the-selected-unplaced-item"
+        "explicit-leave-out-excludes-the-selected-unplaced-item",
+        "landing-packing-link-opens-the-combined-workspace",
+        "loaded-demo-rows-identify-their-provenance",
+        "current-demo-inventory-drives-the-webgl-bag"
       ]
     },
     "live": {
       "timeoutSeconds": 180,
-      "tests": ["live-astra-advice-does-not-leave-behind-a-pinned-demo"]
+      "tests": [
+        "live-astra-advice-does-not-leave-behind-a-pinned-demo"
+      ]
     },
     "all": {
       "timeoutSeconds": 360,
@@ -87,7 +110,10 @@
         "make-room-dialog-identifies-displaced-demo-items",
         "workspace-bounded-search-wording-does-not-claim",
         "chosen-make-room-swap-is-reflected-in-the-selection",
-        "explicit-leave-out-excludes-the-selected-unplaced-item"
+        "explicit-leave-out-excludes-the-selected-unplaced-item",
+        "landing-packing-link-opens-the-combined-workspace",
+        "loaded-demo-rows-identify-their-provenance",
+        "current-demo-inventory-drives-the-webgl-bag"
       ]
     }
   }
