@@ -1,7 +1,7 @@
 ---
 assurance:
-  id: t-66
-  base: sha256:0772f263a9cb3b4c6a82099f1d157408f6fac8e7841feb94ccd667aa8ce3e380
+  id: t-72
+  base: sha256:8dd0f5bc4f537661ce9f6526b3ab2ef230734f5b4e61208fcb3fe56ffa64d21c
 ---
 # Pin Sage linen shirt disables its Include checkbox
 
@@ -9,4 +9,4 @@ assurance:
 
 ## Step 1 @verifies ac-65
 
-At {{knapsack_base_url}}/pack in the inventory workspace, use Load demo to restore the bundled items, then pin Sage linen shirt as essential using its Pin control, then assert the Include Sage linen shirt checkbox is disabled.
+At {{knapsack_base_url}}/pack in the inventory workspace, use Load demo to restore the bundled items and pin Sage linen shirt as essential using its real Pin Sage linen shirt control, then inspect the current live DOM checkbox accessible as Include Sage linen shirt and assert its disabled Boolean property equals true.

@@ -298,6 +298,7 @@ try {
     values.mode === "check" ? "fail-fast" : "continue",
   ];
   if (values.mode === "check") args.push("--no-adaptive-heal");
+  else args.push("--author");
   if (values.headless) args.push("--headless");
   if (hasKey)
     args.push(

@@ -17,7 +17,7 @@ The gate needs repository secrets `LT_USERNAME` and `LT_ACCESS_KEY`, already con
 
 ## Recording and repair
 
-Choose **Actions > Kane smoke > Run workflow**, branch `kane-cli`, suite `smoke`, mode `record`. First authoring is slower than replay. Successful recordings are cached even if another test fails. Failed repairs invalidate that case's approval.
+Choose **Actions > Kane smoke > Run workflow**, branch `kane-cli`, suite `smoke`, mode `record`. Record mode explicitly re-authors the selected case on its existing Test Manager identity. First authoring is slower than replay. Successful recordings are cached even if another test fails. Failed repairs invalidate that case's approval.
 
 Set optional `test_id` to repair only that case. Normal pushes never start authoring, regardless of commit message. Check and record runs have separate cancellation groups.
 
