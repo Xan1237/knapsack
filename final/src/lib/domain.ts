@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { meshSchema } from "./mesh";
+import { travelDemoSpecs } from "./demo-fixtures";
 
 export const categories = [
   "clothing",
@@ -245,24 +246,13 @@ export function planIsCurrent(plan: Plan, items: Item[], bag: Suitcase) {
   return plan.revision === revisionOf(items, bag);
 }
 export function demoItems(): Item[] {
-  const specs: [Category, string, Vec3, string][] = [
-    ["clothing", "Sage linen shirt", [220, 270, 45], "#adbd98"],
-    ["clothing", "Cream knit", [220, 270, 55], "#e7d8bd"],
-    ["clothing", "Everyday denim", [220, 280, 45], "#729098"],
-    ["clothing", "Terracotta tee", [210, 240, 30], "#c98f75"],
-    ["shoes", "Left sneaker", [105, 275, 95], "#e5d9c6"],
-    ["shoes", "Right sneaker", [105, 275, 95], "#e5d9c6"],
-    ["pouch", "Wash bag", [190, 110, 85], "#bf8969"],
-    ["bottle", "Daily sunscreen", [60, 60, 145], "#cfbd87"],
-    ["other", "Paperback", [125, 190, 25], "#887f9f"],
-  ];
-  return specs.map(([category, label, dimensions, color], i) => ({
+  return travelDemoSpecs.map(([category, label, dimensions, color], i) => ({
     ...createItem(category, `demo-${i}`),
     demo: true,
-    orientations: [0, 1, 2, 3, 4, 5],
+    orientations: [0],
     label,
-    dimensions,
-    estimate: dimensions,
+    dimensions: [...dimensions],
+    estimate: [...dimensions],
     color,
   }));
 }

@@ -16,6 +16,10 @@ Open http://127.0.0.1:3000 and choose a packing link. The workspace is http://12
 
 ## Integration status
 
+Choose **Load demo** in the workspace to start the travel demonstration. Nine folded garments, sneakers, packing pouches, and a power bank fill **85.65%** of the weekender's declared 35.7 L interior. The outlined gap holds a **500 ml water bottle (75 × 75 × 220 mm)**. Use the existing photo-upload flow to add your own bottle; a bottle of those dimensions packs with all nine demo items at **89.12%**. Recognized water bottles may lie sideways, while other bottle types retain their upright default. The marker is shown only when that space passes the independent geometric checker.
+
+These percentages use the same item envelopes and full suitcase volume as the rest of the app, with the normal 3 mm clearances. Items retain their full estimated sizes and folded orientations; the demo does not shrink them or alter suitcase capacity. Existing saved trips are preserved until you choose Load demo.
+
 The latest mesh increment and its verification are described in [Astra mesh validation](artifacts/astra-mesh-validation.md). The integration counts below record the earlier baseline.
 
 The workspace includes real photo analysis, editable source-linked inventory, essential pins, Astra advice with preview and explicit apply, overflow swaps, animated 3D packing, inspection controls, collection import and plan export. Choose **Try a 3D model collection** to load the bundled glTF item and bag assets, or import your own model URLs.
@@ -34,7 +38,7 @@ For a live API check against a server on another port, use `KNAPSACK_BASE_URL=ht
 
 ## Two-sided suitcase
 
-The landing animation opens sideways from a closed suitcase, compresses folded clothes as they settle, and closes again once all eight items land. Scrolling back reverses the sequence.
+The landing animation shows a single open suitcase compartment. Eight travel essentials settle into a fitted arrangement one by one as you scroll, and the completed interior stays visible. Scrolling back reverses the sequence; reduced motion reveals each item directly in its final position.
 
 In the workspace, choose **Move items** and drag a belonging to a new spot in either half. Dropping reserves that floor position and repacks the other belongings around it. The latest moved item takes precedence; moving another item releases the previous reservation. **Auto arrange** returns everything to automatic packing. Drag empty space to orbit; Top view makes precise moves easier.
 
@@ -46,6 +50,6 @@ Clothing has a separate **Clothing compression** slider from 0–40%, reducing f
 
 The preset suitcases open flat with a main compartment and a lid compartment, each using half the total interior depth. Packing results identify the half containing each item; clearance, overlap and orientation checks run within that half. Capacity is not doubled. The demo uses folded clothing dimensions and packs all nine items across both sides.
 
-Packing playback ends with an additional **close suitcase** step. **Open suitcase**, **Show all**, the layer slider, and exploded inspection reopen the interior for review. The landing story uses the same hinged shell and closes after its eight items settle. Imported bags without the clamshell flag retain their existing asset layout.
+Packing playback ends with an additional **close suitcase** step. **Open suitcase**, **Show all**, the layer slider, and exploded inspection reopen the interior for review. Imported bags without the clamshell flag retain their existing asset layout.
 
 Validation: 41 direct tests, TypeScript, lint, production build and a live two-photo API check pass. Kane's initial seven-test browser run passed the overflow/essential workflow and failed six journeys. Its findings led to individual demo labels, automatic demo-item selection and an HTTP attachment download for plans, plus CLI-generated test-flow refinements. Full browser verification is still incomplete; see [the validation record](artifacts/validation.md) and [INTEGRATION.md](INTEGRATION.md).

@@ -32,6 +32,21 @@ const response = {
   proposals: [proposal],
 };
 describe("inventory async invariants", () => {
+  it("keeps pump and toiletry bottles upright when recognizing a non-water bottle", () => {
+    const result = reducer(fresh(), {
+      ...response,
+      proposals: [
+        {
+          ...proposal,
+          key: "pump",
+          category: "bottle",
+          label: "Pump cleanser",
+          appearance: "A tall soap dispenser with a pump",
+        },
+      ],
+    });
+    expect(result.items[0].orientations).toEqual([0, 1]);
+  });
   it("suggests similar source-linked items without merging distinct belongings automatically", () => {
     const a = {
       ...createItem("bottle", "foam"),

@@ -25,7 +25,7 @@ import {
 import "./landing.css";
 import {
   landingPackedCount,
-  landingReadyToClose,
+  landingPackingProgress,
 } from "@/lib/landing-timeline";
 
 const PackingScene = dynamic(() => import("./PackingScene"), {
@@ -130,8 +130,13 @@ export default function LandingPage() {
       );
       progress.current = p;
       if (meter.current)
-        meter.current.style.setProperty("--packing-progress", `${p * 100}%`);
-      setChapter(p < 0.17 ? 0 : p < 0.46 ? 1 : landingReadyToClose(p) ? 3 : 2);
+        meter.current.style.setProperty(
+          "--packing-progress",
+          `${landingPackingProgress(p) * 100}%`,
+        );
+      setChapter(
+        p < 0.17 ? 0 : p < 0.46 ? 1 : landingPackedCount(p) === 8 ? 3 : 2,
+      );
       setPacked(landingPackedCount(p));
     };
     const requestUpdate = () => {

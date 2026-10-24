@@ -260,9 +260,16 @@ export function reducer(
         )
         .map((p) => {
           const proposalId = `${photo.id}:${p.key}`;
+          const item = createItem(p.category, proposalId);
           return {
-            ...createItem(p.category, proposalId),
+            ...item,
             ...p,
+            // Capped water bottles can lie flat in a shallow clamshell compartment.
+            orientations:
+              p.category === "bottle" &&
+              /\bwater[\s-]*bottle\b/i.test(`${p.label} ${p.appearance}`)
+                ? [0, 1, 2, 3, 4, 5]
+                : item.orientations,
             id: proposalId,
             proposalId,
             estimate: p.dimensions,

@@ -10,24 +10,13 @@ import {
 } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, RoundedBox } from "@react-three/drei";
-import { Group, MathUtils, Vector3, type Mesh } from "three";
-import ClamshellCase from "@/components/packing/ClamshellCase";
-import type { Suitcase as SuitcaseDefinition } from "@/lib/domain";
-import { landingClosure } from "@/lib/landing-timeline";
+import { Group, MathUtils } from "three";
+import { landingItemProgress } from "@/lib/landing-timeline";
 
 type V3 = [number, number, number];
 type SceneProps = {
   progress: RefObject<number>;
   reducedMotion: RefObject<boolean>;
-};
-const landingBag: SuitcaseDefinition = {
-  id: "landing",
-  name: "The weekender",
-  subtitle: "Two sides. Everything in its place.",
-  dimensions: [560, 385, 200],
-  clearance: 3,
-  clamshell: true,
-  color: "#798773",
 };
 const ease = (n: number) => {
   const x = MathUtils.clamp(n, 0, 1);
@@ -313,7 +302,6 @@ function PackingItem({
   end,
   rotation = [0, 0, 0],
   index,
-  compress = false,
   progress,
   reducedMotion,
   children,
@@ -322,24 +310,17 @@ function PackingItem({
   end: V3;
   rotation?: V3;
   index: number;
-  compress?: boolean;
   children: ReactNode;
 }) {
   const group = useRef<Group>(null);
-  const value = useRef(0);
-  useFrame((state, delta) => {
+  useFrame(() => {
     if (!group.current) return;
-    const target = ease((progress.current - 0.07 - index * 0.074) / 0.2);
-    value.current = reducedMotion.current
-      ? target
-      : MathUtils.damp(value.current, target, 7, delta);
-    const t = value.current;
-    const bob = reducedMotion.current
-      ? 0
-      : Math.sin(state.clock.elapsedTime * 0.8 + index * 1.3) * 0.07 * (1 - t);
+    const arrival = landingItemProgress(progress.current, index);
+    const t = reducedMotion.current ? (arrival === 1 ? 1 : 0) : ease(arrival);
+    group.current.visible = t > 0;
     group.current.position.set(
       MathUtils.lerp(start[0], end[0], t),
-      MathUtils.lerp(start[1], end[1], t) + bob,
+      MathUtils.lerp(start[1], end[1], t),
       MathUtils.lerp(start[2], end[2], t),
     );
     group.current.rotation.set(
@@ -347,121 +328,201 @@ function PackingItem({
       MathUtils.lerp(rotation[1], 0, t),
       MathUtils.lerp(rotation[2], 0, t),
     );
-    group.current.scale.y = compress ? MathUtils.lerp(1, 0.6, t) : 1;
+    group.current.scale.setScalar(
+      reducedMotion.current ? 1 : MathUtils.lerp(0.82, 1, t),
+    );
   });
   return (
-    <group ref={group} position={start} rotation={rotation}>
+    <group ref={group} position={start} rotation={rotation} visible={false}>
       {children}
     </group>
   );
 }
 
 function Suitcase({ progress, reducedMotion }: SceneProps) {
-  const closing = useRef(1);
-  useFrame(() => {
-    closing.current = landingClosure(progress.current);
-  });
   const itemProps = { progress, reducedMotion };
   return (
-    <group position={[0, -1.0, 0]} scale={0.8}>
-      <ClamshellCase
-        bag={landingBag}
-        closing={closing}
-        initiallyClosed
-        base={
-          <>
-            <PackingItem
-              start={[-2.14, 2.39, 0.68]}
-              end={[-1.62, 0.16, 0.78]}
-              rotation={[0.09, -0.25, -0.16]}
-              index={0}
-              compress
-              {...itemProps}
-            >
-              <Shirt color="#aebc98" />
-            </PackingItem>
-            <PackingItem
-              start={[-1.3, 3.16, 1.1]}
-              end={[-1.62, 0.45, 0.78]}
-              rotation={[0.04, 0.18, -0.12]}
-              index={1}
-              compress
-              {...itemProps}
-            >
-              <Shirt color="#e0d5be" knit />
-            </PackingItem>
-            <PackingItem
-              start={[0.35, 2.7, -0.02]}
-              end={[-0.31, 0.2, -0.45]}
-              rotation={[0.12, -0.3, -0.2]}
-              index={2}
-              {...itemProps}
-            >
-              <Sneaker />
-            </PackingItem>
-            <PackingItem
-              start={[-2.06, 1.85, -1.07]}
-              end={[-1.72, 0.09, -1.0]}
-              rotation={[0.1, -0.24, 0.1]}
-              index={6}
-              {...itemProps}
-            >
-              <Book />
-            </PackingItem>
-          </>
-        }
-        lid={
-          <>
-            <PackingItem
-              start={[1.14, 3.19, -0.18]}
-              end={[0.4, 0.2, -0.45]}
-              rotation={[-0.1, -0.25, 0.16]}
-              index={3}
-              {...itemProps}
-            >
-              <Sneaker flip />
-            </PackingItem>
-            <PackingItem
-              start={[2.26, 1.91, 0.96]}
-              end={[1.7, 0.32, 0.98]}
-              rotation={[0.12, -0.21, 0.12]}
-              index={4}
-              {...itemProps}
-            >
-              <Pouch />
-            </PackingItem>
-            <PackingItem
-              start={[2.55, 2.95, -0.9]}
-              end={[2.14, 0.22, -0.62]}
-              rotation={[0.08, 0.3, -0.18]}
-              index={5}
-              {...itemProps}
-            >
-              <Bottle />
-            </PackingItem>
-            <PackingItem
-              start={[0.93, 1.61, 2.13]}
-              end={[0.2, 0.15, 1.1]}
-              rotation={[0.15, -0.12, -0.24]}
-              index={7}
-              {...itemProps}
-            >
-              <Sunglasses />
-            </PackingItem>
-          </>
-        }
+    <group position={[0, -0.55, 0]} rotation={[0, -0.12, -0.035]}>
+      <Box
+        size={[5.6, 0.24, 3.85]}
+        at={[0, -0.19, 0]}
+        color="#798773"
+        radius={0.17}
       />
+      <Box
+        size={[5.28, 0.1, 3.53]}
+        at={[0, -0.035, 0]}
+        color="#d6d5c2"
+        radius={0.12}
+      />
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <Box
+            size={[0.18, 0.83, 3.7]}
+            at={[side * 2.7, 0.3, 0]}
+            color="#798773"
+          />
+          <Box
+            size={[5.48, 0.83, 0.18]}
+            at={[0, 0.3, side * 1.82]}
+            color="#798773"
+          />
+          <Box
+            size={[0.04, 0.055, 3.7]}
+            at={[side * 2.7, 0.74, 0]}
+            color="#465640"
+            radius={0.015}
+          />
+          <Box
+            size={[5.44, 0.055, 0.04]}
+            at={[0, 0.74, side * 1.82]}
+            color="#465640"
+            radius={0.015}
+          />
+          <Box
+            size={[0.04, 0.65, 3.4]}
+            at={[side * 2.58, 0.34, 0]}
+            color="#b3b9a2"
+            radius={0.015}
+          />
+          <Box
+            size={[5.12, 0.65, 0.04]}
+            at={[0, 0.34, side * 1.7]}
+            color="#b3b9a2"
+            radius={0.015}
+          />
+          {[-1, 1].map((end) => (
+            <mesh
+              key={end}
+              position={[side * 2.35, -0.39, end * 1.52]}
+              rotation={[0, 0, Math.PI / 2]}
+              castShadow
+            >
+              <cylinderGeometry args={[0.18, 0.18, 0.2, 24]} />
+              <meshStandardMaterial color="#394237" roughness={0.7} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+      {Array.from({ length: 13 }, (_, index) => (
+        <Box
+          key={index}
+          size={[0.025, 0.57, 0.025]}
+          at={[-2.32 + index * 0.387, 0.3, 1.923]}
+          color="#65735f"
+          radius={0.008}
+        />
+      ))}
+      <Box
+        size={[1.04, 0.16, 0.16]}
+        at={[0, 0.31, 2.12]}
+        color="#465640"
+        radius={0.06}
+      />
+      {[-0.46, 0.46].map((x) => (
+        <Box
+          key={x}
+          size={[0.12, 0.16, 0.24]}
+          at={[x, 0.31, 2.02]}
+          color="#465640"
+          radius={0.04}
+        />
+      ))}
+      <PackingItem
+        start={[-1.61, 2.8, -0.84]}
+        end={[-1.61, 0.26, -0.84]}
+        rotation={[0.08, -0.12, -0.08]}
+        index={0}
+        {...itemProps}
+      >
+        <group scale={[1.08, 1.45, 1.02]}>
+          <Shirt color="#aebc98" />
+        </group>
+      </PackingItem>
+      <PackingItem
+        start={[-1.61, 2.8, 0.84]}
+        end={[-1.61, 0.26, 0.84]}
+        rotation={[-0.06, 0.12, 0.08]}
+        index={1}
+        {...itemProps}
+      >
+        <group scale={[1.08, 1.45, 1.02]}>
+          <Shirt color="#e0d5be" knit />
+        </group>
+      </PackingItem>
+      <PackingItem
+        start={[-0.25, 2.8, -0.61]}
+        end={[-0.25, 0.23, -0.61]}
+        rotation={[0.12, -0.15, -0.08]}
+        index={2}
+        {...itemProps}
+      >
+        <group scale={[1, 1, 1.2]}>
+          <Sneaker />
+        </group>
+      </PackingItem>
+      <PackingItem
+        start={[0.49, 2.8, -0.61]}
+        end={[0.49, 0.23, -0.61]}
+        rotation={[-0.1, 0.15, 0.08]}
+        index={3}
+        {...itemProps}
+      >
+        <group scale={[1, 1, 1.2]}>
+          <Sneaker flip />
+        </group>
+      </PackingItem>
+      <PackingItem
+        start={[1.76, 2.8, -0.8]}
+        end={[1.76, 0.21, -0.8]}
+        rotation={[0.08, -0.12, 0.06]}
+        index={4}
+        {...itemProps}
+      >
+        <group scale={[1.2, 1.8, 1.1]}>
+          <Book />
+        </group>
+      </PackingItem>
+      <PackingItem
+        start={[1.76, 2.8, 0.93]}
+        end={[1.76, 0.33, 0.93]}
+        rotation={[0.08, 0.12, -0.06]}
+        index={5}
+        {...itemProps}
+      >
+        <group scale={[1.08, 1, 1.6]}>
+          <Pouch />
+        </group>
+      </PackingItem>
+      <PackingItem
+        start={[0.12, 2.8, 1.45]}
+        end={[0.12, 0.23, 1.45]}
+        rotation={[0, 0.12, 0.1]}
+        index={6}
+        {...itemProps}
+      >
+        <group rotation={[0, Math.PI / 2, 0]}>
+          <Bottle />
+        </group>
+      </PackingItem>
+      <PackingItem
+        start={[0.12, 2.8, 0.72]}
+        end={[0.12, 0.11, 0.72]}
+        rotation={[0.08, -0.12, -0.08]}
+        index={7}
+        {...itemProps}
+      >
+        <group scale={[1, 1, 0.85]}>
+          <Sunglasses />
+        </group>
+      </PackingItem>
     </group>
   );
 }
 
 function Scene(props: SceneProps) {
-  const light = useRef<Mesh>(null);
-  useFrame(({ camera, size }, delta) => {
-    const mobile = size.width < 600;
-    const destination = new Vector3(0, mobile ? 9.5 : 9, mobile ? 12.5 : 11.5);
-    camera.position.lerp(destination, 1 - Math.exp(-delta * 3));
-    camera.lookAt(0, 0.75, -0.1);
+  useFrame(({ camera }) => {
+    camera.lookAt(0, 0.3, 0);
   });
   return (
     <>
@@ -481,18 +542,16 @@ function Scene(props: SceneProps) {
       <directionalLight position={[4, 5, -6]} intensity={1.3} color="#f6e8cb" />
       <Suitcase {...props} />
       <ContactShadows
-        position={[0, -1.46, 0]}
+        position={[0, -1.14, 0]}
         opacity={0.25}
         scale={18}
         blur={2.8}
         far={8}
         resolution={512}
-        frames={1}
       />
       <mesh
-        ref={light}
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -1.47, 0]}
+        position={[0, -1.15, 0]}
         receiveShadow
       >
         <planeGeometry args={[200, 200]} />
@@ -509,10 +568,9 @@ function Fallback() {
       role="img"
       aria-label="A sage green suitcase with neatly fitted travel essentials"
     >
-      <div className="lp-flat-lid">
-        <span>knapsack</span>
-      </div>
       <div className="lp-flat-case">
+        <i />
+        <i />
         <i />
         <i />
         <i />
@@ -557,10 +615,10 @@ export default function PackingScene(props: SceneProps) {
           shadows
           frameloop={visible ? "always" : "never"}
           dpr={[1, 1.6]}
-          camera={{ position: [7.5, 9, 11.5], fov: 38, near: 0.1, far: 100 }}
+          camera={{ position: [4.2, 12, 8.4], fov: 34, near: 0.1, far: 100 }}
           gl={{ antialias: true, alpha: true }}
           fallback={<Fallback />}
-          aria-label="Scroll to watch eight travel essentials fit into a three-dimensional suitcase"
+          aria-label="Scroll to fill one open suitcase compartment with eight travel essentials, one by one"
         >
           <Scene {...props} />
         </Canvas>
