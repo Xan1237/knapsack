@@ -1,12 +1,12 @@
 {
-  "complete_inventory_fixture": {
-    "value": "At http://127.0.0.1:3000/pack click Load demo, choose The weekender cabin suitcase. The nine named demo items should all be included and placed in a complete validated layout. No upload or model call is involved.",
+  "trip_preference": {
+    "value": "Help me pick between items that do not fit.",
     "secret": false,
-    "description": "Browser-editable fitting inventory that yields a complete validated plan."
+    "description": "Trip preference sent through the configured server-side Astra adapter."
   },
-  "partial_inventory_fixture": {
-    "value": "At http://127.0.0.1:3000/pack Reset trip then Clear session. Choose The light traveler personal suitcase. Add five Pouch category items manually, name them Pouch 01 through Pouch 05, keep size 100 percent, and uncheck Allow tipping on its side on each. Expect a valid partial layout with three placed and two unplaced, no direct volume or oversized conflict. Unplaced names may vary because item IDs are unique; use the displayed names and reasons.",
+  "revision_item_name": {
+    "value": "Travel bottle",
     "secret": false,
-    "description": "A concrete browser-accessible inventory setup yielding at least one placed and one unplaced item, with expected item identities and reasons."
+    "description": "Existing Bottle template label, distinct from the nine demo items."
   }
 }

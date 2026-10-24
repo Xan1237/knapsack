@@ -40,6 +40,10 @@ import {
   Camera,
   Headphones,
   BookOpen,
+  Sparkles,
+  Upload,
+  Download,
+  LockKeyhole,
 } from "lucide-react";
 import {
   type Category,
@@ -53,6 +57,8 @@ import {
 import { initialState, reducer, mergeSuggestions } from "@/lib/state";
 import { loadSession, saveSession } from "@/lib/persistence";
 import { validatePlan } from "@/lib/validate";
+import { bagForState, importCollection } from "@/lib/collection";
+import PackingAssistant from "./PackingAssistant";
 
 const SuitcaseScene = dynamic(() => import("./SuitcaseScene"), {
   ssr: false,
@@ -89,7 +95,13 @@ function ItemIcon({
           ? FlaskConical
           : category === "pouch"
             ? Backpack
-          : category === "camera" ? Camera : category === "headphones" ? Headphones : category === "book" ? BookOpen : CaseSensitive;
+            : category === "camera"
+              ? Camera
+              : category === "headphones"
+                ? Headphones
+                : category === "book"
+                  ? BookOpen
+                  : CaseSensitive;
   return <Icon size={size} strokeWidth={1.35} />;
 }
 function asDataUrl(file: File): Promise<string> {
@@ -123,11 +135,15 @@ export default function PackingWorkspace() {
     [details, setDetails] = useState(false),
     [resetConfirm, setResetConfirm] = useState(false);
   const [mergeWith, setMergeWith] = useState("");
+  const [astraOpen, setAstraOpen] = useState(false),
+    [wantedId, setWantedId] = useState<string | null>(null),
+    [view, setView] = useState<"perspective" | "top">("perspective");
+  const collectionInput = useRef<HTMLInputElement>(null);
   const worker = useRef<Worker | null>(null),
     latest = useRef({ state, revision: "" });
   const inFlight = useRef(new Map<string, AbortController>()),
     uploadGeneration = useRef(0);
-  const bag = suitcases.find((b) => b.id === state.bagId) ?? suitcases[0],
+  const bag = bagForState(state),
     revision = revisionOf(state.items, bag);
   const current = plan?.revision === revision,
     busy = loaded && !current && !packingError;
@@ -206,7 +222,7 @@ export default function PackingWorkspace() {
       }
       if (result.plan?.revision !== latest.current.revision) return;
       const s = latest.current.state,
-        b = suitcases.find((b) => b.id === s.bagId) ?? suitcases[0];
+        b = bagForState(s);
       const validation = validatePlan(result.plan, s.items, b);
       if (!validation.valid) {
         setPackingError(
@@ -304,9 +320,12 @@ export default function PackingWorkspace() {
   }, [effectivePlayback.playing, maxStep]);
 
   async function upload(event: ChangeEvent<HTMLInputElement>) {
-    const generation = uploadGeneration.current;
     const files = Array.from(event.target.files ?? []);
     event.target.value = "";
+    await queuePhotos(files);
+  }
+  async function queuePhotos(files: File[]) {
+    const generation = uploadGeneration.current;
     if (!files.length) return;
     if (state.photos.length + files.length > 12) {
       setNotice(
@@ -343,6 +362,87 @@ export default function PackingWorkspace() {
     dispatch({ type: "photos", photos: accepted });
     setNotice(errors.join(" "));
   }
+  async function samplePhoto() {
+    try {
+      const response = await fetch("/fixtures/pump-bottle.jpg");
+      if (!response.ok) throw new Error("Sample unavailable");
+      await queuePhotos([
+        new File([await response.blob()], "sample-pump-bottle.jpg", {
+          type: "image/jpeg",
+        }),
+      ]);
+    } catch {
+      setNotice(
+        "The sample photo could not load. You can still upload your own photo.",
+      );
+    }
+  }
+  async function importFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      restoreCollection(JSON.parse(await file.text()));
+    } catch {
+      setNotice(
+        "That collection could not be read. Use a native inventory or the step-two collection format.",
+      );
+    }
+  }
+  function restoreCollection(raw: unknown) {
+    const imported = importCollection(raw);
+    uploadGeneration.current++;
+    inFlight.current.forEach((c) => c.abort());
+    inFlight.current.clear();
+    dispatch({ type: "restore", state: imported });
+    setCanPersist(true);
+    setSelected(imported.items[0]?.id || null);
+    setPlan(null);
+    setLayer(100);
+    setExploded(false);
+    setPlayback({ revision: "", step: 0, playing: false });
+    setAstraOpen(false);
+    setWantedId(null);
+    setNotice(
+      `Imported ${imported.items.length} items. Your collection is ready to pack.`,
+    );
+  }
+  async function modelCollection() {
+    try {
+      const response = await fetch("/example-models.json");
+      if (!response.ok) throw new Error("Model collection unavailable");
+      restoreCollection(await response.json());
+    } catch {
+      setNotice(
+        "The model collection could not load. You can still import your own collection.",
+      );
+    }
+  }
+  function savePlan() {
+    if (!current || !plan) return;
+    const payload = {
+      schemaVersion: 1,
+      units: "mm",
+      upAxis: "z",
+      bag,
+      items: state.items,
+      photos: state.photos,
+      plan,
+      estimated: true,
+      algorithm: "bounded-priority-extreme-edge-v1",
+    };
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json",
+      }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "knapsack-final-plan.json";
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setNotice("Your packing plan was saved.");
+  }
   function reset(mode: "reset" | "demo") {
     setCanPersist(true);
     uploadGeneration.current++;
@@ -356,6 +456,8 @@ export default function PackingWorkspace() {
     setPlayback({ revision: "", step: 0, playing: false });
     setResetConfirm(false);
     setNotice("");
+    setAstraOpen(false);
+    setWantedId(null);
     saveSession(reducer(state, { type: mode })).catch(() =>
       setNotice(
         "The session cleared here, but browser storage could not be updated.",
@@ -428,6 +530,47 @@ export default function PackingWorkspace() {
           <ArrowUpRight size={24} />
         </div>
       </section>
+      <div className="journey-toolbar">
+        <span>
+          <span>01</span> Your belongings <ArrowRight size={13} />
+          <span>02</span> Your best fit
+        </span>
+        <div>
+          <button
+            className="collection-button"
+            onClick={() => collectionInput.current?.click()}
+          >
+            <Upload size={14} />
+            Import collection
+          </button>
+          <button
+            className="collection-button"
+            disabled={!current}
+            onClick={savePlan}
+          >
+            <Download size={14} />
+            Save packing plan
+          </button>
+          <button
+            className="primary-button compact"
+            onClick={() => {
+              setWantedId(null);
+              setAstraOpen(true);
+            }}
+          >
+            <Sparkles size={14} />
+            Ask Astra
+          </button>
+        </div>
+        <input
+          hidden
+          ref={collectionInput}
+          type="file"
+          accept=".json,application/json"
+          aria-label="Import collection JSON"
+          onChange={importFile}
+        />
+      </div>
       {notice && (
         <div role="alert" className="notice">
           {notice}
@@ -473,6 +616,14 @@ export default function PackingWorkspace() {
             </strong>
             <span>JPEG, PNG or WebP · up to 6 MB each</span>
           </label>
+          <button
+            className="text-button sample-photo-button"
+            disabled={!loaded || state.photos.length >= 12}
+            onClick={samplePhoto}
+          >
+            <Sparkles size={13} />
+            Try a sample photo
+          </button>
           <p className="privacy-note">
             Photos go to OpenAI for analysis and stay in this browser. No app
             server storage. Sizes are estimates.
@@ -556,58 +707,95 @@ export default function PackingWorkspace() {
               const p = plan?.placements.find((p) => p.id === item.id),
                 photo = state.photos.find((p) => item.sourceIds.includes(p.id));
               return (
-                <button
+                <div
                   key={item.id}
                   className={`item-row ${selected === item.id ? "selected" : ""} ${!item.included ? "excluded" : ""}`}
-                  onClick={() => {
-                    setSelected(item.id);
-                    setMergeWith("");
-                  }}
-                  aria-pressed={selected === item.id}
-                  aria-label={`Select ${item.label}`}
                 >
-                  <span
-                    className="item-thumb"
-                    style={{ background: item.color + "45", color: item.color }}
+                  <input
+                    className="item-inclusion"
+                    type="checkbox"
+                    aria-label={`Include ${item.label}`}
+                    checked={item.included}
+                    disabled={!!item.required}
+                    onChange={(event) =>
+                      dispatch({
+                        type: "edit",
+                        id: item.id,
+                        patch: { included: event.target.checked },
+                      })
+                    }
+                  />
+                  <button
+                    className="item-main"
+                    onClick={() => {
+                      setSelected(item.id);
+                      setMergeWith("");
+                    }}
+                    aria-pressed={selected === item.id}
+                    aria-label={`Select ${item.label}`}
                   >
-                    {photo ? (
-                      <Image
-                        src={photo.url}
-                        alt=""
-                        width={39}
-                        height={41}
-                        unoptimized
-                      />
-                    ) : (
-                      <ItemIcon category={item.category} />
-                    )}
-                  </span>
-                  <span className="item-text">
-                    <strong>{item.label}</strong>
-                    <small>
-                      {categoryNames[item.category]}
-                      {item.edited ? " · adjusted" : ""}
-                    </small>
-                  </span>
-                  <span
-                    className={`item-indicator ${!item.included ? "muted" : current && !p ? "unplaced" : ""}`}
+                    <span
+                      className="item-thumb"
+                      style={{
+                        background: item.color + "45",
+                        color: item.color,
+                      }}
+                    >
+                      {photo ? (
+                        <Image
+                          src={photo.url}
+                          alt=""
+                          width={39}
+                          height={41}
+                          unoptimized
+                        />
+                      ) : (
+                        <ItemIcon category={item.category} />
+                      )}
+                    </span>
+                    <span className="item-text">
+                      <strong>{item.label}</strong>
+                      <small>
+                        {categoryNames[item.category]}
+                        {item.edited ? " · adjusted" : ""}
+                      </small>
+                    </span>
+                    <span
+                      className={`item-indicator ${!item.included ? "muted" : current && !p ? "unplaced" : ""}`}
+                      title={
+                        !item.included
+                          ? "Excluded"
+                          : current && !p
+                            ? "Unplaced"
+                            : "Included"
+                      }
+                    >
+                      {!item.included ? (
+                        <Minus size={12} />
+                      ) : current && !p ? (
+                        <span>!</span>
+                      ) : (
+                        <Check size={12} />
+                      )}
+                    </span>
+                  </button>
+                  <button
+                    className={`essential-pin ${item.required ? "pinned" : ""}`}
+                    aria-label={`${item.required ? "Unpin" : "Pin"} ${item.label} as essential`}
                     title={
-                      !item.included
-                        ? "Excluded"
-                        : current && !p
-                          ? "Unplaced"
-                          : "Included"
+                      item.required ? "Essential item" : "Pin as essential"
+                    }
+                    onClick={() =>
+                      dispatch({
+                        type: "edit",
+                        id: item.id,
+                        patch: { required: !item.required },
+                      })
                     }
                   >
-                    {!item.included ? (
-                      <Minus size={12} />
-                    ) : current && !p ? (
-                      <span>!</span>
-                    ) : (
-                      <Check size={12} />
-                    )}
-                  </span>
-                </button>
+                    <LockKeyhole size={13} />
+                  </button>
+                </div>
               );
             })}
             {state.items.length === 0 && (
@@ -638,6 +826,13 @@ export default function PackingWorkspace() {
               Load demo <ArrowRight size={14} />
             </button>
           </div>
+          <button
+            className="text-button model-example-button"
+            onClick={modelCollection}
+          >
+            <Move3D size={14} />
+            Try a 3D model collection
+          </button>
         </aside>
         <section className="scene-panel" aria-label="Packing workspace">
           <div className="scene-header">
@@ -671,6 +866,11 @@ export default function PackingWorkspace() {
                     {b.name} — {b.subtitle}
                   </option>
                 ))}
+                {state.customBag && (
+                  <option value={state.customBag.id}>
+                    {state.customBag.name} — imported bag
+                  </option>
+                )}
               </select>
               <ChevronDown size={15} />
             </div>
@@ -689,13 +889,18 @@ export default function PackingWorkspace() {
               step={effectivePlayback.revision === revision ? step : maxStep}
               exploded={exploded}
               resetKey={resetKey}
+              view={view}
+              onModelError={setNotice}
             />
             <div className="scene-controls">
               <button
                 className="icon-button"
                 aria-label="Reset view"
                 title="Reset view"
-                onClick={() => setResetKey((k) => k + 1)}
+                onClick={() => {
+                  setView("perspective");
+                  setResetKey((k) => k + 1);
+                }}
               >
                 <RotateCcw size={17} />
               </button>
@@ -707,6 +912,17 @@ export default function PackingWorkspace() {
                 onClick={() => setExploded((v) => !v)}
               >
                 <Expand size={17} />
+              </button>
+              <button
+                className={`icon-button ${view === "top" ? "active" : ""}`}
+                aria-label={view === "top" ? "Perspective view" : "Top view"}
+                title={view === "top" ? "Perspective view" : "Top view"}
+                onClick={() => {
+                  setView(view === "top" ? "perspective" : "top");
+                  setResetKey((k) => k + 1);
+                }}
+              >
+                <ScanLine size={17} />
               </button>
             </div>
             <div className="canvas-caption">
@@ -799,6 +1015,32 @@ export default function PackingWorkspace() {
                     {state.items.find((i) => i.id === u.id)?.label}
                   </button>
                   <span>{u.reason}</span>
+                  <div className="unplaced-actions">
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        setWantedId(u.id);
+                        setAstraOpen(false);
+                        setSelected(u.id);
+                      }}
+                    >
+                      Make room <ArrowRight size={12} />
+                    </button>
+                    {!state.items.find((i) => i.id === u.id)?.required && (
+                      <button
+                        className="text-button"
+                        onClick={() =>
+                          dispatch({
+                            type: "edit",
+                            id: u.id,
+                            patch: { included: false },
+                          })
+                        }
+                      >
+                        Leave out
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
               <p>
@@ -967,7 +1209,9 @@ export default function PackingWorkspace() {
                 <span>
                   {active.sourceIds.length
                     ? `${active.sourceIds.length} source photo${active.sourceIds.length === 1 ? "" : "s"}`
-                    : "Category template"}
+                    : active.modelUrl
+                      ? "3D model asset"
+                      : "Category template"}
                 </span>
               </div>
               {active.sourceIds.length > 0 && (
@@ -1060,6 +1304,7 @@ export default function PackingWorkspace() {
                 <input
                   type="checkbox"
                   checked={active.included}
+                  disabled={!!active.required}
                   onChange={(e) =>
                     dispatch({
                       type: "edit",
@@ -1069,6 +1314,21 @@ export default function PackingWorkspace() {
                   }
                 />
                 Include in this trip
+              </label>
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  aria-label="Essential item"
+                  checked={!!active.required}
+                  onChange={(event) =>
+                    dispatch({
+                      type: "edit",
+                      id: active.id,
+                      patch: { required: event.target.checked },
+                    })
+                  }
+                />
+                Always bring this essential
               </label>
               <label className="check-row">
                 <input
@@ -1201,6 +1461,34 @@ export default function PackingWorkspace() {
         </p>
         <span>KNAPSACK / 2026</span>
       </footer>
+      <PackingAssistant
+        open={astraOpen}
+        wantedId={wantedId}
+        items={state.items}
+        bag={bag}
+        revision={revision}
+        onClose={() => {
+          setAstraOpen(false);
+          setWantedId(null);
+        }}
+        onApply={(includeIds, priorityId) => {
+          dispatch({ type: "selection", includeIds, priorityId });
+          setAstraOpen(false);
+          setWantedId(null);
+          setLayer(100);
+          setExploded(false);
+          setNotice(
+            priorityId
+              ? "Your swap is applied. Finding a place for your choice."
+              : "Astra’s selection is applied. Fit is being checked against your latest list.",
+          );
+        }}
+        onLargerBag={() => {
+          dispatch({ type: "bag", id: "checked" });
+          setWantedId(null);
+          setAstraOpen(false);
+        }}
+      />
       {resetConfirm && (
         <div className="modal-backdrop">
           <section

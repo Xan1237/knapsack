@@ -1,6 +1,6 @@
 # Knapsack — final combined MVP
 
-The root Next.js application and the step2 studio are being combined here. The original implementations remain intact.
+The root Next.js application and the step2 studio are combined here in one Next.js app. The original implementations remain intact.
 
 ## Run
 
@@ -16,4 +16,8 @@ Open http://127.0.0.1:3000 and choose a packing link. The workspace is http://12
 
 ## Integration status
 
-The first foundation includes the landing page, photo analysis, editable source-linked inventory, native packing worker and validator, essential/priority semantics, both collection formats, and server routes for Astra and packing choices. The combined controls, model loading and final browser validation are in progress. See [INTEGRATION.md](INTEGRATION.md) for the source map and remaining work.
+The workspace includes real photo analysis, editable source-linked inventory, essential pins, Astra advice with preview and explicit apply, overflow swaps, animated 3D packing, inspection controls, collection import and plan export. Choose **Try a 3D model collection** to load the bundled glTF item and bag assets, or import your own model URLs.
+
+The solver uses millimeters with Z up. Import also accepts the step2 centimeter/Y-up collection and converts it once. Packing is a bounded estimate checked by an independent validator; it does not promise a global optimum.
+
+Validation: 39 direct tests, TypeScript, lint, production build and a live two-photo API check pass. The seven Kane-generated combined browser journeys are currently running. See [INTEGRATION.md](INTEGRATION.md) for the source map.

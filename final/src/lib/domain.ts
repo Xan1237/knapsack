@@ -53,7 +53,11 @@ export const itemSchema = proposalSchema.extend({
   proposalId: z.string().optional(),
   required: z.boolean().optional(),
   priority: z.number().int().min(1).max(5).optional(),
-  modelUrl: z.string().max(2048).regex(/^(https?:\/\/|\/(?!\/))/).optional(),
+  modelUrl: z
+    .string()
+    .max(2048)
+    .regex(/^(https?:\/\/|\/(?!\/))/)
+    .optional(),
 });
 export type Item = z.infer<typeof itemSchema>;
 export type Photo = {
@@ -71,10 +75,19 @@ export const suitcaseSchema = z.object({
   subtitle: z.string().max(150),
   dimensions: dimensionsSchema,
   clearance: z.number().finite().min(0).max(50),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-  modelUrl: z.string().max(2048).regex(/^(https?:\/\/|\/(?!\/))/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
+  modelUrl: z
+    .string()
+    .max(2048)
+    .regex(/^(https?:\/\/|\/(?!\/))/)
+    .optional(),
   modelDimensions: dimensionsSchema.optional(),
-  modelOffset: z.tuple([z.number().finite(), z.number().finite(), z.number().finite()]).optional(),
+  modelOffset: z
+    .tuple([z.number().finite(), z.number().finite(), z.number().finite()])
+    .optional(),
 });
 export type Suitcase = z.infer<typeof suitcaseSchema>;
 export const suitcases: Suitcase[] = [
@@ -120,9 +133,21 @@ export const templates: Record<
     dimensions: [180, 110, 85],
     color: "#d9a180",
   },
-  camera: { label: "Little film camera", dimensions: [140, 110, 90], color: "#4d6056" },
-  headphones: { label: "Over-ear headphones", dimensions: [180, 160, 80], color: "#b3a0b5" },
-  book: { label: "A good paperback", dimensions: [140, 210, 30], color: "#d3a250" },
+  camera: {
+    label: "Little film camera",
+    dimensions: [140, 110, 90],
+    color: "#4d6056",
+  },
+  headphones: {
+    label: "Over-ear headphones",
+    dimensions: [180, 160, 80],
+    color: "#b3a0b5",
+  },
+  book: {
+    label: "A good paperback",
+    dimensions: [140, 210, 30],
+    color: "#d3a250",
+  },
   other: {
     label: "Travel essential",
     dimensions: [120, 90, 40],
@@ -175,7 +200,14 @@ export function revisionOf(items: Item[], bag: Suitcase): string {
     bag.id,
     bag.dimensions,
     bag.clearance,
-    items.map((i) => [i.id, i.included, sizeOf(i), i.orientations, !!i.required, i.priority ?? 3]),
+    items.map((i) => [
+      i.id,
+      i.included,
+      sizeOf(i),
+      i.orientations,
+      !!i.required,
+      i.priority ?? 3,
+    ]),
   ]);
 }
 export function planIsCurrent(plan: Plan, items: Item[], bag: Suitcase) {

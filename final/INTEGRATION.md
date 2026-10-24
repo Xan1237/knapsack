@@ -6,11 +6,17 @@ The root app supplies the landing page, photo analysis, inventory reducer, visua
 
 Both source implementations remain in their original locations. New work stays in this folder. The source review covered both UIs and renderers, domain/state/persistence, packing/validation/workers, vision and server routes, styles, tests, fixtures and configuration. The installed Next.js route-handler, client-component, CSS and lazy-loading guides were read before modifying the copied application.
 
-## Work in progress
+## Combined behavior
 
-- Base application copied and dependencies installed.
-- Combine pins and selection semantics with the existing reducer and persistence.
-- Add native collection import/export and model loading.
-- Port Astra and swap suggestions into Next routes and the workspace.
-- Add smooth placement and top-view inspection.
-- Run focused checks and Kane-generated combined browser journeys.
+- One reducer and IndexedDB inventory connect photo uploads, manual edits, essential pins and packing. A separate database preserves the original app's saved sessions.
+- Native and step2 collection imports preserve IDs, geometry, permitted rotations and model URLs. Export includes the current inventory and its packing plan.
+- Astra runs server-side, previews its proposed keep/leave selection through the packing engine, and applies only on request. Inventory edits retire old advice.
+- Make room offers checked swaps, protects essentials, names what would be removed and waits for the user's choice.
+- The scene loads optional glTF assets for items and bags with category-shape fallbacks, smooth placement, top view, orbit, zoom, layers, exploded view and animated packing order.
+- Bundled original model assets can be regenerated with `npm run fixtures:models`; `public/example-models.json` demonstrates the native handoff contract. `public/example-collection.json` demonstrates step2 import.
+
+## Validation in progress
+
+All 39 direct tests pass, including collection conversion, essential protections, independently checked swaps, and server API behavior. TypeScript, lint and production build pass. The live API smoke check analyzed both bundled source photos through the real server vision adapter.
+
+Kane CLI ingested the user requirements, extracted seven use cases, generated acceptance criteria and runnable tests, and refined its initial disconnected-deployment assumptions against the configured app. The user approved automatic review and execution within these workflows. The active seven browser tests are running; their results will be recorded after completion. Raw recordings and credentials remain ignored.

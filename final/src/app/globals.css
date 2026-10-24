@@ -8,6 +8,145 @@
   --soft: #eef0e6;
   --orange: #c4774f;
 }
+.journey-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding: 15px 0 22px;
+}
+.journey-toolbar > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  color: #7c8d69;
+}
+.journey-toolbar > span > span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e7edda;
+  font-size: 8px;
+  color: #72875d;
+}
+.journey-toolbar > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.collection-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  padding: 9px 11px;
+  border: 1px solid #dce3cf;
+  border-radius: 6px;
+  color: #7e8d6b;
+  background: #fbfcf5;
+}
+.primary-button.compact {
+  font-size: 10px;
+  padding: 10px 13px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.sample-photo-button {
+  margin: -2px 0 11px;
+  font-size: 9px;
+}
+.item-row .item-main {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 0;
+}
+.item-main .item-text strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-inclusion {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  margin: 0;
+}
+.item-row .essential-pin {
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  color: #c1c9b4;
+  flex-shrink: 0;
+}
+.item-row .essential-pin.pinned {
+  color: #7f9368;
+}
+.unplaced-list > div {
+  flex-wrap: wrap;
+}
+.unplaced-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+  padding: 6px 0 2px;
+}
+.unplaced-actions .text-button {
+  font-size: 9px;
+}
+.unplaced-actions .text-button + button {
+  color: #a49d87;
+}
+@media (max-width: 960px) {
+  .journey-toolbar {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .journey-toolbar > span {
+    font-size: 9px;
+    gap: 6px;
+  }
+  .collection-button {
+    font-size: 9px;
+    padding: 9px;
+  }
+  .journey-toolbar > div {
+    gap: 6px;
+  }
+}
+@media (max-width: 640px) {
+  .journey-toolbar {
+    flex-direction: column;
+    padding-top: 14px;
+    padding-bottom: 18px;
+  }
+  .journey-toolbar > div {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .collection-button,
+  .primary-button.compact {
+    font-size: 9px;
+    flex: 1;
+    justify-content: center;
+    padding: 10px 7px;
+  }
+  .journey-toolbar > span {
+    font-size: 10px;
+  }
+  .sample-photo-button {
+    font-size: 10px;
+  }
+}
 * {
   box-sizing: border-box;
 }

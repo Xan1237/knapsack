@@ -7,9 +7,17 @@ import {
   useMemo,
   useState,
   useEffect,
+  useLayoutEffect,
+  Suspense,
 } from "react";
-import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
-import { OrbitControls, RoundedBox, Html } from "@react-three/drei";
+import {
+  Canvas,
+  useFrame,
+  useThree,
+  type ThreeEvent,
+} from "@react-three/fiber";
+import { OrbitControls, RoundedBox, Html, useGLTF } from "@react-three/drei";
+import { Box3, Group, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
   type Item,
@@ -126,6 +134,44 @@ function ItemModel({ item, selected }: { item: Item; selected: boolean }) {
             color="#6a6357"
           />
         </>
+      ) : item.category === "camera" ? (
+        <>
+          <Block size={[0.94, 0.75, 0.68]} color={color} />
+          <mesh
+            castShadow
+            position={[0, 0, 0.34]}
+            rotation={[Math.PI / 2, 0, 0]}
+          >
+            <cylinderGeometry args={[0.28, 0.3, 0.3, 28]} />
+            <meshStandardMaterial color="#293b34" />
+          </mesh>
+          <Block
+            size={[0.24, 0.13, 0.3]}
+            at={[-0.22, 0.4, 0]}
+            color="#c7c6b7"
+          />
+        </>
+      ) : item.category === "headphones" ? (
+        <>
+          <mesh castShadow position={[0, -0.15, 0]}>
+            <torusGeometry args={[0.35, 0.055, 12, 40, Math.PI]} />
+            <meshStandardMaterial color={color} />
+          </mesh>
+          {[-1, 1].map((side) => (
+            <Block
+              key={side}
+              size={[0.23, 0.5, 0.68]}
+              at={[side * 0.34, -0.2, 0]}
+              color={color}
+            />
+          ))}
+        </>
+      ) : item.category === "book" ? (
+        <>
+          <Block size={[0.95, 0.9, 0.96]} color={color} />
+          <Block size={[0.9, 0.65, 0.94]} at={[0.02, 0, 0]} color="#eee8d8" />
+          <Block size={[0.96, 0.04, 0.97]} at={[0, 0.46, 0]} color={color} />
+        </>
       ) : (
         <>
           <Block size={[0.94, 0.91, 0.94]} color={color} />
@@ -151,18 +197,62 @@ function ItemModel({ item, selected }: { item: Item; selected: boolean }) {
     </>
   );
 }
+class AssetBoundary extends Component<
+  {
+    children: ReactNode;
+    fallback: ReactNode;
+    onError?: (message: string) => void;
+  },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    this.props.onError?.(
+      "A 3D asset could not load. Its preview shape is shown so you can keep packing.",
+    );
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+function ModelAsset({ url }: { url: string }) {
+  const { scene } = useGLTF(url);
+  const normalized = useMemo(() => {
+    const model = scene.clone(true);
+    const bounds = new Box3().setFromObject(model),
+      size = bounds.getSize(new Vector3()),
+      center = bounds.getCenter(new Vector3());
+    if (Math.min(size.x, size.y, size.z) <= 0)
+      throw new Error("Empty model bounds");
+    model.position.sub(center);
+    model.traverse((object) => {
+      object.castShadow = true;
+      object.receiveShadow = true;
+    });
+    const group = new Group();
+    group.add(model);
+    group.scale.set(1 / size.x, 1 / size.y, 1 / size.z);
+    return group;
+  }, [scene]);
+  return <primitive object={normalized} dispose={null} />;
+}
 function Belonging({
   item,
   position,
   orientation,
   selected,
   onSelect,
+  onModelError,
 }: {
   item: Item;
   position: Vec3;
   orientation: number;
   selected: boolean;
   onSelect: (id: string) => void;
+  onModelError?: (message: string) => void;
 }) {
   const quaternion = useMemo(() => itemQuaternion(orientation), [orientation]);
   const d = sizeOf(item);
@@ -171,9 +261,37 @@ function Belonging({
     onSelect(item.id);
   };
   const [hover, setHover] = useState(false);
+  const motion = useRef<Group>(null),
+    target = useRef(new Vector3(...position)),
+    reduced = useRef(false);
+  const [start] = useState<Vec3>(() => [
+    position[0],
+    position[1] + 2,
+    position[2],
+  ]);
+  useLayoutEffect(() => {
+    target.current.fromArray(position);
+  }, [position]);
+  useEffect(() => {
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => {
+      reduced.current = preference.matches;
+    };
+    update();
+    preference.addEventListener("change", update);
+    return () => preference.removeEventListener("change", update);
+  }, []);
+  useFrame((_, delta) => {
+    if (motion.current) {
+      if (reduced.current) motion.current.position.copy(target.current);
+      else
+        motion.current.position.lerp(target.current, 1 - Math.exp(-delta * 10));
+    }
+  });
   return (
     <group
-      position={position}
+      ref={motion}
+      position={start}
       quaternion={quaternion}
       onClick={click}
       onPointerOver={(e) => {
@@ -187,7 +305,27 @@ function Belonging({
       }}
     >
       <group scale={[d[0] / unit, d[2] / unit, d[1] / unit]}>
-        <ItemModel item={item} selected={selected} />
+        {item.modelUrl ? (
+          <>
+            <AssetBoundary
+              key={item.modelUrl}
+              fallback={<ItemModel item={item} selected={false} />}
+              onError={onModelError}
+            >
+              <Suspense fallback={<ItemModel item={item} selected={false} />}>
+                <ModelAsset url={item.modelUrl} />
+              </Suspense>
+            </AssetBoundary>
+            {selected && (
+              <mesh>
+                <boxGeometry args={[1.02, 1.02, 1.02]} />
+                <meshBasicMaterial color="#d18c54" wireframe />
+              </mesh>
+            )}
+          </>
+        ) : (
+          <ItemModel item={item} selected={selected} />
+        )}
       </group>
       {hover && (
         <Html
@@ -201,6 +339,114 @@ function Belonging({
     </group>
   );
 }
+function ProceduralBag({ bag }: { bag: Suitcase }) {
+  const w = bag.dimensions[0] / unit,
+    l = bag.dimensions[1] / unit,
+    h = bag.dimensions[2] / unit;
+  return (
+    <>
+      <Block
+        size={[w + 0.28, 0.2, l + 0.25]}
+        at={[0, -0.18, 0]}
+        color="#46584f"
+      />
+      <Block size={[w, 0.08, l]} at={[0, -0.035, 0]} color="#d1cdbd" />
+      <Block
+        size={[0.13, h * 0.67, l + 0.2]}
+        at={[-w / 2 - 0.075, h * 0.335 - 0.08, 0]}
+        color={bag.color || "#5c6c60"}
+      />
+      <Block
+        size={[0.13, h * 0.67, l + 0.2]}
+        at={[w / 2 + 0.075, h * 0.335 - 0.08, 0]}
+        color={bag.color || "#5c6c60"}
+      />
+      <Block
+        size={[w + 0.2, h * 0.78, 0.12]}
+        at={[0, h * 0.39 - 0.08, -l / 2 - 0.06]}
+        color={bag.color || "#5c6c60"}
+      />
+      <Block
+        size={[w + 0.2, 0.3, 0.12]}
+        at={[0, 0.04, l / 2 + 0.06]}
+        color={bag.color || "#5c6c60"}
+      />
+      <group position={[0, h * 0.55, -l / 2 - 0.5]} rotation={[1.06, 0, 0]}>
+        <Block
+          size={[w + 0.22, 0.16, l * 0.55]}
+          color={bag.color || "#596b5d"}
+        />
+        <Block
+          size={[w - 0.13, 0.06, l * 0.49]}
+          at={[0, 0.1, 0]}
+          color="#bfc5b0"
+        />
+        {[-0.8, -0.4, 0, 0.4, 0.8].map((x) => (
+          <Block
+            key={x}
+            size={[0.014, 0.012, l * 0.43]}
+            at={[x, 0.135, 0]}
+            color="#a1ad94"
+          />
+        ))}
+        <Block
+          size={[w - 0.4, 0.025, 0.06]}
+          at={[0, 0.145, 0]}
+          color="#81917d"
+        />
+      </group>
+      <Block
+        size={[0.72, 0.1, 0.25]}
+        at={[0, -0.1, l / 2 + 0.2]}
+        color="#394a40"
+      />
+      {[-1, 1].map((side) => (
+        <mesh
+          key={side}
+          position={[side * (w / 2 - 0.28), -0.32, l / 2 - 0.2]}
+          rotation={[0, 0, Math.PI / 2]}
+          castShadow
+        >
+          <cylinderGeometry args={[0.17, 0.17, 0.15, 20]} />
+          <meshStandardMaterial color="#333c34" />
+        </mesh>
+      ))}
+    </>
+  );
+}
+function BagModel({
+  bag,
+  onModelError,
+}: {
+  bag: Suitcase;
+  onModelError?: (message: string) => void;
+}) {
+  const fallback = <ProceduralBag bag={bag} />;
+  if (!bag.modelUrl) return fallback;
+  const d = bag.modelDimensions || [
+    bag.dimensions[0] + 28,
+    bag.dimensions[1] + 25,
+    bag.dimensions[2] + 20,
+  ];
+  const offset = bag.modelOffset || [0, 0, bag.dimensions[2] / 2];
+  return (
+    <AssetBoundary
+      key={bag.modelUrl}
+      fallback={fallback}
+      onError={onModelError}
+    >
+      <Suspense fallback={fallback}>
+        <group
+          position={[offset[0] / unit, offset[2] / unit, offset[1] / unit]}
+          scale={[d[0] / unit, d[2] / unit, d[1] / unit]}
+        >
+          <ModelAsset url={bag.modelUrl} />
+        </group>
+      </Suspense>
+    </AssetBoundary>
+  );
+}
+
 type Props = {
   items: Item[];
   bag: Suitcase;
@@ -211,12 +457,13 @@ type Props = {
   step: number;
   exploded: boolean;
   resetKey: number;
+  view?: "perspective" | "top";
+  onModelError?: (message: string) => void;
 };
 function Scene(props: Props) {
   const { items, bag, plan, selected, onSelect, layer, step, exploded } = props;
   const w = bag.dimensions[0] / unit,
-    l = bag.dimensions[1] / unit,
-    h = bag.dimensions[2] / unit;
+    l = bag.dimensions[1] / unit;
   const controls = useRef<OrbitControlsImpl>(null);
   const unplaced =
     plan?.unplaced ??
@@ -238,69 +485,7 @@ function Scene(props: Props) {
       />
       <directionalLight position={[-5, 4, -4]} intensity={1.2} />
       <group position={[-0.5, 0, 0.6]}>
-        <Block
-          size={[w + 0.28, 0.2, l + 0.25]}
-          at={[0, -0.18, 0]}
-          color="#46584f"
-        />
-        <Block size={[w, 0.08, l]} at={[0, -0.035, 0]} color="#d1cdbd" />
-        <Block
-          size={[0.13, h * 0.67, l + 0.2]}
-          at={[-w / 2 - 0.075, h * 0.335 - 0.08, 0]}
-          color="#5c6c60"
-        />
-        <Block
-          size={[0.13, h * 0.67, l + 0.2]}
-          at={[w / 2 + 0.075, h * 0.335 - 0.08, 0]}
-          color="#5c6c60"
-        />
-        <Block
-          size={[w + 0.2, h * 0.78, 0.12]}
-          at={[0, h * 0.39 - 0.08, -l / 2 - 0.06]}
-          color="#5c6c60"
-        />
-        <Block
-          size={[w + 0.2, 0.3, 0.12]}
-          at={[0, 0.04, l / 2 + 0.06]}
-          color="#5c6c60"
-        />
-        <group position={[0, h * 0.55, -l / 2 - 0.5]} rotation={[1.06, 0, 0]}>
-          <Block size={[w + 0.22, 0.16, l * 0.55]} color="#596b5d" />
-          <Block
-            size={[w - 0.13, 0.06, l * 0.49]}
-            at={[0, 0.1, 0]}
-            color="#bfc5b0"
-          />
-          {[-0.8, -0.4, 0, 0.4, 0.8].map((x) => (
-            <Block
-              key={x}
-              size={[0.014, 0.012, l * 0.43]}
-              at={[x, 0.135, 0]}
-              color="#a1ad94"
-            />
-          ))}
-          <Block
-            size={[w - 0.4, 0.025, 0.06]}
-            at={[0, 0.145, 0]}
-            color="#81917d"
-          />
-        </group>
-        <Block
-          size={[0.72, 0.1, 0.25]}
-          at={[0, -0.1, l / 2 + 0.2]}
-          color="#394a40"
-        />
-        {[-1, 1].map((side) => (
-          <mesh
-            key={side}
-            position={[side * (w / 2 - 0.28), -0.32, l / 2 - 0.2]}
-            rotation={[0, 0, Math.PI / 2]}
-            castShadow
-          >
-            <cylinderGeometry args={[0.17, 0.17, 0.15, 20]} />
-            <meshStandardMaterial color="#333c34" />
-          </mesh>
-        ))}
+        <BagModel bag={bag} onModelError={props.onModelError} />
         {plan?.placements.map((p) => {
           const item = items.find((i) => i.id === p.id);
           if (
@@ -327,6 +512,7 @@ function Scene(props: Props) {
               orientation={p.orientation}
               selected={selected === p.id}
               onSelect={onSelect}
+              onModelError={props.onModelError}
             />
           );
         })}
@@ -346,6 +532,7 @@ function Scene(props: Props) {
               orientation={0}
               selected={selected === u.id}
               onSelect={onSelect}
+              onModelError={props.onModelError}
             />
           );
         })}
@@ -429,7 +616,12 @@ export default function SuitcaseScene(props: Props) {
       <Canvas
         key={props.resetKey}
         shadows
-        camera={{ position: [7.2, 8.8, 10.8], fov: 39, near: 0.1, far: 150 }}
+        camera={{
+          position: props.view === "top" ? [0, 13, 0.01] : [7.2, 8.8, 10.8],
+          fov: 39,
+          near: 0.1,
+          far: 150,
+        }}
         dpr={[1, 1.8]}
         gl={{ antialias: true, preserveDrawingBuffer: true }}
         aria-label="Interactive 3D packed suitcase. Drag to orbit, scroll to zoom, click an object to select it."

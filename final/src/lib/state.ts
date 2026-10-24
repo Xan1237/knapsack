@@ -34,7 +34,15 @@ export type Action =
       type: "edit";
       id: string;
       patch: Partial<
-        Pick<Item, "label" | "scale" | "included" | "orientations" | "required" | "priority">
+        Pick<
+          Item,
+          | "label"
+          | "scale"
+          | "included"
+          | "orientations"
+          | "required"
+          | "priority"
+        >
       >;
     }
   | { type: "delete"; id: string }
@@ -45,8 +53,15 @@ export type Action =
   | { type: "analysis"; id: string; requestId: string; proposals: Proposal[] }
   | { type: "failure"; id: string; requestId: string; error: string };
 // A single action applies a previewed selection so no intermediate packing state leaks.
-export type SelectionAction = { type: "selection"; includeIds: string[]; priorityId?: string };
-export function reducer(state: InventoryState, action: Action | SelectionAction): InventoryState {
+export type SelectionAction = {
+  type: "selection";
+  includeIds: string[];
+  priorityId?: string;
+};
+export function reducer(
+  state: InventoryState,
+  action: Action | SelectionAction,
+): InventoryState {
   switch (action.type) {
     case "restore":
       return action.state;
@@ -61,10 +76,18 @@ export function reducer(state: InventoryState, action: Action | SelectionAction)
     case "demo":
       return initialState();
     case "bag":
-      return { ...state, bagId: action.id, customBag: undefined };
+      return { ...state, bagId: action.id };
     case "selection": {
       const selectedIds = new Set(action.includeIds);
-      return { ...state, items: state.items.map(item => ({ ...item, included: !!item.required || selectedIds.has(item.id), priority: item.id === action.priorityId ? 5 : item.priority, edited: true })) };
+      return {
+        ...state,
+        items: state.items.map((item) => ({
+          ...item,
+          included: !!item.required || selectedIds.has(item.id),
+          priority: item.id === action.priorityId ? 5 : item.priority,
+          edited: true,
+        })),
+      };
     }
     case "add":
       return state.items.length >= 80
@@ -77,7 +100,17 @@ export function reducer(state: InventoryState, action: Action | SelectionAction)
       return {
         ...state,
         items: state.items.map((i) =>
-          i.id === action.id ? { ...i, ...action.patch, included: (action.patch.required ?? i.required) ? true : (action.patch.included ?? i.included), edited: true } : i,
+          i.id === action.id
+            ? {
+                ...i,
+                ...action.patch,
+                included:
+                  (action.patch.required ?? i.required)
+                    ? true
+                    : (action.patch.included ?? i.included),
+                edited: true,
+              }
+            : i,
         ),
       };
     case "delete": {
@@ -129,7 +162,8 @@ export function reducer(state: InventoryState, action: Action | SelectionAction)
                   ],
                   edited: true,
                   required: !!(target.required || source.required),
-                  included: !!(target.required || source.required) || target.included,
+                  included:
+                    !!(target.required || source.required) || target.included,
                 }
               : i,
           ),

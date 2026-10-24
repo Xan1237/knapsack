@@ -92,13 +92,28 @@ export function pack(items: Item[], bag: Suitcase, budget = 80000): Plan {
         a.id.localeCompare(b.id),
     ),
   ];
-  if (included.some(i => i.required || (i.priority ?? 3) !== 3)) {
-    orders.unshift([...included].sort((a, b) => Number(!!b.required) - Number(!!a.required) || (b.priority ?? 3) - (a.priority ?? 3) || volume(sizeOf(b)) - volume(sizeOf(a)) || a.id.localeCompare(b.id)));
+  if (included.some((i) => i.required || (i.priority ?? 3) !== 3)) {
+    orders.unshift(
+      [...included].sort(
+        (a, b) =>
+          Number(!!b.required) - Number(!!a.required) ||
+          (b.priority ?? 3) - (a.priority ?? 3) ||
+          volume(sizeOf(b)) - volume(sizeOf(a)) ||
+          a.id.localeCompare(b.id),
+      ),
+    );
   }
-  const quality = (placements: Placement[]) => placements.reduce((score, p) => {
-    const item = included.find(i => i.id === p.id)!;
-    return score + (item.required ? 1e9 : 0) + (item.priority ?? 3) * 1e6 + 1000 + volume(p.dimensions) / 1e9;
-  }, 0);
+  const quality = (placements: Placement[]) =>
+    placements.reduce((score, p) => {
+      const item = included.find((i) => i.id === p.id)!;
+      return (
+        score +
+        (item.required ? 1e9 : 0) +
+        (item.priority ?? 3) * 1e6 +
+        1000 +
+        volume(p.dimensions) / 1e9
+      );
+    }, 0);
   let best: Placement[] = [],
     attempts = 0,
     exhausted = false;
@@ -150,10 +165,7 @@ export function pack(items: Item[], bag: Suitcase, budget = 80000): Plan {
             }
       if (found) placed.push(found);
     }
-    if (
-      quality(placed) > quality(best)
-    )
-      best = placed;
+    if (quality(placed) > quality(best)) best = placed;
     if (best.length === included.length) break;
   }
   const ids = new Set(best.map((p) => p.id));

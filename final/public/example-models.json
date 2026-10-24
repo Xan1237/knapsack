@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "units": "mm",
+  "upAxis": "z",
+  "bag": {
+    "id": "model-weekend",
+    "name": "Model weekend bag",
+    "subtitle": "Original glTF demo",
+    "dimensions": [
+      400,
+      300,
+      180
+    ],
+    "clearance": 3,
+    "modelUrl": "/models/open-weekend-bag.gltf",
+    "modelDimensions": [
+      424,
+      482.69114873038694,
+      303.0477517083143
+    ],
+    "modelOffset": [
+      0,
+      -79.34557436519344,
+      139.52387585415715
+    ]
+  },
+  "items": [
+    {
+      "id": "model-camera",
+      "key": "model-camera",
+      "label": "Travel camera",
+      "category": "camera",
+      "dimensions": [
+        140,
+        110,
+        90
+      ],
+      "estimate": [
+        140,
+        110,
+        90
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#44554c",
+      "appearance": "Travel camera",
+      "sourceIds": [],
+      "included": true,
+      "orientations": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "edited": false,
+      "required": true,
+      "priority": 3,
+      "modelUrl": "/models/travel-camera.gltf"
+    },
+    {
+      "id": "model-shirt",
+      "key": "model-shirt",
+      "label": "Folded tee",
+      "category": "clothing",
+      "dimensions": [
+        220,
+        240,
+        45
+      ],
+      "estimate": [
+        220,
+        240,
+        45
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#b6c39f",
+      "appearance": "Folded tee",
+      "sourceIds": [],
+      "included": true,
+      "orientations": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "edited": false,
+      "required": false,
+      "priority": 3
+    },
+    {
+      "id": "model-pouch",
+      "key": "model-pouch",
+      "label": "Daily pouch",
+      "category": "pouch",
+      "dimensions": [
+        180,
+        110,
+        85
+      ],
+      "estimate": [
+        180,
+        110,
+        85
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#c18c69",
+      "appearance": "Daily pouch",
+      "sourceIds": [],
+      "included": true,
+      "orientations": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "edited": false,
+      "required": false,
+      "priority": 3
+    }
+  ]
+}

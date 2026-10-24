@@ -62,7 +62,8 @@ export async function loadSession(): Promise<InventoryState | null> {
   if (raw === undefined) return null;
   const data = persistedSchema.parse(raw);
   if (
-    (!suitcases.some((b) => b.id === data.bagId) && data.customBag?.id !== data.bagId) ||
+    (!suitcases.some((b) => b.id === data.bagId) &&
+      data.customBag?.id !== data.bagId) ||
     new Set(data.items.map((i) => i.id)).size !== data.items.length
   )
     throw new Error("Invalid saved inventory");

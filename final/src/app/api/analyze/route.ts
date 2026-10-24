@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzePhoto } from "@/lib/vision";
+import { requestOriginMatches } from "@/lib/request-origin";
 export const runtime = "nodejs";
 export const maxDuration = 90;
 let active = 0;
 export async function POST(request: NextRequest) {
-  if (
-    request.headers.get("origin") &&
-    request.headers.get("origin") !== new URL(request.url).origin
-  )
+  if (!requestOriginMatches(request))
     return NextResponse.json(
       { error: "This analysis endpoint accepts same-origin requests only." },
       { status: 403 },

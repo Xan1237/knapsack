@@ -9,8 +9,11 @@ export const packingInputSchema = z.object({
 
 export function parsePackingInput(raw: unknown) {
   const data = packingInputSchema.parse(raw);
-  if (new Set(data.items.map(i => i.id)).size !== data.items.length) throw new Error("Duplicate item IDs.");
-  if (data.items.some(i => i.required && !i.included)) throw new Error("Essential items must stay included.");
-  if (data.bag.dimensions.some(n => n <= data.bag.clearance * 2)) throw new Error("Bag clearance leaves no usable space.");
+  if (new Set(data.items.map((i) => i.id)).size !== data.items.length)
+    throw new Error("Duplicate item IDs.");
+  if (data.items.some((i) => i.required && !i.included))
+    throw new Error("Essential items must stay included.");
+  if (data.bag.dimensions.some((n) => n <= data.bag.clearance * 2))
+    throw new Error("Bag clearance leaves no usable space.");
   return data;
 }
