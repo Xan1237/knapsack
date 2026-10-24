@@ -33,12 +33,12 @@ Every generated test file contains one small, independent intent step. Strict ch
 
 | Suite | Coverage | Provider calls |
 | --- | --- | --- |
-| `smoke` | Landing → workspace, demo inventory labels, populated 3D bag | None |
+| `smoke` | Direct workspace readiness and demo inventory labels | None |
 | `regression` | Smoke plus packing overflow and selection checks | None |
 | `live` | Pinned-item behavior in live Astra advice | Real OpenAI calls |
 | `all` | All currently configured checks | Real OpenAI calls |
 
-Automatic runs target **under five minutes from push to success**, including installs and build. The single CI job has a four-minute limit; GitHub queue delays remain outside our control. The smoke browser batch is capped at 90 seconds, with at most three tests and a 30-second limit per test. Recording/repair is manual and has a 40-minute runner limit because first authoring is substantially slower than replay. `--timeout <seconds>` sets the whole-run limit and `--parallel <1–4>` sets isolated workers; neither relaxes the per-test check limit. Default parallelism is two.
+Automatic runs target **under five minutes from push to success**, including installs and build. The single CI job has a four-minute limit; GitHub queue delays remain outside our control. The smoke browser batch has two DOM checks capped at 60 seconds total, with a 30-second limit per test. Recording/repair is manual and has a 40-minute runner limit because first authoring is substantially slower than replay. `--timeout <seconds>` sets the whole-run limit and `--parallel <1–4>` sets isolated workers; neither relaxes the per-test check limit. Default parallelism is two.
 
 Check mode uses `--no-adaptive-heal` and fail-fast. It refuses missing or changed recordings before starting paid browser work. Record mode permits Kane to author or repair recordings. Successful cases are retained even if another repair fails; failed cases lose their recording approval. A failed or interrupted run always fails the job.
 

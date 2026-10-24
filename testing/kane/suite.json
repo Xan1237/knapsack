@@ -68,15 +68,20 @@
       "file": "current-demo-inventory-drives-the-webgl-bag_test.md",
       "live": false,
       "designRef": "t-31"
+    },
+    {
+      "id": "direct-workspace-navigation-renders-the-photo-upload-ready",
+      "file": "direct-workspace-navigation-renders-the-photo-upload-ready_test.md",
+      "live": false,
+      "designRef": "t-61"
     }
   ],
   "suites": {
     "smoke": {
-      "timeoutSeconds": 90,
+      "timeoutSeconds": 60,
       "tests": [
-        "landing-packing-link-opens-the-combined-workspace",
-        "loaded-demo-rows-identify-their-provenance",
-        "current-demo-inventory-drives-the-webgl-bag"
+        "direct-workspace-navigation-renders-the-photo-upload-ready",
+        "loaded-demo-rows-identify-their-provenance"
       ]
     },
     "regression": {
@@ -91,7 +96,8 @@
         "explicit-leave-out-excludes-the-selected-unplaced-item",
         "landing-packing-link-opens-the-combined-workspace",
         "loaded-demo-rows-identify-their-provenance",
-        "current-demo-inventory-drives-the-webgl-bag"
+        "current-demo-inventory-drives-the-webgl-bag",
+        "direct-workspace-navigation-renders-the-photo-upload-ready"
       ]
     },
     "live": {
@@ -113,7 +119,8 @@
         "explicit-leave-out-excludes-the-selected-unplaced-item",
         "landing-packing-link-opens-the-combined-workspace",
         "loaded-demo-rows-identify-their-provenance",
-        "current-demo-inventory-drives-the-webgl-bag"
+        "current-demo-inventory-drives-the-webgl-bag",
+        "direct-workspace-navigation-renders-the-photo-upload-ready"
       ]
     }
   }
