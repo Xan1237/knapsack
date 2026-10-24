@@ -1,0 +1,17 @@
+﻿{
+    "status":  "interrupted-for-user-five-minute-wrap-up",
+    "recordedAt":  "2026-10-24T22:08:43.2875436Z",
+    "plannedTests":  7,
+    "completedTests":  1,
+    "passedTests":  1,
+    "interruptedTests":  2,
+    "notStartedTests":  4,
+    "completed":  [
+                      {
+                          "test":  "make-room-overflow-does-not-silently-displace-a-pinned-demo_test.md",
+                          "status":  "passed",
+                          "durationSeconds":  65
+                      }
+                  ],
+    "note":  "Partial rerun only. Interrupted and unstarted journeys are not passes. The initial complete run is recorded separately."
+}

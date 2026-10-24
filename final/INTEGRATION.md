@@ -17,6 +17,12 @@ Both source implementations remain in their original locations. New work stays i
 
 ## Validation in progress
 
-All 39 direct tests pass, including collection conversion, essential protections, independently checked swaps, and server API behavior. TypeScript, lint and production build pass. The live API smoke check analyzed both bundled source photos through the real server vision adapter.
+All 41 direct tests pass, including collection conversion, essential protections, independently checked swaps, server API behavior and a latest-inventory plan download with attachment headers. TypeScript, lint and production build pass. The live API smoke check analyzed both bundled source photos through the real server vision adapter.
 
-Kane CLI ingested the user requirements, extracted seven use cases, generated acceptance criteria and runnable tests, and refined its initial disconnected-deployment assumptions against the configured app. The user approved automatic review and execution within these workflows. The active seven browser tests are running; their results will be recorded after completion. Raw recordings and credentials remain ignored.
+Kane CLI ingested the user requirements, extracted seven use cases, generated acceptance criteria and runnable tests, and refined its initial disconnected-deployment assumptions against the configured app. The user approved automatic review and execution within these workflows. The first run passed one of seven journeys; the failed recordings exposed both automation-flow problems and app improvements. The app changes are committed, while browser verification remains incomplete. See [the validation record](artifacts/validation.md). Raw recordings, unfinished test drafts and credentials remain ignored.
+
+## Handoff
+
+Use this folder as the combined application; its dependencies, routes, worker URLs, assets and APIs are self-contained. The originals do not need to run beside it. `public/example-models.json` demonstrates native millimeter/Z-up assets, and `public/example-collection.json` demonstrates the step2 centimeter/Y-up adapter. A plan download can be imported again with Import collection.
+
+Remaining verification: complete the corrected Astra, photo and collection-import browser journeys, verify the inventory edit/persistence flow, verify the HTTP plan download in Chrome, and finish the 3D inspection journey. Exact geometry, independent validation and server-side provider behavior also have direct tests; these are separate from browser evidence.

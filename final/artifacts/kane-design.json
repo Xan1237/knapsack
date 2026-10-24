@@ -1,0 +1,361 @@
+{
+  "generatedAt": "2026-10-24T22:06:29.442Z",
+  "generator": "Kane CLI assurance commands",
+  "requirements": [
+    "requirements/integration.md",
+    "requirements/runtime.md"
+  ],
+  "userApprovedWorkflows": 7,
+  "useCases": [
+    {
+      "ref": "uc-1",
+      "title": "Get and apply an Astra packing suggestion",
+      "review": "trusted"
+    },
+    {
+      "ref": "uc-2",
+      "title": "Create packing inventory from photos",
+      "review": "trusted"
+    },
+    {
+      "ref": "uc-3",
+      "title": "Manage packing inventory",
+      "review": "trusted"
+    },
+    {
+      "ref": "uc-4",
+      "title": "Visualize and inspect a packing plan",
+      "review": "trusted"
+    },
+    {
+      "ref": "uc-5",
+      "title": "Resolve items that do not fit",
+      "review": "trusted"
+    },
+    {
+      "ref": "uc-6",
+      "title": "Import a packing collection",
+      "review": "trusted"
+    },
+    {
+      "ref": "uc-7",
+      "title": "Save a packing plan",
+      "review": "trusted"
+    }
+  ],
+  "activeTests": [
+    {
+      "ref": "t-10",
+      "title": "Apply live Astra advice only after preview, preserve essentials, and retire old advice",
+      "review": "trusted"
+    },
+    {
+      "ref": "t-12",
+      "title": "Bundled pump-bottle photo yields source-linked inventory through live vision",
+      "review": "trusted"
+    },
+    {
+      "ref": "t-11",
+      "title": "Resizing a demo item retires stale advice and persists the repacked inventory",
+      "review": "trusted"
+    },
+    {
+      "ref": "t-6",
+      "title": "Smallest suitcase overflow remains accounted for in the inspectable 3D packing plan",
+      "review": "trusted"
+    },
+    {
+      "ref": "t-7",
+      "title": "Make room overflow does not silently displace a pinned demo essential",
+      "review": "trusted"
+    },
+    {
+      "ref": "t-13",
+      "title": "Bundled step2 collection appears in the combined packing workspace",
+      "review": "trusted"
+    },
+    {
+      "ref": "t-9",
+      "title": "Save packing plan produces the named download and workspace confirmation",
+      "review": "trusted"
+    }
+  ],
+  "acceptanceCriteria": [
+    {
+      "ref": "ac-5",
+      "title": "Astra's suggested selection does not change the applied inventory selection before the packer chooses Apply selection.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-6",
+      "title": "An item pinned essential is not excluded by an Astra selection.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-7",
+      "title": "Changing inventory invalidates the earlier Astra suggestion.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-8",
+      "title": "After inventory changes, packing uses the latest inventory revision.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-9",
+      "title": "Astra API keys remain on the server.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-10",
+      "title": "An Ask Astra response displays the suggested keep/leave selection.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-11",
+      "title": "An Ask Astra response displays a fit preview before the suggestion is applied.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-12",
+      "title": "Choosing Apply selection applies the suggested keep/leave selection to inventory inclusion.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-13",
+      "title": "The Ask Astra response comes from the configured live server suggestion adapter.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-1",
+      "title": "Photo analysis uses the real server vision adapter rather than substituted recognition output.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-2",
+      "title": "Inventory created from a successfully analyzed photo retains a link to its source photo.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-3",
+      "title": "An analysis attempt without vision configuration displays an explicit error.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-4",
+      "title": "An analysis attempt without vision configuration produces no photo-derived recognition inventory.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-53",
+      "title": "The bundled sample-photo POST /api/analyze responds with HTTP 200.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-54",
+      "title": "The bundled sample-photo POST /api/analyze returns photo-derived pump-bottle inventory proposals.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-55",
+      "title": "After analyzing the bundled pump-bottle photo, the workspace displays photo-derived pump-bottle inventory.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-14",
+      "title": "An inventory change is not presented alongside the previous revision's suggestion as current advice.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-15",
+      "title": "After an inventory change, the packing result uses the latest inventory revision.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-16",
+      "title": "Inventory edits persist locally across a workspace reload.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-17",
+      "title": "Resizing an inventory item changes that item's recorded size.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-18",
+      "title": "Every included inventory item appears in the packing result as packed or unplaced.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-19",
+      "title": "The WebGL 3D bag is driven by the inventory used for the packing result.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-20",
+      "title": "A bounded packing search is presented as an estimate rather than proof of global optimality.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-21",
+      "title": "Demo items in the workspace are explicitly labeled as demo items.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-22",
+      "title": "A landing-page packing link opens the combined workspace at /pack.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-23",
+      "title": "The 3D bag supports selection of an inventory item.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-24",
+      "title": "The 3D bag responds to orbit movement.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-25",
+      "title": "The 3D bag responds to zoom.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-26",
+      "title": "Camera reset restores the bag's default viewpoint.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-27",
+      "title": "Top view shows the bag from above.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-28",
+      "title": "Layer inspection exposes a bag layer for inspection.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-29",
+      "title": "Exploded view separates the bag contents for inspection.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-30",
+      "title": "Animated packing order displays the order in which items are packed.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-31",
+      "title": "The packing result is independently validated.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-32",
+      "title": "An essential-pinned item is not offered as an item to be displaced by a Make room swap.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-33",
+      "title": "An essential-pinned item is not offered for exclusion by Astra.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-34",
+      "title": "Every included item is accounted for in the packing result as packed or unplaced.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-35",
+      "title": "When pinned items cannot all be placed, unplaced items remain visible.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-36",
+      "title": "A bounded packing search is presented as an estimate rather than proof of global impossibility.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-37",
+      "title": "Make room alternatives identify the existing items each alternative would leave behind.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-38",
+      "title": "An item is not removed from the packing selection by Make room without choosing a swap or explicitly leaving it out.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-39",
+      "title": "Importing a step2 centimeter/Y-up collection produces millimeter-valued solver dimensions.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-40",
+      "title": "Importing a collection does not apply its scale conversion twice.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-41",
+      "title": "The solver state of an imported collection uses Z-up coordinates.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-42",
+      "title": "Import accepts a source-app millimeter/Z-up inventory.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-43",
+      "title": "Import accepts a step2 centimeter/Y-up collection.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-44",
+      "title": "Imported items retain their stable IDs.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-45",
+      "title": "Imported items retain their scale overrides.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-46",
+      "title": "Imported items retain their permitted rotations.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-47",
+      "title": "Imported items retain their optional model URLs when supplied.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-48",
+      "title": "Importing a source-app millimeter/Z-up inventory retains millimeter-valued solver dimensions.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-49",
+      "title": "The exported packing-plan file contains the latest inventory revision.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-50",
+      "title": "The exported packing-plan file contains the plan corresponding to the latest inventory revision.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-51",
+      "title": "Save packing plan downloads a file named knapsack-final-plan.json.",
+      "review": "trusted"
+    },
+    {
+      "ref": "ac-52",
+      "title": "The workspace confirms Save packing plan after the download.",
+      "review": "trusted"
+    }
+  ],
+  "recordedGaps": 34
+}

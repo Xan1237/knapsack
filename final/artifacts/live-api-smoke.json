@@ -1,0 +1,49 @@
+{
+  "kind": "genuine-live-api-to-state-to-plan",
+  "browserVerified": false,
+  "timestamp": "2026-10-24T21:25:33.122Z",
+  "fixtures": [
+    {
+      "file": "pump-bottle.jpg",
+      "proposals": [
+        {
+          "key": "bottle_black_001",
+          "label": "Black Pump Bottle",
+          "category": "bottle",
+          "color": "#1a1a1a",
+          "appearance": "tall black plastic pump bottle with glossy finish",
+          "dimensions": [
+            70,
+            70,
+            230
+          ]
+        }
+      ]
+    },
+    {
+      "file": "water-bottle.png",
+      "proposals": [
+        {
+          "key": "bottle_clear_01",
+          "label": "Clear Water Bottle",
+          "category": "bottle",
+          "color": "#c6d8f9",
+          "appearance": "transparent plastic water bottle with white cap",
+          "dimensions": [
+            65,
+            65,
+            250
+          ]
+        }
+      ]
+    }
+  ],
+  "corrections": "Allowed tipping for both bottles and visually reduced the first to 90 percent",
+  "items": 2,
+  "placed": 2,
+  "validation": {
+    "valid": true,
+    "errors": []
+  },
+  "outcome": "complete"
+}
