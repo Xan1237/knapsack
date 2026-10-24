@@ -22,6 +22,10 @@ Open http://127.0.0.1:3000 and choose a packing link. The workspace is http://12
 
 Production hosting and updates are documented in [deploy/README.md](deploy/README.md).
 
+### Take a photo with your camera
+
+Choose **Take a photo** beside the existing photo upload control, allow camera access, and frame your item in the live preview. Choose **Take photo**, then **Use photo** to send that capture through the same Astra analysis and source-linked inventory flow as an uploaded image. **Retake**, **Cancel**, and Escape let you review or leave before submitting. The camera stops after capture or when the dialog closes. Camera capture requires HTTPS or localhost and browser camera permission; ordinary file upload remains available if a camera cannot open. Captures use the existing 12-photo and 6 MB limits.
+
 ## Integration status
 
 Choose **Load demo** in the workspace to start the travel demonstration. Nine folded garments, sneakers, packing pouches, and a power bank fill **85.65%** of the weekender's declared 35.7 L interior. The outlined gap holds a **500 ml water bottle (75 × 75 × 220 mm)**. Use the existing photo-upload flow to add your own bottle; a bottle of those dimensions packs with all nine demo items at **89.12%**. Recognized water bottles may lie sideways, while other bottle types retain their upright default. The marker is shown only when that space passes the independent geometric checker.

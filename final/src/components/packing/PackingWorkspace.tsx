@@ -61,6 +61,7 @@ import { validatePlan } from "@/lib/validate";
 import { bagForState, importCollection } from "@/lib/collection";
 import { demoBottleSpace } from "@/lib/demo";
 import PackingAssistant from "./PackingAssistant";
+import WebcamCapture from "./WebcamCapture";
 
 const GeneratedMeshPreview = dynamic(() => import("./GeneratedMeshPreview"), {
   ssr: false,
@@ -630,6 +631,10 @@ export default function PackingWorkspace() {
             </strong>
             <span>JPEG, PNG or WebP · up to 6 MB each</span>
           </label>
+          <WebcamCapture
+            disabled={!loaded || state.photos.length >= 12}
+            onCapture={(file) => void queuePhotos([file])}
+          />
           <button
             className="text-button sample-photo-button"
             disabled={!loaded || state.photos.length >= 12}
