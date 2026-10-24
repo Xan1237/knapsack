@@ -15,9 +15,6 @@ export function markdown(summary) {
     `Mode: **${summary.mode}** · ${totals.passed}/${totals.tests} passed · ${totals.failed} failed · ${totals.interrupted} interrupted · ${totals.skipped} not run`,
     "",
     `Elapsed: ${Math.round(summary.durationSeconds)}s. Application ref: \`${escape(summary.applicationRef || "local checkout")}\`.`,
-    ...(summary.perTestLimitSeconds
-      ? [`Each recorded check has a ${summary.perTestLimitSeconds}s limit.`]
-      : []),
     "",
     ...(summary.error ? [`${escape(summary.error)}`, ""] : []),
     ...(summary.note ? [`${escape(summary.note)}`, ""] : []),

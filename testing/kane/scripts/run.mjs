@@ -8,7 +8,6 @@ import {
   checkRecordings,
   harnessDir,
   loadManifest,
-  memberBudget,
   parseEvents,
   redactWith,
   resultsDir,
@@ -36,7 +35,6 @@ const { values } = parseArgs({
     "start-server": { type: "boolean", default: false },
     headless: { type: "boolean", default: !!process.env.CI },
     parallel: { type: "string" },
-    timeout: { type: "string" },
   },
 });
 if (!["check", "record"].includes(values.mode))
@@ -45,21 +43,12 @@ if (!["check", "record"].includes(values.mode))
 const manifest = await loadManifest();
 const selected = selectSuite(manifest, values.suite, values.test);
 const parallel = Number(values.parallel || manifest.parallel);
-const timeout = Number(
-  values.timeout ||
-    (values.mode === "record"
-      ? 2400
-      : manifest.suites[values.suite].timeoutSeconds),
-);
 if (
   !Number.isInteger(parallel) ||
   parallel < 1 ||
-  parallel > 4 ||
-  !Number.isInteger(timeout) ||
-  timeout < 1 ||
-  timeout > 3600
+  parallel > 4
 )
-  throw new Error("Parallelism must be 1–4 and timeout must be 1–3600 seconds");
+  throw new Error("Parallelism must be 1–4");
 
 const redact = redactWith([
   process.env.LT_ACCESS_KEY,
@@ -73,19 +62,8 @@ const allEvents = [];
 let server;
 let cli;
 let interrupted = false;
-let timedOut = false;
 let hardStop;
 let summary;
-const overdue = new Set();
-const memberTimers =
-  values.mode === "check"
-    ? memberBudget(30000, (file) => {
-        overdue.add(file);
-        timedOut = true;
-        interrupted = true;
-        stopProcess(cli, true);
-      })
-    : null;
 
 function stopProcess(child, force = false) {
   if (!child || child.exitCode !== null) return;
@@ -127,7 +105,6 @@ async function runKane(args, logName) {
       if (progress) {
         try {
           const event = JSON.parse(safe);
-          memberTimers?.observe(event);
           if (
             /^testrun_(?:authored_)?member_(?:start|end)$/.test(
               event.type || "",
@@ -176,13 +153,6 @@ async function runKane(args, logName) {
   cli.stderr.setEncoding("utf8");
   cli.stdout.on("data", (chunk) => stdout.push(chunk));
   cli.stderr.on("data", (chunk) => stderr.push(chunk));
-  const timer = setTimeout(
-    () => {
-      timedOut = true;
-      interrupt();
-    },
-    Math.max(1, timeout * 1000 - (Date.now() - startedAt)),
-  ).unref();
   try {
     const code = await new Promise((resolve, reject) => {
       cli.once("error", reject);
@@ -195,7 +165,6 @@ async function runKane(args, logName) {
     await stderr.finish();
     return { code, events: parseEvents(safeStdout) };
   } finally {
-    clearTimeout(timer);
     cli = undefined;
   }
 }
@@ -338,7 +307,7 @@ try {
       process.env.LT_ACCESS_KEY,
     );
   console.log(
-    `Kane ${values.suite}: ${selected.length} tests, ${parallel} isolated workers, ${values.mode} mode, ${timeout}s limit`,
+    `Kane ${values.suite}: ${selected.length} tests, ${parallel} isolated workers, ${values.mode} mode`,
   );
   const preflight = await runKane([...args, "--dry-run"], "preflight.ndjson");
   if (
@@ -362,28 +331,6 @@ try {
     interrupted,
     durationSeconds: (Date.now() - startedAt) / 1000,
   });
-  if (values.mode === "check") {
-    for (const test of summary.tests) {
-      if (overdue.has(test.file) || test.durationSeconds > 30) {
-        test.status = "failed";
-        test.failure = {
-          message: "Exceeded the 30-second per-test check limit",
-        };
-        summary.status = "failed";
-        summary.exitCode = 1;
-      }
-    }
-    summary.totals = {
-      tests: summary.tests.length,
-      passed: summary.tests.filter((test) => test.status === "passed").length,
-      failed: summary.tests.filter((test) =>
-        ["failed", "broken"].includes(test.status),
-      ).length,
-      interrupted: summary.tests.filter((test) => test.status === "interrupted")
-        .length,
-      skipped: summary.tests.filter((test) => test.status === "skipped").length,
-    };
-  }
   if (server && server.exitCode !== null) {
     summary.status = "failed";
     summary.exitCode = 1;
@@ -410,7 +357,6 @@ try {
   });
   summary.error = redact(error.message);
 } finally {
-  memberTimers?.close();
   stopProcess(cli, true);
   stopProcess(server, true);
   clearTimeout(hardStop);
@@ -422,8 +368,6 @@ summary.suite = values.suite;
 summary.mode = values.mode;
 summary.recordedAt = new Date().toISOString();
 summary.applicationRef = process.env.KANE_APPLICATION_REF || "";
-summary.timedOut = timedOut;
-summary.perTestLimitSeconds = values.mode === "check" ? 30 : null;
 await writeReport(summary);
 console.log(
   `Kane ${summary.status}: ${summary.totals.passed}/${summary.totals.tests} passed`,

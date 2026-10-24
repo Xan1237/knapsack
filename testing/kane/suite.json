@@ -1,7 +1,6 @@
 {
   "cliVersion": "0.10.0-rc.3",
   "parallel": 1,
-  "testTimeoutSeconds": 30,
   "tests": [
     {
       "id": "dismissed-make-room-keeps-the-demo-selection-intact",
@@ -148,7 +147,6 @@
   ],
   "suites": {
     "smoke": {
-      "timeoutSeconds": 240,
       "tests": [
         "direct-pack-shows-your-belongings",
         "photo-upload-input-advertises-jpeg-png-and-webp",
@@ -163,7 +161,6 @@
       ]
     },
     "regression": {
-      "timeoutSeconds": 240,
       "tests": [
         "dismissed-make-room-keeps-the-demo-selection-intact",
         "all-pinned-demo-overflow-remains-visible",
@@ -189,13 +186,11 @@
       ]
     },
     "live": {
-      "timeoutSeconds": 180,
       "tests": [
         "live-astra-advice-does-not-leave-behind-a-pinned-demo"
       ]
     },
     "all": {
-      "timeoutSeconds": 360,
       "tests": [
         "dismissed-make-room-keeps-the-demo-selection-intact",
         "all-pinned-demo-overflow-remains-visible",

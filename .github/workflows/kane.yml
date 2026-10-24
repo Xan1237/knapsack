@@ -49,8 +49,13 @@ on:
         description: Optional single test ID from the chosen suite
         type: string
         default: ""
+      recording_run_id:
+        description: Optional successful trusted Kane run for recording promotion
+        type: string
+        default: ""
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: kane-${{ github.event.pull_request.number || github.ref }}-${{ inputs.mode || 'check' }}-${{ inputs.suite || 'smoke' }}-${{ inputs.application_ref }}-${{ inputs.test_id }}
   cancel-in-progress: true
@@ -62,11 +67,11 @@ env:
   KANE_SUITE: ${{ inputs.suite || 'smoke' }}
   KANE_MODE: ${{ inputs.mode || 'check' }}
   KANE_TEST_ID: ${{ inputs.test_id || '' }}
+  KANE_RECORDING_SEED: ${{ inputs.recording_run_id || vars.KANE_RECORDING_RUN_ID || '' }}
 jobs:
   build:
     name: Build and source checks
     runs-on: ubuntu-24.04
-    timeout-minutes: 2
     outputs:
       application_sha: ${{ steps.application-ref.outputs.sha }}
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -136,7 +141,6 @@ jobs:
     needs: build
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ inputs.mode == 'record' && 10 || 2 }}
     strategy:
       fail-fast: false
       max-parallel: 10
@@ -144,7 +148,6 @@ jobs:
     env:
       KANE_APPLICATION_REF: ${{ needs.build.outputs.application_sha }}
       KANE_TEST_ID: ${{ matrix.id }}
-      KANE_RUN_TIMEOUT: ${{ inputs.mode == 'record' && '300' || '60' }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -207,6 +210,21 @@ jobs:
             kane-matrix-v1-${{ runner.os }}-${{ hashFiles('testing/kane/recording-version.txt', 'testing/kane/package-lock.json') }}-${{ matrix.id }}-${{ matrix.hash }}-
             kane-matrix-v1-${{ runner.os }}-${{ hashFiles('testing/kane/recording-version.txt', 'testing/kane/package-lock.json') }}-${{ matrix.id }}-
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+      - name: Verify trusted recording seed
+        id: seed
+        if: env.KANE_RECORDING_SEED != '' && steps.recordings.outputs.cache-matched-key == ''
+        working-directory: testing/kane
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/verify-seed.mjs
+      - name: Import approved recordings from the successful seed run
+        if: env.KANE_RECORDING_SEED != '' && steps.recordings.outputs.cache-matched-key == ''
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: kane-recording-${{ matrix.id }}
+          path: testing/kane/.testmuai
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.seed.outputs.run_id }}
       - name: Run Kane against the production server
         id: kane
         working-directory: testing/kane
@@ -215,15 +233,10 @@ jobs:
           LT_ACCESS_KEY: ${{ secrets.LT_ACCESS_KEY }}
           OPENAI_API_KEY: ${{ (inputs.suite == 'live' || inputs.suite == 'all') && secrets.OPENAI_API_KEY || '' }}
           KANE_CLI_CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
-        run: npm run run -- --start-server --headless --parallel 1 --timeout "$KANE_RUN_TIMEOUT"
+        run: npm run run -- --start-server --headless --parallel 1
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-      - name: Check for approved recording entries
-        id: cache-ready
-        if: always() && env.KANE_MODE == 'record' && github.event_name == 'workflow_dispatch'
-        working-directory: testing/kane
-        run: node scripts/cache-ready.mjs
-      - name: Save successful recordings from explicit manual recording runs
-        if: always() && env.KANE_MODE == 'record' && github.event_name == 'workflow_dispatch' && steps.cache-ready.outputs.approved == 'true'
+      - name: Cache recordings after a successful trusted test
+        if: always() && steps.kane.outcome == 'success' && github.event_name != 'pull_request'
         uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
         with:
           path: |-
@@ -240,4 +253,14 @@ jobs:
             testing/kane/.testmuai/evidence/*.evidence
           include-hidden-files: true
           if-no-files-found: warn
+          retention-days: 7
+      - name: Publish verified recording for branch promotion
+        if: always() && steps.kane.outcome == 'success' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: kane-recording-${{ matrix.id }}
+          path: |-
+            testing/kane/.testmuai/tests/output-${{ matrix.id }}
+            testing/kane/.testmuai/recordings.json
+          include-hidden-files: true
           retention-days: 7

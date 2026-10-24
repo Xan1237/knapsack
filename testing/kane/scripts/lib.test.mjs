@@ -7,7 +7,6 @@ import {
   checkRecordings,
   hash,
   junit,
-  memberBudget,
   outputName,
   parseEvents,
   redactWith,
@@ -149,27 +148,6 @@ test("secret redaction handles encoded values and a reconstructed pipe stream", 
     parseEvents('\uFEFF{"type":"start"}\nnoise\n{"type":"end"}\n').length,
     2,
   );
-});
-
-test("per-test deadlines fire for an unfinished member", async () => {
-  let budget;
-  const expired = new Promise((resolve) => {
-    budget = memberBudget(5, resolve);
-  });
-  budget.observe({ type: "testrun_member_start", path: "/work/short_test.md" });
-  assert.equal(await expired, "short_test.md");
-  budget.close();
-});
-
-test("a finished member cancels its deadline without affecting another member", async () => {
-  const expired = [];
-  const budget = memberBudget(5, (file) => expired.push(file));
-  budget.observe({ type: "testrun_member_start", path: "finished_test.md" });
-  budget.observe({ type: "testrun_member_end", path: "finished_test.md" });
-  const done = new Promise((resolve) => setTimeout(resolve, 15));
-  await done;
-  assert.deepEqual(expired, []);
-  budget.close();
 });
 
 test("JUnit escapes failure text and reports incomplete infrastructure separately", () => {

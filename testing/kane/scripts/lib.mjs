@@ -59,33 +59,6 @@ export const outputName = (file) => `output-${file.replace(/_test\.md$/, "")}`;
 export const basename = (file) =>
   path.posix.basename(String(file).replaceAll("\\", "/"));
 
-export function memberBudget(milliseconds, onTimeout) {
-  const timers = new Map();
-  return {
-    observe(event) {
-      if (
-        !/^testrun_(?:authored_)?member_(?:start|end)$/.test(event.type || "")
-      )
-        return;
-      const file = basename(event.path);
-      clearTimeout(timers.get(file));
-      timers.delete(file);
-      if (event.type.endsWith("_start"))
-        timers.set(
-          file,
-          setTimeout(() => {
-            timers.delete(file);
-            onTimeout(file);
-          }, milliseconds),
-        );
-    },
-    close() {
-      for (const timer of timers.values()) clearTimeout(timer);
-      timers.clear();
-    },
-  };
-}
-
 export function redactWith(values = []) {
   const secrets = [
     ...new Set(

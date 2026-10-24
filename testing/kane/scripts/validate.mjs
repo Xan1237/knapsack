@@ -4,8 +4,6 @@ import { parseDocument } from "yaml";
 import { harnessDir, loadManifest, selectSuite, testsDir } from "./lib.mjs";
 
 const manifest = await loadManifest();
-if (manifest.testTimeoutSeconds !== 30)
-  throw new Error("Recorded checks must have a 30-second per-test limit");
 const tests = selectSuite(manifest, "all");
 const seen = new Set();
 for (const test of tests) {
@@ -50,8 +48,8 @@ for (const id of manifest.suites.smoke.tests) {
   if (test.file !== `${test.id}_test.md` || !test.label)
     throw new Error("Smoke cases need a clear matrix label and matching recording-folder ID");
 }
-if (manifest.suites.smoke.tests.length !== 10 || manifest.suites.smoke.timeoutSeconds > 300)
-  throw new Error("Automatic smoke must contain exactly ten small checks and a local batch limit of five minutes or less");
+if (manifest.suites.smoke.tests.length !== 10)
+  throw new Error("Automatic smoke must contain exactly ten small checks");
 const workflow = parseDocument(
   await fs.readFile(
     path.resolve(harnessDir, "../../.github/workflows/kane.yml"),
@@ -77,7 +75,6 @@ if (yaml.jobs.browser?.strategy?.["max-parallel"] !== 10 || yaml.jobs.browser.st
 if (!yaml.jobs.build || yaml.jobs.browser.needs !== "build")
   throw new Error("Build the exact application once before the browser matrix");
 for (const job of Object.values(yaml.jobs)) {
-  if (!job["timeout-minutes"]) throw new Error("Every job needs a timeout");
   for (const step of job.steps || []) {
     if (step.uses && !/@[a-f0-9]{40}$/.test(step.uses))
       throw new Error(`Pin action ${step.uses} to a reviewed commit`);

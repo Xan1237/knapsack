@@ -7,8 +7,8 @@ The automatic gate is exactly **ten small Kane-generated smoke tests**. Each che
 The [workflow](../../.github/workflows/kane.yml) builds the application once, then starts ten separate matrix jobs with `max-parallel: 10`. Each gets its own production server and one headless Chrome session. A failed test does not cancel the other nine, so every result is visible.
 
 - Ordinary pushes and PRs always use strict replay, with repair disabled.
-- Every case has a hard **30-second** check limit including session startup; each matrix runner has a 60-second Kane batch limit.
-- The whole automatic pipeline targets **under five minutes from push to success**. Build and parallel replay jobs each have a two-minute limit. GitHub queue delays remain outside our control; actual timing is in the workflow run.
+- Kane reports actual assertion results and elapsed time. Custom test, batch and CI job deadlines have been removed at the user's request.
+- Small scope, parallel runners and caching keep the pipeline fast. Actual push-to-result timing is visible in the workflow run.
 - npm, Next build and managed Kane runtime caches shorten setup. Each test has its own recording cache, keyed by CLI version and generated test content; parallel jobs cannot overwrite each other's recordings.
 - Each job publishes Markdown, JSON, JUnit and sealed Kane evidence. Missing recordings, unresolved variables, interrupted tests and absent terminal results fail the gate.
 - Fork PRs receive build/source checks without secret-backed browser execution.
@@ -17,9 +17,11 @@ The gate needs repository secrets `LT_USERNAME` and `LT_ACCESS_KEY`, already con
 
 ## Recording and repair
 
-Choose **Actions > Kane smoke > Run workflow**, branch `kane-cli`, suite `smoke`, mode `record`. First authoring is slower than replay; each matrix member gets a five-minute authoring budget. Successful recordings are cached even if another test fails. Failed repairs invalidate that case's approval.
+Choose **Actions > Kane smoke > Run workflow**, branch `kane-cli`, suite `smoke`, mode `record`. First authoring is slower than replay. Successful recordings are cached even if another test fails. Failed repairs invalidate that case's approval.
 
-Set optional `test_id` to repair only that case. Normal pushes never start authoring, regardless of commit message. Check and record runs have separate cancellation groups. After merging this workflow into `main`, record there once so application PRs can restore the default-branch caches.
+Set optional `test_id` to repair only that case. Normal pushes never start authoring, regardless of commit message. Check and record runs have separate cancellation groups.
+
+Successful trusted tests also publish a `kane-recording-<id>` artifact. To carry recordings to `main`, set repository variable `KANE_RECORDING_RUN_ID` (or manual input `recording_run_id`) to a successful Kane run on `kane-cli` or `main`. A cache miss verifies that run's repository, branch, workflow and successful conclusion before importing its recording. The runner still checks test-content/CLI hashes and executes the real assertions. Successful main runs populate main's own caches. This avoids repeating paid authoring merely because GitHub scopes caches by branch.
 
 `application_ref` tests a teammate's branch or exact commit while retaining this harness. `application_directory` defaults to `final` and also supports the repository root. CI checks out the application separately and runs the exact SHA used by the shared build.
 
@@ -36,7 +38,7 @@ npm run run --prefix testing/kane -- --suite smoke --mode record --start-server 
 npm run run --prefix testing/kane -- --suite smoke --mode check --start-server --parallel 1
 ```
 
-Local smoke runs use a 240-second whole-batch limit and one browser at a time. CI runs all ten simultaneously on separate machines. `--test <id>` selects one case. The managed server defaults to port 3100 and closes only its own process; an existing development server on port 3000 is left alone. `--base-url` or `KANE_BASE_URL` can target an existing server when `--start-server` is omitted.
+Local smoke runs use one browser at a time. CI runs all ten simultaneously on separate machines. `--test <id>` selects one case. The managed server defaults to port 3100 and closes only its own process; an existing development server on port 3000 is left alone. `--base-url` or `KANE_BASE_URL` can target an existing server when `--start-server` is omitted.
 
 ## Scope and maintenance
 

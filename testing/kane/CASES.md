@@ -1,6 +1,6 @@
 # Ten automatic smoke checks
 
-Application baseline: main `d812836`, merged into `kane-cli`. The application sources match that baseline; changes in this branch concern tests, CI and documentation.
+Application baseline: main `c674482`, merged into `kane-cli`. The new travel demo still has nine rows including Sage linen shirt and Cream knit; the ten tested control contracts remain present. The application sources match that baseline; changes in this branch concern tests, CI and documentation.
 
 Each row is one independent Kane-generated one-step test on a separate GitHub runner. The label is its Actions job name. Assertions use DOM/text state; these checks make no claims about physical geometry, rendered pixels, provider correctness or persistence.
 
@@ -19,7 +19,7 @@ Each row is one independent Kane-generated one-step test on a separate GitHub ru
 
 Requirements: [ten-smoke.md](requirements/ten-smoke.md), containing the user request and current app controls. The user previously authorized automatic review and execution within these existing workflows and explicitly requested this ten-case slice. The eleven criteria, ten scenarios and ten tests were reviewed under that authorization; generation warnings about unapproved criteria are resolved by that review. Generated test bodies are copied unchanged.
 
-Strict checks have a 30-second member deadline. CI runs all ten in parallel, one browser per runner. The shared build and per-test JSON/JUnit/evidence artifacts make the result reviewable. Recording and repair require a separate manual workflow run and may take longer than replay.
+CI runs all ten in parallel, one browser per runner, and reports actual assertion results and elapsed times. The user removed the earlier custom test/job deadlines in [runtime-policy.md](requirements/runtime-policy.md). The shared build and per-test JSON/JUnit/evidence artifacts make the result reviewable. Recording and repair require a separate manual workflow run and may take longer than replay.
 
 The [first parallel recording run](https://github.com/Xan1237/knapsack/actions/runs/40141411126) passed all ten cases and cached their recordings. Normal push checks use those recordings with adaptive repair disabled; their own result artifacts report strict replay timings.
 
