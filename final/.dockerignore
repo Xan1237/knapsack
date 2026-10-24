@@ -1,0 +1,9 @@
+node_modules
+.next
+.env*
+.git
+.context
+.testmuai
+artifacts
+*.tsbuildinfo
+*.log
