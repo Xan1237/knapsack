@@ -44,6 +44,9 @@ function fixture(item) {
       const tag = box([w * .14, .4, d * .3], '#ede2c8', .15); tag.position.set(w * .2, h * .49, d * .1); group.add(tag);
     }
   }
+  const bounds = new THREE.Box3().setFromObject(group), size = bounds.getSize(new THREE.Vector3()), center = bounds.getCenter(new THREE.Vector3());
+  const fit = Math.min(1, w / size.x, h / size.y, d / size.z);
+  group.scale.setScalar(fit); group.position.copy(center.multiplyScalar(-fit));
   return group;
 }
 
@@ -87,7 +90,7 @@ class PackingScene {
     }; this.tick();
   }
 
-  loadModel(url, dimensions, target, generation) {
+  loadModel(url, dimensions, target, generation, onLoaded = () => {}) {
     new GLTFLoader().load(url, gltf => {
       if (generation !== this.generation) { dispose(gltf.scene); return; }
       const bounds = new THREE.Box3().setFromObject(gltf.scene), size = bounds.getSize(new THREE.Vector3()), center = bounds.getCenter(new THREE.Vector3());
@@ -95,7 +98,7 @@ class PackingScene {
       const content = new THREE.Group(); gltf.scene.position.sub(center); content.add(gltf.scene);
       content.scale.set(dimensions[0] / size.x, dimensions[1] / size.y, dimensions[2] / size.z);
       gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-      [...target.children].forEach(child => { dispose(child); target.remove(child); }); target.add(content);
+      [...target.children].forEach(child => { dispose(child); target.remove(child); }); target.add(content); onLoaded();
     }, undefined, () => { if (generation === this.generation) this.onModelIssue('A 3D model could not load. Its preview shape is shown so you can keep packing.'); });
   }
 
@@ -122,8 +125,9 @@ class PackingScene {
       // describe its external bounds and modelOffset to align its usable cavity.
       const imported = new THREE.Group(); this.bagGroup.add(imported);
       imported.position.fromArray(bag.modelOffset || [0, h / 2, 0]);
-      this.loadModel(bag.modelUrl, bag.modelDimensions || [w + 4, h + 2, d + 4], imported, generation);
-      this.bagGroup.children.filter(c => c !== imported).forEach(c => { c.visible = false; });
+      this.loadModel(bag.modelUrl, bag.modelDimensions || [w + 4, h + 2, d + 4], imported, generation, () => {
+        this.bagGroup.children.filter(c => c !== imported).forEach(c => { c.visible = false; });
+      });
     }
     this.meshes = [];
     for (const placement of plan.placements) {

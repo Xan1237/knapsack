@@ -137,7 +137,7 @@ export default function App() {
             </div>)}
             {!items.length && <div className="empty-inventory"><PackageOpen size={28} /><p>Your collection is empty.</p><button className="button button-quiet" onClick={resetDemo}>Try the demo items</button></div>}
           </div>
-          <div className="inventory-footer"><LockKeyhole size={13} /><span>Pin your must-haves. We’ll pack them first.</span></div>
+          <div className="inventory-footer"><LockKeyhole size={13} /><span>Pin your must-haves. We’ll prioritize them.</span></div>
         </section>
 
         <section className="viewport-panel" aria-label="Packing visualization">

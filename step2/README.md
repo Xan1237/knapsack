@@ -20,7 +20,7 @@ The endpoint uses OpenAI's [Responses API](https://developers.openai.com/api/ref
 
 ## Step-one integration
 
-See [INTEGRATION.md](INTEGRATION.md). Use **Import collection** to load the collection contract; download an example from the help dialog. Custom item GLB/glTF URLs and an open bag model are supported. Demo items use procedural meshes until actual assets arrive. The latest remote main had no step-one implementation when this adapter was created.
+See [INTEGRATION.md](INTEGRATION.md). Use **Import collection** to load either the collection contract or the main app's native inventory session. Custom item GLB/glTF URLs and an open bag model are supported. Demo items use procedural meshes until actual assets arrive. The compatibility adapter converts the main app's millimeters, Z-up axes, visual scale overrides, allowed orientations, and bag clearance explicitly.
 
 ## Packing scope
 

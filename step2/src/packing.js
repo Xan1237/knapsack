@@ -27,16 +27,16 @@ function subtract(spaces, placed) {
 }
 
 function orientations(item) {
-  const allowed = item.upright ? permutations.slice(0, 2) : permutations;
+  const allowed = item.allowedPermutations || (item.upright ? permutations.slice(0, 2) : permutations);
   const seen = new Set();
   return allowed.map(permutation => ({ permutation, size: permutation.map(i => item.dimensions[i]) }))
     .filter(o => { const key = o.size.join(','); if (seen.has(key)) return false; seen.add(key); return true; });
 }
 
-function attempt(items, dimensions, order) {
-  let spaces = [{ position: [0, 0, 0], size: [...dimensions] }];
+function attempt(items, dimensions, order, clearance = 0) {
+  let spaces = [{ position: [clearance, clearance, clearance], size: dimensions.map(n => n - clearance * 2) }];
   const placements = [], unplaced = [];
-  const sorted = [...items].sort((a, b) => Number(b.required) - Number(a.required) || order(a, b) || a.id.localeCompare(b.id));
+  const sorted = [...items].sort((a, b) => order(a, b) || a.id.localeCompare(b.id));
   for (const item of sorted) {
     let best = null;
     for (const space of spaces) {
@@ -45,7 +45,7 @@ function attempt(items, dimensions, order) {
         const candidate = { id: item.id, position: [...space.position], ...orientation };
         // A conservative MVP: every raised envelope must have full support.
         const y = candidate.position[1];
-        const supported = y < EPS || placements.some(p => Math.abs(p.position[1] + p.size[1] - y) < EPS && [0, 2].every(i => p.position[i] <= candidate.position[i] + EPS && p.position[i] + p.size[i] >= candidate.position[i] + candidate.size[i] - EPS));
+        const supported = y < clearance + EPS || placements.some(p => Math.abs(p.position[1] + p.size[1] - y) < EPS && [0, 2].every(i => p.position[i] <= candidate.position[i] + EPS && p.position[i] + p.size[i] >= candidate.position[i] + candidate.size[i] - EPS));
         if (!supported) continue;
         const waste = volume(space.size) - volume(candidate.size);
         const score = y * 1000000 + space.position[2] * 10000 + space.position[0] * 100 + waste / 1000 + orientation.size[1];
@@ -53,7 +53,7 @@ function attempt(items, dimensions, order) {
       }
     }
     if (best) {
-      placements.push(best); spaces = subtract(spaces, best);
+      placements.push(best); spaces = subtract(spaces, { ...best, size: best.size.map((n, axis) => n + (axis === 1 ? 0 : clearance)) });
     } else unplaced.push(item.id);
   }
   const score = placements.reduce((sum, p) => {
@@ -70,7 +70,7 @@ export function validatePlan(plan, bag, items) {
   for (const p of plan.placements) {
     const item = included.find(i => i.id === p.id);
     if (!item || !orientations(item).some(o => o.size.every((s, i) => Math.abs(s - p.size[i]) < EPS))) errors.push('An item has an invalid orientation.');
-    if (!p.position.every((v, i) => v >= -EPS && v + p.size[i] <= bag.dimensions[i] + EPS)) errors.push('An item is outside the bag.');
+    if (!p.position.every((v, i) => v >= (bag.clearance || 0) - EPS && v + p.size[i] <= bag.dimensions[i] - (bag.clearance || 0) + EPS)) errors.push('An item is outside the bag.');
   }
   plan.placements.forEach((a, i) => plan.placements.slice(i + 1).forEach(b => { if (overlaps(a, b)) errors.push('Items overlap.'); }));
   return { valid: errors.length === 0, errors };
@@ -79,7 +79,7 @@ export function validatePlan(plan, bag, items) {
 export function packItems(items, bag) {
   const included = items.filter(i => i.included);
   const orders = [
-    (a, b) => b.priority - a.priority || volume(b.dimensions) - volume(a.dimensions),
+    (a, b) => Number(b.required) - Number(a.required) || b.priority - a.priority || volume(b.dimensions) - volume(a.dimensions),
     (a, b) => volume(b.dimensions) - volume(a.dimensions),
     (a, b) => Math.max(...b.dimensions) - Math.max(...a.dimensions),
     (a, b) => Math.min(...b.dimensions) - Math.min(...a.dimensions),
@@ -88,7 +88,7 @@ export function packItems(items, bag) {
   ];
   let best = null;
   for (const order of orders) {
-    const plan = attempt(included, bag.dimensions, order);
+    const plan = attempt(included, bag.dimensions, order, bag.clearance || 0);
     if (!best || plan.score > best.score) best = plan;
   }
   best.placements.sort((a, b) => a.position[1] - b.position[1] || a.position[2] - b.position[2]);

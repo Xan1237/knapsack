@@ -3,9 +3,10 @@ dist/
 .env
 .env.*
 !.env.example
-.testmuai/variables/
-.testmuai/evidence/
+.testmuai/*
+!.testmuai/tests/
 .testmuai/tests/output-*/
+evidence/raw/
 evidence/*.evidence
 *.log
 # kane-cli context store: shared through a location, never merged with git
