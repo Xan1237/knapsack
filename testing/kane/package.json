@@ -1,0 +1,19 @@
+{
+  "name": "knapsack-kane-harness",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test scripts/*.test.mjs",
+    "check": "node scripts/validate.mjs",
+    "fixtures": "node scripts/prepare.mjs",
+    "run": "node scripts/run.mjs",
+    "report": "node scripts/report.mjs"
+  },
+  "devDependencies": {
+    "@testmuai/kane-cli": "0.10.0-rc.3",
+    "yaml": "2.9.1"
+  }
+}

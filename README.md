@@ -113,3 +113,5 @@ Live analysis sends uploaded images to OpenAI. The application retains trip phot
 | [`artifacts/validation.md`](artifacts/validation.md) | Historical validation of the original root application. |
 
 The original source applications remain available; the combined product and its current setup instructions are in `final/`.
+
+The independent [Kane CI harness](testing/kane/README.md) lives in `testing/kane`. Its automatic gate runs nine small deterministic smoke checks in parallel and reports actual assertion results and elapsed times. Larger suites and recording/repair are manual. It can test a separate application branch without changing application source.
