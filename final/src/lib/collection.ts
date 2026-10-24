@@ -13,7 +13,7 @@ import {
 } from "./domain";
 import type { InventoryState } from "./state";
 
-const photoSchema = z.object({
+export const photoSchema = z.object({
   id: z.string(),
   name: z.string(),
   url: z

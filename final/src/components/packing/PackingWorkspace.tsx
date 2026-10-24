@@ -427,21 +427,19 @@ export default function PackingWorkspace() {
       bag,
       items: state.items,
       photos: state.photos,
-      plan,
-      estimated: true,
-      algorithm: "bounded-priority-extreme-edge-v1",
     };
-    const url = URL.createObjectURL(
-      new Blob([JSON.stringify(payload, null, 2)], {
-        type: "application/json",
-      }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "knapsack-final-plan.json";
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setNotice("Your packing plan was saved.");
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "/api/packing/export";
+    const field = document.createElement("input");
+    field.type = "hidden";
+    field.name = "collection";
+    field.value = JSON.stringify(payload);
+    form.append(field);
+    document.body.append(form);
+    form.submit();
+    form.remove();
+    setNotice("Your packing plan download has started.");
   }
   function reset(mode: "reset" | "demo") {
     setCanPersist(true);
@@ -449,7 +447,7 @@ export default function PackingWorkspace() {
     inFlight.current.forEach((c) => c.abort());
     inFlight.current.clear();
     dispatch({ type: mode });
-    setSelected(null);
+    setSelected(mode === "demo" ? "demo-0" : null);
     setPlan(null);
     setLayer(100);
     setExploded(false);
@@ -756,6 +754,7 @@ export default function PackingWorkspace() {
                     <span className="item-text">
                       <strong>{item.label}</strong>
                       <small>
+                        {item.demo ? "Demo · " : ""}
                         {categoryNames[item.category]}
                         {item.edited ? " · adjusted" : ""}
                       </small>

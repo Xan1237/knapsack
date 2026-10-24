@@ -2,6 +2,8 @@
 
 See your suitcase packed before you start. A local prototype turns photos into editable procedural 3D belongings and a validated geometric packing layout.
 
+The combined MVP now lives in [final](final/README.md). Run `cd final`, `npm ci`, and `npm run dev` to use photo recognition, Astra suggestions, essential pins, overflow choices, imported 3D assets and plan export in one application. The root app and [step2](step2/README.md) remain available as the source implementations. Final browser validation is in progress.
+
 ## Project structure
 
 ```text

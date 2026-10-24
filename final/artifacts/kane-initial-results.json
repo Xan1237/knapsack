@@ -1,0 +1,171 @@
+{
+  "generatedAt": "2026-10-24T22:04:08.817Z",
+  "cliVersion": "0.10.0-rc.3",
+  "executionId": "f22b0be9-b5b4-4ad5-85e6-d5f72d60b015",
+  "status": "failed",
+  "totals": {
+    "tests": 7,
+    "passed": 1,
+    "failed": 6,
+    "broken": 0,
+    "skipped": 0,
+    "authored": 7
+  },
+  "durationSeconds": 1290.322,
+  "credits": 346.39059000000003,
+  "tests": [
+    {
+      "test": "apply-live-astra-advice-only-after-preview-preserve_test.md",
+      "status": "failed",
+      "durationSeconds": 378,
+      "steps": {
+        "total": 7,
+        "passed": 3,
+        "failed": 1,
+        "skipped": 3,
+        "replay_decisions": 0,
+        "author_decisions": 7
+      },
+      "browserSteps": 20,
+      "credits": 94.60514,
+      "failure": {
+        "message": "AP determined agent is stuck — no viable actions remain",
+        "step_index": 4
+      },
+      "testManagerUrl": "https://test-manager.lambdatest.com/projects/01M5QS30K2QDBZCNJCP82N490P/test-cases/01M5QXP0F5MV7Z7TGXJ15FDNTY"
+    },
+    {
+      "test": "bundled-pump-bottle-photo-yields-source-linked-inventory_test.md",
+      "status": "failed",
+      "durationSeconds": 163,
+      "steps": {
+        "total": 4,
+        "passed": 2,
+        "failed": 1,
+        "skipped": 1,
+        "replay_decisions": 0,
+        "author_decisions": 4
+      },
+      "browserSteps": 12,
+      "credits": 44.8299825,
+      "failure": {
+        "message": "AP determined agent is stuck — no viable actions remain",
+        "step_index": 3
+      },
+      "testManagerUrl": "https://test-manager.lambdatest.com/projects/01M5QS30K2QDBZCNJCP82N490P/test-cases/01M5QY234YAPWMYF3FXNSGBQ79"
+    },
+    {
+      "test": "bundled-step2-collection-appears-in-the-combined-packing_test.md",
+      "status": "failed",
+      "durationSeconds": 100,
+      "steps": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "skipped": 0,
+        "replay_decisions": 0,
+        "author_decisions": 2
+      },
+      "browserSteps": 7,
+      "credits": 28.363175000000005,
+      "failure": {
+        "message": "AP determined agent is stuck — no viable actions remain",
+        "step_index": 2
+      },
+      "testManagerUrl": "https://test-manager.lambdatest.com/projects/01M5QS30K2QDBZCNJCP82N490P/test-cases/01M5QY7GDB5YAC4103T8WKZW23"
+    },
+    {
+      "test": "make-room-overflow-does-not-silently-displace-a-pinned-demo_test.md",
+      "status": "passed",
+      "durationSeconds": 247,
+      "steps": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "replay_decisions": 0,
+        "author_decisions": 5
+      },
+      "browserSteps": 20,
+      "credits": 89.42054,
+      "testManagerUrl": "https://test-manager.lambdatest.com/projects/01M5QS30K2QDBZCNJCP82N490P/test-cases/01M5QYAYV8QB56J9QFYWWE6Y08"
+    },
+    {
+      "test": "resizing-a-demo-item-retires-stale-advice-and-persists-the_test.md",
+      "status": "failed",
+      "durationSeconds": 85,
+      "steps": {
+        "total": 6,
+        "passed": 1,
+        "failed": 1,
+        "skipped": 4,
+        "replay_decisions": 0,
+        "author_decisions": 6
+      },
+      "browserSteps": 7,
+      "credits": 25.20825,
+      "failure": {
+        "message": "AP determined agent is stuck — no viable actions remain",
+        "step_index": 2
+      },
+      "testManagerUrl": "https://test-manager.lambdatest.com/projects/01M5QS30K2QDBZCNJCP82N490P/test-cases/01M5QYJXFXCNTJE2QTGN4NVPJR"
+    },
+    {
+      "test": "save-packing-plan-produces-the-named-download-and-workspace_test.md",
+      "status": "failed",
+      "durationSeconds": 125,
+      "steps": {
+        "total": 3,
+        "passed": 2,
+        "failed": 1,
+        "skipped": 0,
+        "replay_decisions": 0,
+        "author_decisions": 3
+      },
+      "browserSteps": 7,
+      "credits": 31.76688,
+      "failure": {
+        "message": "Checkpoint assertion failed: \"a download named knapsack-final-plan.json is produced\"",
+        "step_index": 3
+      },
+      "testManagerUrl": "https://test-manager.lambdatest.com/projects/01M5QS30K2QDBZCNJCP82N490P/test-cases/01M5QYNY7SZCEK3F5C8964315Z"
+    },
+    {
+      "test": "smallest-suitcase-overflow-remains-accounted-for-in-the_test.md",
+      "status": "failed",
+      "durationSeconds": 95,
+      "steps": {
+        "total": 13,
+        "passed": 1,
+        "failed": 1,
+        "skipped": 11,
+        "replay_decisions": 0,
+        "author_decisions": 13
+      },
+      "browserSteps": 9,
+      "credits": 32.1966225,
+      "failure": {
+        "message": "Final verification failed: \"each demo item is explicitly labeled as a demo item.\"",
+        "step_index": 2
+      },
+      "testManagerUrl": "https://test-manager.lambdatest.com/projects/01M5QS30K2QDBZCNJCP82N490P/test-cases/01M5QYSY40TSF02YE9D52Y84H6"
+    }
+  ],
+  "coverage": {
+    "scope": "run",
+    "percent": 11,
+    "criteria": {
+      "total": 55,
+      "proven": 6
+    },
+    "usecases": {
+      "total": 7,
+      "proven": 0,
+      "partial": 1,
+      "failing": 2,
+      "not_run": 4,
+      "not_designed": 0,
+      "no_criteria": 0
+    }
+  }
+}

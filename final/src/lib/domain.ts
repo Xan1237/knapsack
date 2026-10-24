@@ -50,6 +50,7 @@ export const itemSchema = proposalSchema.extend({
   included: z.boolean(),
   orientations: z.array(z.number().int().min(0).max(5)).min(1),
   edited: z.boolean(),
+  demo: z.boolean().optional(),
   proposalId: z.string().optional(),
   required: z.boolean().optional(),
   priority: z.number().int().min(1).max(5).optional(),
@@ -227,6 +228,7 @@ export function demoItems(): Item[] {
   ];
   return specs.map(([category, label, dimensions, color], i) => ({
     ...createItem(category, `demo-${i}`),
+    demo: true,
     label,
     dimensions,
     estimate: dimensions,
