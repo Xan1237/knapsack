@@ -8,7 +8,7 @@ The [workflow](../../.github/workflows/kane.yml) builds the application once, th
 
 - Ordinary pushes and PRs always use strict replay, with repair disabled.
 - Every case has a hard **30-second** check limit including session startup; each matrix runner has a 60-second Kane batch limit.
-- The whole automatic pipeline targets **under five minutes from push to success**. GitHub queue delays remain outside our control; actual timing is in the workflow run.
+- The whole automatic pipeline targets **under five minutes from push to success**. Build and parallel replay jobs each have a two-minute limit. GitHub queue delays remain outside our control; actual timing is in the workflow run.
 - npm, Next build and managed Kane runtime caches shorten setup. Each test has its own recording cache, keyed by CLI version and generated test content; parallel jobs cannot overwrite each other's recordings.
 - Each job publishes Markdown, JSON, JUnit and sealed Kane evidence. Missing recordings, unresolved variables, interrupted tests and absent terminal results fail the gate.
 - Fork PRs receive build/source checks without secret-backed browser execution.

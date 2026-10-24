@@ -21,4 +21,6 @@ Requirements: [ten-smoke.md](requirements/ten-smoke.md), containing the user req
 
 Strict checks have a 30-second member deadline. CI runs all ten in parallel, one browser per runner. The shared build and per-test JSON/JUnit/evidence artifacts make the result reviewable. Recording and repair require a separate manual workflow run and may take longer than replay.
 
+The [first parallel recording run](https://github.com/Xan1237/knapsack/actions/runs/40141411126) passed all ten cases and cached their recordings. Normal push checks use those recordings with adaptive repair disabled; their own result artifacts report strict replay timings.
+
 Older long/visual/provider designs remain manual regression snapshots, including known unresolved assertions. A green smoke suite proves only the ten narrow states above. The previous two-browser-per-runner smoke attempt exceeded its deadline, which is why the current workflow isolates each case on its own machine. No application code was changed to accommodate the tests.

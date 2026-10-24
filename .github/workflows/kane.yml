@@ -66,7 +66,7 @@ jobs:
   build:
     name: Build and source checks
     runs-on: ubuntu-24.04
-    timeout-minutes: 4
+    timeout-minutes: 2
     outputs:
       application_sha: ${{ steps.application-ref.outputs.sha }}
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -136,7 +136,7 @@ jobs:
     needs: build
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ inputs.mode == 'record' && 10 || 3 }}
+    timeout-minutes: ${{ inputs.mode == 'record' && 10 || 2 }}
     strategy:
       fail-fast: false
       max-parallel: 10
