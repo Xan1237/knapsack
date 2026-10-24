@@ -32,7 +32,7 @@ Kane locally uses the existing OAuth sign-in. GitHub uses the encrypted reposito
 Every generated test file contains one small, independent intent step. Strict check mode gives **each test a hard 30-second budget**, including its session startup. A slow test fails the gate; it is not counted as passed. The smoke suite selects a few deterministic checks. The broader suites collect the other approved behaviors.
 
 | Suite | Coverage | Provider calls |
-| --- | --- | --- | --- |
+| --- | --- | --- |
 | `smoke` | A small set of packing/accounting/selection checks | None |
 | `regression` | Deterministic packing, inventory, 3D, import and export checks | None |
 | `live` | Small checks that actually need Astra or photo recognition | Real OpenAI calls |
@@ -54,7 +54,7 @@ The [Kane workflow](../../.github/workflows/kane.yml) runs on relevant pushes to
 
 Use **Actions → Kane CLI → Run workflow** for wider suites or record mode. `application_ref` accepts your friend's branch name or commit; the test harness stays on the workflow branch, and the application is checked out separately. `application_directory` defaults to `final` and can select the repository root if the app moves there.
 
-GitHub exposes manual workflow dispatch after the workflow exists on the default branch. To bootstrap recordings on this setup branch before merging, a trusted push whose commit message includes **`[kane:record]`** runs smoke in record mode. Ordinary commits run strict check mode. This marker is ignored for PR events; fork PRs receive source checks without secret-backed browser execution.
+Select `kane-cli` as the workflow branch while this setup is being developed. Manual REST workflow dispatch has been verified on that branch. A trusted push whose commit message includes **`[kane:record]`** also runs smoke in record mode to bootstrap recordings. Ordinary commits run strict check mode. This marker is ignored for PR events; fork PRs receive source checks without secret-backed browser execution. Check and record runs use separate cancellation groups, so a routine PR check cannot cancel a recording run.
 
 After merging the workflow into `main`, run record mode there once. GitHub's default-branch cache can then be restored by application PR branches. A cache produced only on `kane-cli` is scoped to that branch. A cache miss is an explicit setup failure, not a skipped green test.
 
