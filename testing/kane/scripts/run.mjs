@@ -203,16 +203,24 @@ async function startServer(appDir, baseUrl) {
   ])
     delete env[key];
   if (!selected.some((test) => test.live)) env.OPENAI_API_KEY = "";
+  const standaloneDir = path.join(appDir, ".next", "standalone");
+  const standaloneServer = path.join(standaloneDir, "server.js");
+  let command = [
+    path.join(appDir, "node_modules", "next", "dist", "bin", "next"),
+    "start", "--hostname", "127.0.0.1", "--port", String(port),
+  ];
+  if (await fs.stat(standaloneServer).then((file) => file.isFile(), () => false)) {
+    // Next's generated server needs its static/public assets beside that output.
+    await fs.cp(path.join(appDir, ".next", "static"), path.join(standaloneDir, ".next", "static"), { recursive: true });
+    if (await fs.stat(path.join(appDir, "public")).then((file) => file.isDirectory(), () => false))
+      await fs.cp(path.join(appDir, "public"), path.join(standaloneDir, "public"), { recursive: true });
+    command = [standaloneServer];
+    env.HOSTNAME = "127.0.0.1";
+    env.PORT = String(port);
+  }
   server = spawn(
     process.execPath,
-    [
-      path.join(appDir, "node_modules", "next", "dist", "bin", "next"),
-      "start",
-      "--hostname",
-      "127.0.0.1",
-      "--port",
-      String(port),
-    ],
+    command,
     {
       cwd: appDir,
       env,

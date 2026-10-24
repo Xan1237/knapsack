@@ -1,6 +1,6 @@
 # Nine automatic smoke checks
 
-Application baseline: main `c674482`, merged into `kane-cli`. The new travel demo still has nine rows including Sage linen shirt and Cream knit; the nine retained control contracts remain present. The application sources match that baseline; changes in this branch concern tests, CI and documentation.
+Application baseline: main `5822969`, merged into `kane-cli`, including standalone deployment output. The travel demo still has nine rows including Sage linen shirt and Cream knit; the nine retained control contracts remain present. The application sources match that baseline; changes in this branch concern tests, CI and documentation.
 
 Each row is one independent Kane-generated one-step test on a separate GitHub runner. The label is its Actions job name. Assertions use DOM/text state; these checks make no claims about physical geometry, rendered pixels, provider correctness or persistence.
 

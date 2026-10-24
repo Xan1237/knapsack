@@ -40,6 +40,8 @@ npm run run --prefix testing/kane -- --suite smoke --mode check --start-server -
 
 Local smoke runs use one browser at a time. CI runs all nine simultaneously on separate machines. `--test <id>` selects one case. The managed server defaults to port 3100 and closes only its own process; an existing development server on port 3000 is left alone. `--base-url` or `KANE_BASE_URL` can target an existing server when `--start-server` is omitted.
 
+For a standalone Next build, the harness starts the generated `.next/standalone/server.js` with its static/public assets, matching the deployment entry point. Older ordinary builds use `next start`. This preparation changes only generated build output.
+
 ## Scope and maintenance
 
 `smoke` is the automatic nine-case set. `regression`, `live` and `all` are optional manual suites containing earlier saved designs, including known unresolved assertions; a green smoke run does not establish those broader behaviors as passing. Historical landing-animation and visual 3D checks are outside the small gate.
