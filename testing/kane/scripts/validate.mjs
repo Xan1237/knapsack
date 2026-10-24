@@ -44,11 +44,14 @@ for (const test of tests) {
     );
 }
 for (const id of manifest.suites.smoke.tests) {
-  if (manifest.tests.find((test) => test.id === id).live)
+  const test = manifest.tests.find((test) => test.id === id);
+  if (test.live)
     throw new Error("Smoke tests must not require live provider calls");
+  if (test.file !== `${test.id}_test.md` || !test.label)
+    throw new Error("Smoke cases need a clear matrix label and matching recording-folder ID");
 }
-if (manifest.suites.smoke.tests.length > 3 || manifest.suites.smoke.timeoutSeconds > 90)
-  throw new Error("Automatic smoke must stay at three tests or fewer and 90 seconds or less");
+if (manifest.suites.smoke.tests.length !== 10 || manifest.suites.smoke.timeoutSeconds > 300)
+  throw new Error("Automatic smoke must contain exactly ten small checks and a local batch limit of five minutes or less");
 const workflow = parseDocument(
   await fs.readFile(
     path.resolve(harnessDir, "../../.github/workflows/kane.yml"),
@@ -69,8 +72,10 @@ if (yaml.permissions?.contents !== "read")
   throw new Error("The workflow must use read-only repository permissions");
 if (yaml.env?.KANE_MODE !== "${{ inputs.mode || 'check' }}")
   throw new Error("Pushes and PRs must always use strict check mode");
-if (Object.keys(yaml.jobs).length !== 1)
-  throw new Error("Keep smoke in one job to avoid duplicate setup/build transfers");
+if (yaml.jobs.browser?.strategy?.["max-parallel"] !== 10 || yaml.jobs.browser.strategy["fail-fast"] !== false)
+  throw new Error("Run all ten smoke matrix jobs independently in parallel");
+if (!yaml.jobs.build || yaml.jobs.browser.needs !== "build")
+  throw new Error("Build the exact application once before the browser matrix");
 for (const job of Object.values(yaml.jobs)) {
   if (!job["timeout-minutes"]) throw new Error("Every job needs a timeout");
   for (const step of job.steps || []) {

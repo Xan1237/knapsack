@@ -1,6 +1,6 @@
 {
   "cliVersion": "0.10.0-rc.3",
-  "parallel": 2,
+  "parallel": 1,
   "testTimeoutSeconds": 30,
   "tests": [
     {
@@ -74,14 +74,92 @@
       "file": "direct-workspace-navigation-renders-the-photo-upload-ready_test.md",
       "live": false,
       "designRef": "t-61"
+    },
+    {
+      "id": "direct-pack-shows-your-belongings",
+      "file": "direct-pack-shows-your-belongings_test.md",
+      "label": "01 Workspace heading",
+      "live": false,
+      "designRef": "t-62"
+    },
+    {
+      "id": "photo-upload-input-advertises-jpeg-png-and-webp",
+      "file": "photo-upload-input-advertises-jpeg-png-and-webp_test.md",
+      "label": "02 Photo formats",
+      "live": false,
+      "designRef": "t-71"
+    },
+    {
+      "id": "add-item-opens-add-an-item-manually-menu",
+      "file": "add-item-opens-add-an-item-manually-menu_test.md",
+      "label": "03 Add item menu",
+      "live": false,
+      "designRef": "t-70"
+    },
+    {
+      "id": "load-demo-restores-nine-items-including-sage-linen-shirt",
+      "file": "load-demo-restores-nine-items-including-sage-linen-shirt_test.md",
+      "label": "04 Demo inventory",
+      "live": false,
+      "designRef": "t-68"
+    },
+    {
+      "id": "select-cream-knit-fills-item-name-with-cream-knit",
+      "file": "select-cream-knit-fills-item-name-with-cream-knit_test.md",
+      "label": "05 Select item",
+      "live": false,
+      "designRef": "t-69"
+    },
+    {
+      "id": "exclude-cream-knit-unchecks-its-include-checkbox",
+      "file": "exclude-cream-knit-unchecks-its-include-checkbox_test.md",
+      "label": "06 Exclude item",
+      "live": false,
+      "designRef": "t-67"
+    },
+    {
+      "id": "pin-sage-linen-shirt-disables-its-include-checkbox",
+      "file": "pin-sage-linen-shirt-disables-its-include-checkbox_test.md",
+      "label": "07 Pin essential",
+      "live": false,
+      "designRef": "t-66"
+    },
+    {
+      "id": "top-view-offers-perspective-view",
+      "file": "top-view-offers-perspective-view_test.md",
+      "label": "08 Top view",
+      "live": false,
+      "designRef": "t-63"
+    },
+    {
+      "id": "exploded-view-becomes-pressed",
+      "file": "exploded-view-becomes-pressed_test.md",
+      "label": "09 Exploded toggle",
+      "live": false,
+      "designRef": "t-64"
+    },
+    {
+      "id": "move-items-offers-finish-moving",
+      "file": "move-items-offers-finish-moving_test.md",
+      "label": "10 Move items mode",
+      "live": false,
+      "designRef": "t-65"
     }
   ],
   "suites": {
     "smoke": {
-      "timeoutSeconds": 60,
+      "timeoutSeconds": 240,
       "tests": [
-        "direct-workspace-navigation-renders-the-photo-upload-ready",
-        "loaded-demo-rows-identify-their-provenance"
+        "direct-pack-shows-your-belongings",
+        "photo-upload-input-advertises-jpeg-png-and-webp",
+        "add-item-opens-add-an-item-manually-menu",
+        "load-demo-restores-nine-items-including-sage-linen-shirt",
+        "select-cream-knit-fills-item-name-with-cream-knit",
+        "exclude-cream-knit-unchecks-its-include-checkbox",
+        "pin-sage-linen-shirt-disables-its-include-checkbox",
+        "top-view-offers-perspective-view",
+        "exploded-view-becomes-pressed",
+        "move-items-offers-finish-moving"
       ]
     },
     "regression": {
@@ -97,7 +175,17 @@
         "landing-packing-link-opens-the-combined-workspace",
         "loaded-demo-rows-identify-their-provenance",
         "current-demo-inventory-drives-the-webgl-bag",
-        "direct-workspace-navigation-renders-the-photo-upload-ready"
+        "direct-workspace-navigation-renders-the-photo-upload-ready",
+        "direct-pack-shows-your-belongings",
+        "photo-upload-input-advertises-jpeg-png-and-webp",
+        "add-item-opens-add-an-item-manually-menu",
+        "load-demo-restores-nine-items-including-sage-linen-shirt",
+        "select-cream-knit-fills-item-name-with-cream-knit",
+        "exclude-cream-knit-unchecks-its-include-checkbox",
+        "pin-sage-linen-shirt-disables-its-include-checkbox",
+        "top-view-offers-perspective-view",
+        "exploded-view-becomes-pressed",
+        "move-items-offers-finish-moving"
       ]
     },
     "live": {
@@ -120,7 +208,17 @@
         "landing-packing-link-opens-the-combined-workspace",
         "loaded-demo-rows-identify-their-provenance",
         "current-demo-inventory-drives-the-webgl-bag",
-        "direct-workspace-navigation-renders-the-photo-upload-ready"
+        "direct-workspace-navigation-renders-the-photo-upload-ready",
+        "direct-pack-shows-your-belongings",
+        "photo-upload-input-advertises-jpeg-png-and-webp",
+        "add-item-opens-add-an-item-manually-menu",
+        "load-demo-restores-nine-items-including-sage-linen-shirt",
+        "select-cream-knit-fills-item-name-with-cream-knit",
+        "exclude-cream-knit-unchecks-its-include-checkbox",
+        "pin-sage-linen-shirt-disables-its-include-checkbox",
+        "top-view-offers-perspective-view",
+        "exploded-view-becomes-pressed",
+        "move-items-offers-finish-moving"
       ]
     }
   }

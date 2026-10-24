@@ -1,83 +1,47 @@
-# Kane CLI test setup
+# Kane smoke setup
 
-This folder owns the browser-test harness. Application development can continue independently in another branch. No application source is changed by the runner.
+The automatic gate is exactly **ten small Kane-generated smoke tests**. Each checks one visible workspace behavior; [CASES.md](CASES.md) lists their plain-English purpose and generated identities. Application code remains identical to the merged `main` baseline.
 
-## Everyday commands
+## GitHub Actions
 
-Use Node 22 or newer. From the repository root:
+The [workflow](../../.github/workflows/kane.yml) builds the application once, then starts ten separate matrix jobs with `max-parallel: 10`. Each gets its own production server and one headless Chrome session. A failed test does not cancel the other nine, so every result is visible.
+
+- Ordinary pushes and PRs always use strict replay, with repair disabled.
+- Every case has a hard **30-second** check limit including session startup; each matrix runner has a 60-second Kane batch limit.
+- The whole automatic pipeline targets **under five minutes from push to success**. GitHub queue delays remain outside our control; actual timing is in the workflow run.
+- npm, Next build and managed Kane runtime caches shorten setup. Each test has its own recording cache, keyed by CLI version and generated test content; parallel jobs cannot overwrite each other's recordings.
+- Each job publishes Markdown, JSON, JUnit and sealed Kane evidence. Missing recordings, unresolved variables, interrupted tests and absent terminal results fail the gate.
+- Fork PRs receive build/source checks without secret-backed browser execution.
+
+The gate needs repository secrets `LT_USERNAME` and `LT_ACCESS_KEY`, already configured. These smoke checks make no provider calls. Optional manual live suites use the server-only `OPENAI_API_KEY` secret.
+
+## Recording and repair
+
+Choose **Actions > Kane smoke > Run workflow**, branch `kane-cli`, suite `smoke`, mode `record`. First authoring is slower than replay; each matrix member gets a five-minute authoring budget. Successful recordings are cached even if another test fails. Failed repairs invalidate that case's approval.
+
+Set optional `test_id` to repair only that case. Normal pushes never start authoring, regardless of commit message. Check and record runs have separate cancellation groups. After merging this workflow into `main`, record there once so application PRs can restore the default-branch caches.
+
+`application_ref` tests a teammate's branch or exact commit while retaining this harness. `application_directory` defaults to `final` and also supports the repository root. CI checks out the application separately and runs the exact SHA used by the shared build.
+
+## Local use
+
+Use Node 22+. From the repository root:
 
 ```sh
 npm ci --prefix testing/kane
 npm run check --prefix testing/kane
 npm test --prefix testing/kane
 npm run build --prefix final
+npm run run --prefix testing/kane -- --suite smoke --mode record --start-server --parallel 1
+npm run run --prefix testing/kane -- --suite smoke --mode check --start-server --parallel 1
 ```
 
-The local runner starts a production server on port **3100**, waits for `/pack`, runs Kane, and closes only the server it started. It leaves a development server on port 3000 alone.
+Local smoke runs use a 240-second whole-batch limit and one browser at a time. CI runs all ten simultaneously on separate machines. `--test <id>` selects one case. The managed server defaults to port 3100 and closes only its own process; an existing development server on port 3000 is left alone. `--base-url` or `KANE_BASE_URL` can target an existing server when `--start-server` is omitted.
 
-```sh
-# One-time recording, or an explicit repair after a UI/test change:
-npm run run --prefix testing/kane -- --suite smoke --mode record --start-server
+## Scope and maintenance
 
-# Routine fast regression check, using approved recordings:
-npm run run --prefix testing/kane -- --suite smoke --mode check --start-server
-```
+`smoke` is the automatic ten-case set. `regression`, `live` and `all` are optional manual suites containing earlier saved designs, including known unresolved assertions; a green smoke run does not establish those broader behaviors as passing. Historical landing-animation and visual 3D checks are outside the small gate.
 
-Use `--headless` to hide the local test browser. CI always uses headless Chrome. Without `--start-server`, the runner targets an already running application at `KANE_BASE_URL` (default `http://127.0.0.1:3100`). `KANE_APP_DIR` can point at a separate checkout; by default it is the repo's `final` folder.
+Tests must be generated/refined through Kane assurance, never handwritten. The current requirements are [ten-smoke.md](requirements/ten-smoke.md). Generated files retain their assurance headers and criterion links. Recording directories, account profiles, local environment files and raw evidence stay out of git; GitHub retains evidence artifacts for seven days. Increment `recording-version.txt` to discard recordings deliberately.
 
-Kane locally uses the existing OAuth sign-in. GitHub uses the encrypted repository secrets `LT_USERNAME` and `LT_ACCESS_KEY`. Live suites additionally use `OPENAI_API_KEY`, exclusively on the application server. The fixture pool contains no credentials.
-
-## Small tests and runtime limits
-
-Every generated test file contains one small, independent intent step. Strict check mode gives **each test a hard 30-second budget**, including its session startup. A slow test fails the gate; it is not counted as passed. The smoke suite selects a few deterministic checks. The broader suites collect the other approved behaviors.
-
-| Suite | Coverage | Provider calls |
-| --- | --- | --- |
-| `smoke` | Direct workspace readiness and demo inventory labels | None |
-| `regression` | Smoke plus packing overflow and selection checks | None |
-| `live` | Pinned-item behavior in live Astra advice | Real OpenAI calls |
-| `all` | All currently configured checks | Real OpenAI calls |
-
-Automatic runs target **under five minutes from push to success**, including installs and build. The single CI job has a four-minute limit; GitHub queue delays remain outside our control. The smoke browser batch has two DOM checks capped at 60 seconds total, with a 30-second limit per test. Recording/repair is manual and has a 40-minute runner limit because first authoring is substantially slower than replay. `--timeout <seconds>` sets the whole-run limit and `--parallel <1–4>` sets isolated workers; neither relaxes the per-test check limit. Default parallelism is two.
-
-Check mode uses `--no-adaptive-heal` and fail-fast. It refuses missing or changed recordings before starting paid browser work. Record mode permits Kane to author or repair recordings. Successful cases are retained even if another repair fails; failed cases lose their recording approval. A failed or interrupted run always fails the job.
-
-## GitHub Actions
-
-The [Kane smoke workflow](../../.github/workflows/kane.yml) runs on relevant pushes to `main` and `kane-cli`, and on PRs into `main` after the workflow is merged there. One job:
-
-1. Checks the harness, lints/tests the selected application, and builds it once with TypeScript checking.
-2. Runs that exact build and application commit in the same job, avoiding a second install and build transfer.
-3. Restores npm, Next build and Kane recording caches.
-4. Runs the strict smoke suite for ordinary pushes/PRs. Outdated runs are cancelled.
-5. Publishes a job summary, JSON, JUnit and sealed Kane evidence even on a test failure.
-
-Use **Actions → Kane smoke → Run workflow** for wider suites or record mode. `test_id` optionally selects a single test for a focused repair; it must belong to the selected suite. `application_ref` accepts your friend's branch name or commit; the test harness stays on the workflow branch, and the application is checked out separately. `application_directory` defaults to `final` and can select the repository root if the app moves there.
-
-Select `kane-cli` as the workflow branch while this setup is being developed. Manual REST workflow dispatch has been verified on that branch. **Pushes and PRs always run strict smoke check mode**, regardless of commit message. Record mode and larger suites require manual dispatch; fork PRs receive source checks without secret-backed browser execution. Check and record runs use separate cancellation groups, so a routine PR check cannot cancel a recording run.
-
-After merging the workflow into `main`, run record mode there once. GitHub's default-branch cache can then be restored by application PR branches. A cache produced only on `kane-cli` is scoped to that branch. A cache miss is an explicit setup failure, not a skipped green test.
-
-## Updating tests
-
-The `_test.md` files are Kane-generated designs for the previously approved app workflows, split into small checks. Do not write or rewrite their steps by hand. Use Kane assurance (`context`, `design`, `maintain evolve`), review the proposed changes, and run record mode before using them as a PR gate. `suite.json` selects tests without changing their generated bodies. Validation rejects multi-step files from the active suite.
-
-The active smoke designs and approval are listed in [CASES.md](CASES.md). Broader regression tests can expose unresolved failures; they are not implied to pass by a green smoke run.
-
-Recordings live under ignored `.testmuai/tests/output-*` folders and have a content/version approval file, `.testmuai/recordings.json`. GitHub stores them in its cache, not git. Account profiles, credentials and `.env` files are never cached. Increment `recording-version.txt` to deliberately discard the existing recording pool.
-
-The generated collection-import test uses the bundled [step2 collection fixture](fixtures/step2-collection.json), independent of the application's checkout path. `npm run fixtures` writes absolute local fixture paths and the configured base URL to an ignored nonsecret Kane variable file.
-
-## Results and honest status
-
-Local results appear in ignored `results/`: `summary.md`, `summary.json`, `junit.xml`, CLI logs and the server log. Kane seals its evidence under `.testmuai/evidence/` and uploads completed runs to Test Manager. CI attaches these artifacts for seven days. No unfinished journey is counted as passed, and this setup does not imply that every app acceptance criterion has been proven.
-
-Useful commands:
-
-```sh
-npm run report --prefix testing/kane
-npm run run --prefix testing/kane -- --suite regression --mode record --start-server
-npm run run --prefix testing/kane -- --suite live --mode record --start-server
-```
-
-Implementation follows the official [Kane CI recipes](https://github.com/LambdaTest/kane-cli/blob/main/docs/user-guide/cicd.md), [recorded replay behavior](https://github.com/LambdaTest/kane-cli/blob/main/docs/user-guide/testmd/running.md), and [GitHub cache scoping](https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows).
+Implementation follows the official [Kane CI guide](https://github.com/LambdaTest/kane-cli/blob/main/docs/user-guide/cicd.md) and [GitHub cache scoping](https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows).

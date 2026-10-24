@@ -1,4 +1,4 @@
-# Automatic pushes/PRs: strict smoke only. Recording and repair are manual.
+# Ten parallel, isolated Kane smoke jobs. Recording/repair is manual.
 name: Kane smoke
 on:
   pull_request:
@@ -63,10 +63,13 @@ env:
   KANE_MODE: ${{ inputs.mode || 'check' }}
   KANE_TEST_ID: ${{ inputs.test_id || '' }}
 jobs:
-  smoke:
-    name: Build and Kane smoke
+  build:
+    name: Build and source checks
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ inputs.mode == 'record' && 45 || 4 }}
+    timeout-minutes: 4
+    outputs:
+      application_sha: ${{ steps.application-ref.outputs.sha }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -79,7 +82,8 @@ jobs:
           persist-credentials: false
       - name: Record exact application commit
         working-directory: application
-        run: echo "KANE_APPLICATION_REF=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        id: application-ref
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
@@ -96,6 +100,10 @@ jobs:
       - name: Test the CI harness
         working-directory: testing/kane
         run: npm test
+      - name: Select one matrix job per Kane test
+        id: matrix
+        working-directory: testing/kane
+        run: node scripts/matrix.mjs
       - name: Install application
         working-directory: ${{ env.KANE_APP_DIR }}
         run: npm ci --no-audit --no-fund
@@ -114,6 +122,57 @@ jobs:
       - name: Build application (includes TypeScript checks)
         working-directory: ${{ env.KANE_APP_DIR }}
         run: npm run build
+      - name: Share the exact production build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: kane-application-build
+          path: |-
+            ${{ env.KANE_APP_DIR }}/.next
+            !${{ env.KANE_APP_DIR }}/.next/cache
+          include-hidden-files: true
+          retention-days: 1
+  browser:
+    name: Smoke - ${{ matrix.label }}
+    needs: build
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ inputs.mode == 'record' && 10 || 3 }}
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix: ${{ fromJSON(needs.build.outputs.matrix) }}
+    env:
+      KANE_APPLICATION_REF: ${{ needs.build.outputs.application_sha }}
+      KANE_TEST_ID: ${{ matrix.id }}
+      KANE_RUN_TIMEOUT: ${{ inputs.mode == 'record' && '300' || '60' }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Check out the exact application build source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ needs.build.outputs.application_sha }}
+          path: application
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            testing/kane/package-lock.json
+            application/${{ inputs.application_directory || 'final' }}/package-lock.json
+      - name: Install harness
+        working-directory: testing/kane
+        run: npm ci --no-audit --no-fund
+      - name: Install application runtime dependencies
+        working-directory: ${{ env.KANE_APP_DIR }}
+        run: npm ci --omit=dev --no-audit --no-fund
+      - name: Restore production build
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: kane-application-build
+          path: ${{ env.KANE_APP_DIR }}/.next
       - name: Require credentials without printing values
         env:
           LT_USERNAME: ${{ secrets.LT_USERNAME }}
@@ -140,13 +199,13 @@ jobs:
         id: recordings
         uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
         with:
-          path: |
-            testing/kane/.testmuai/tests/output-*
+          path: |-
+            testing/kane/.testmuai/tests/output-${{ matrix.id }}
             testing/kane/.testmuai/recordings.json
-          key: kane-tapes-${{ runner.os }}-${{ hashFiles('testing/kane/recording-version.txt', 'testing/kane/package-lock.json') }}-${{ hashFiles('testing/kane/.testmuai/tests/*_test.md') }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: |
-            kane-tapes-${{ runner.os }}-${{ hashFiles('testing/kane/recording-version.txt', 'testing/kane/package-lock.json') }}-${{ hashFiles('testing/kane/.testmuai/tests/*_test.md') }}-
-            kane-tapes-${{ runner.os }}-${{ hashFiles('testing/kane/recording-version.txt', 'testing/kane/package-lock.json') }}-
+          key: kane-matrix-v1-${{ runner.os }}-${{ hashFiles('testing/kane/recording-version.txt', 'testing/kane/package-lock.json') }}-${{ matrix.id }}-${{ matrix.hash }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |-
+            kane-matrix-v1-${{ runner.os }}-${{ hashFiles('testing/kane/recording-version.txt', 'testing/kane/package-lock.json') }}-${{ matrix.id }}-${{ matrix.hash }}-
+            kane-matrix-v1-${{ runner.os }}-${{ hashFiles('testing/kane/recording-version.txt', 'testing/kane/package-lock.json') }}-${{ matrix.id }}-
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
       - name: Run Kane against the production server
         id: kane
@@ -156,7 +215,7 @@ jobs:
           LT_ACCESS_KEY: ${{ secrets.LT_ACCESS_KEY }}
           OPENAI_API_KEY: ${{ (inputs.suite == 'live' || inputs.suite == 'all') && secrets.OPENAI_API_KEY || '' }}
           KANE_CLI_CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
-        run: npm run run -- --start-server --headless
+        run: npm run run -- --start-server --headless --parallel 1 --timeout "$KANE_RUN_TIMEOUT"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
       - name: Check for approved recording entries
         id: cache-ready
@@ -167,15 +226,15 @@ jobs:
         if: always() && env.KANE_MODE == 'record' && github.event_name == 'workflow_dispatch' && steps.cache-ready.outputs.approved == 'true'
         uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
         with:
-          path: |
-            testing/kane/.testmuai/tests/output-*
+          path: |-
+            testing/kane/.testmuai/tests/output-${{ matrix.id }}
             testing/kane/.testmuai/recordings.json
           key: ${{ steps.recordings.outputs.cache-primary-key }}
       - name: Upload Kane result and evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: kane-${{ env.KANE_SUITE }}-${{ env.KANE_MODE }}-${{ github.run_attempt }}
+          name: kane-${{ matrix.id }}-${{ env.KANE_MODE }}-${{ github.run_attempt }}
           path: |
             testing/kane/results/
             testing/kane/.testmuai/evidence/*.evidence

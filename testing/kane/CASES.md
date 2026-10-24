@@ -1,18 +1,24 @@
-# Active smoke designs
+# Ten automatic smoke checks
 
-The user authorized automatic review and execution within the seven existing product workflows. These smaller Kane-generated scenarios/tests were reviewed and approved under that authorization on 2026-10-24; bodies are copied unchanged from assurance output.
+Application baseline: main `d812836`, merged into `kane-cli`. The application sources match that baseline; changes in this branch concern tests, CI and documentation.
 
-| Test | Scenario | Criterion | Observable result |
+Each row is one independent Kane-generated one-step test on a separate GitHub runner. The label is its Actions job name. Assertions use DOM/text state; these checks make no claims about physical geometry, rendered pixels, provider correctness or persistence.
+
+| Actions label | Generated design | Criterion | Test definition |
 | --- | --- | --- | --- |
-| t-61 | sc-54 | ac-60 | Direct `/pack` navigation renders the Your belongings heading and Add your photos control. |
-| t-32 | sc-22 | ac-21 | Loaded demo inventory rows show Demo labels. |
+| 01 Workspace heading | t-62 | ac-61 | [direct-pack-shows-your-belongings](.testmuai/tests/direct-pack-shows-your-belongings_test.md) |
+| 02 Photo formats | t-71 | ac-71 | [photo-upload-input-advertises-jpeg-png-and-webp](.testmuai/tests/photo-upload-input-advertises-jpeg-png-and-webp_test.md) |
+| 03 Add item menu | t-70 | ac-70 | [add-item-opens-add-an-item-manually-menu](.testmuai/tests/add-item-opens-add-an-item-manually-menu_test.md) |
+| 04 Demo inventory | t-68 | ac-67, ac-68 | [load-demo-restores-nine-items-including-sage-linen-shirt](.testmuai/tests/load-demo-restores-nine-items-including-sage-linen-shirt_test.md) |
+| 05 Select item | t-69 | ac-69 | [select-cream-knit-fills-item-name-with-cream-knit](.testmuai/tests/select-cream-knit-fills-item-name-with-cream-knit_test.md) |
+| 06 Exclude item | t-67 | ac-66 | [exclude-cream-knit-unchecks-its-include-checkbox](.testmuai/tests/exclude-cream-knit-unchecks-its-include-checkbox_test.md) |
+| 07 Pin essential | t-66 | ac-65 | [pin-sage-linen-shirt-disables-its-include-checkbox](.testmuai/tests/pin-sage-linen-shirt-disables-its-include-checkbox_test.md) |
+| 08 Top view | t-63 | ac-62 | [top-view-offers-perspective-view](.testmuai/tests/top-view-offers-perspective-view_test.md) |
+| 09 Exploded toggle | t-64 | ac-63 | [exploded-view-becomes-pressed](.testmuai/tests/exploded-view-becomes-pressed_test.md) |
+| 10 Move items mode | t-65 | ac-64 | [move-items-offers-finish-moving](.testmuai/tests/move-items-offers-finish-moving_test.md) |
 
-Both use the configured nonsecret `knapsack_base_url`. They need no provider keys or responses. Each has one independent DOM intent step. Check mode caps each at 30 seconds and the batch at 60 seconds. The new readiness criterion/scenario/test were reviewed under the user's existing automatic approval and latest smoke requirement; approving ac-60 resolved the generation warning about its initial unreviewed state.
+Requirements: [ten-smoke.md](requirements/ten-smoke.md), containing the user request and current app controls. The user previously authorized automatic review and execution within these existing workflows and explicitly requested this ten-case slice. The eleven criteria, ten scenarios and ten tests were reviewed under that authorization; generation warnings about unapproved criteria are resolved by that review. Generated test bodies are copied unchanged.
 
-The initial three-case smoke selection recorded successfully, but strict replay exposed an unstable landing-link click and a visual 3D check exceeding 30 seconds. Those saved designs remain in manual regression. The demo-label check subsequently passed strict replay on its own. The local assurance evolve session superseded the older uc-4 design generation when narrowing the scope; the repo preserves the historical generated files for manual replay, without claiming those old criteria are proven by the new readiness test.
+Strict checks have a 30-second member deadline. CI runs all ten in parallel, one browser per runner. The shared build and per-test JSON/JUnit/evidence artifacts make the result reviewable. Recording and repair require a separate manual workflow run and may take longer than replay.
 
-The [isolated strict demo-label check](https://github.com/Xan1237/knapsack/actions/runs/40140492403) passed in 17 seconds; its full CI run took 74 seconds. The [manual readiness recording](https://github.com/Xan1237/knapsack/actions/runs/40140624330) also passed and saved its approved recording. The two-case automatic push run publishes its own measured timings and sealed evidence in GitHub Actions; these earlier runs do not establish that combined result. The new readiness design consumed 15.92 Kane credits.
-
-The previous packing/overflow smoke selection is retained in manual regression. Its initial CI recording passed two checks and failed the explicit leave-out selection check. This unresolved failure must remain visible in regression results; reducing smoke scope does not establish that behavior as passing. Other generated app designs remain outside this active gate until reviewed and recorded.
-
-Failure inspection found an automation error: the recorded assertion inspected the currently selected Sage linen shirt after clicking Leave out for Cream knit. The screenshot showed Cream knit unchecked and eight items included, while Sage remained selected. No application change was made. The recorded assertion still needs a focused Kane repair before this regression case can pass.
+Older long/visual/provider designs remain manual regression snapshots, including known unresolved assertions. A green smoke suite proves only the ten narrow states above. The previous two-browser-per-runner smoke attempt exceeded its deadline, which is why the current workflow isolates each case on its own machine. No application code was changed to accommodate the tests.
