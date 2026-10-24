@@ -53,12 +53,17 @@ import {
   categories,
   suitcases,
   revisionOf,
+  packingItems,
 } from "@/lib/domain";
 import { initialState, reducer, mergeSuggestions } from "@/lib/state";
 import { loadSession, saveSession } from "@/lib/persistence";
 import { validatePlan } from "@/lib/validate";
 import { bagForState, importCollection } from "@/lib/collection";
 import PackingAssistant from "./PackingAssistant";
+
+const GeneratedMeshPreview = dynamic(() => import("./GeneratedMeshPreview"), {
+  ssr: false,
+});
 
 const SuitcaseScene = dynamic(() => import("./SuitcaseScene"), {
   ssr: false,
@@ -153,7 +158,7 @@ export default function PackingWorkspace() {
     playback.revision === revision
       ? playback
       : { revision, step: plan?.placements.length ?? 0, playing: false };
-  const maxStep = plan?.placements.length ?? 0,
+  const maxStep = plan ? plan.placements.length + (bag.clamshell ? 1 : 0) : 0,
     step = Math.min(maxStep, effectivePlayback.step);
   const placedCount = current ? plan.placements.length : 0;
   const usedVolume =
@@ -246,7 +251,11 @@ export default function PackingWorkspace() {
     if (!loaded) return;
     const timer = setTimeout(() => {
       setPackingError("");
-      worker.current?.postMessage({ items: state.items, bag, revision });
+      worker.current?.postMessage({
+        items: packingItems(state.items),
+        bag,
+        revision,
+      });
     }, 180);
     return () => clearTimeout(timer);
   }, [revision, loaded, state.items, bag]);
@@ -666,11 +675,11 @@ export default function PackingWorkspace() {
                     <strong>{p.name}</strong>
                     <span>
                       {p.status === "analyzing"
-                        ? "Analyzing photo…"
+                        ? "Astra is creating your 3D meshes…"
                         : p.status === "queued"
                           ? "Queued for analysis"
                           : p.status === "done"
-                            ? "Photo analyzed"
+                            ? "3D mesh ready"
                             : p.error}
                     </span>
                   </div>
@@ -754,7 +763,7 @@ export default function PackingWorkspace() {
                     <span className="item-text">
                       <strong>{item.label}</strong>
                       <small>
-                        {item.demo ? "Demo · " : ""}
+                        {item.demo ? "Demo · " : item.mesh ? "Astra 3D · " : ""}
                         {categoryNames[item.category]}
                         {item.edited ? " · adjusted" : ""}
                       </small>
@@ -908,7 +917,14 @@ export default function PackingWorkspace() {
                 aria-label="Exploded view"
                 aria-pressed={exploded}
                 title="Exploded view"
-                onClick={() => setExploded((v) => !v)}
+                onClick={() => {
+                  setExploded((v) => !v);
+                  setPlayback({
+                    revision,
+                    step: plan?.placements.length ?? 0,
+                    playing: false,
+                  });
+                }}
               >
                 <Expand size={17} />
               </button>
@@ -952,7 +968,14 @@ export default function PackingWorkspace() {
                 min={0}
                 max={100}
                 value={layer}
-                onChange={(e) => setLayer(Number(e.target.value))}
+                onChange={(e) => {
+                  setLayer(Number(e.target.value));
+                  setPlayback({
+                    revision,
+                    step: plan?.placements.length ?? 0,
+                    playing: false,
+                  });
+                }}
               />
               <span>{layer === 100 ? "All layers" : "Lower layers"}</span>
             </div>
@@ -961,12 +984,54 @@ export default function PackingWorkspace() {
               onClick={() => {
                 setLayer(100);
                 setExploded(false);
-                setPlayback({ revision, step: maxStep, playing: false });
+                setPlayback({
+                  revision,
+                  step: plan?.placements.length ?? 0,
+                  playing: false,
+                });
               }}
             >
               Show all
             </button>
           </div>
+          {bag.clamshell && (
+            <div className="compartment-summary">
+              <span>
+                <strong>Main compartment</strong> ·{" "}
+                {current
+                  ? plan.placements.filter((p) => p.compartment === "base")
+                      .length
+                  : "—"}{" "}
+                items
+              </span>
+              <span>
+                <strong>Lid compartment</strong> ·{" "}
+                {current
+                  ? plan.placements.filter((p) => p.compartment === "lid")
+                      .length
+                  : "—"}{" "}
+                items
+              </span>
+              <button
+                className="text-button"
+                disabled={!current}
+                onClick={() => {
+                  setExploded(false);
+                  setLayer(100);
+                  setPlayback({
+                    revision,
+                    step:
+                      step === maxStep
+                        ? (plan?.placements.length ?? 0)
+                        : maxStep,
+                    playing: false,
+                  });
+                }}
+              >
+                {step === maxStep ? "Open suitcase" : "Close suitcase"}
+              </button>
+            </div>
+          )}
           <div
             className={`plan-card ${current && plan.unplaced.length ? "partial" : ""}`}
             aria-live="polite"
@@ -1095,7 +1160,7 @@ export default function PackingWorkspace() {
                   onClick={() => {
                     setPackingError("");
                     worker.current?.postMessage({
-                      items: state.items,
+                      items: packingItems(state.items),
                       bag,
                       revision,
                     });
@@ -1135,8 +1200,12 @@ export default function PackingWorkspace() {
               <strong>Packing, one step at a time.</strong>
               <span>
                 {step === maxStep
-                  ? "The full picture"
-                  : `Step ${step} of ${maxStep}`}
+                  ? bag.clamshell
+                    ? "Final step · suitcase closed"
+                    : "The full picture"
+                  : bag.clamshell && step === maxStep - 1
+                    ? "Both halves packed · ready to close"
+                    : `Step ${step} of ${maxStep}`}
               </span>
             </div>
             <input
@@ -1175,16 +1244,22 @@ export default function PackingWorkspace() {
                 className="editor-preview"
                 style={{ background: active.color + "35" }}
               >
-                <div
-                  className={`object-preview ${active.category}`}
-                  style={{
-                    background: active.color,
-                    transform: `rotate(-12deg) scale(${Math.min(1.4, Math.max(0.55, uniform))})`,
-                  }}
-                >
-                  <ItemIcon category={active.category} size={46} />
-                </div>
-                <span>ESTIMATED 3D ITEM</span>
+                {active.mesh ? (
+                  <GeneratedMeshPreview item={active} />
+                ) : (
+                  <div
+                    className={`object-preview ${active.category}`}
+                    style={{
+                      background: active.color,
+                      transform: `rotate(-12deg) scale(${Math.min(1.4, Math.max(0.55, uniform))})`,
+                    }}
+                  >
+                    <ItemIcon category={active.category} size={46} />
+                  </div>
+                )}
+                <span>
+                  {active.mesh ? "ASTRA-GENERATED 3D" : "ESTIMATED 3D ITEM"}
+                </span>
               </div>
               <label className="field-label" htmlFor="item-name">
                 ITEM NAME

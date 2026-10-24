@@ -108,10 +108,12 @@ describe("packing contract", () => {
       const s = (50 + ((index * 7) % 16) * 5) / 100;
       return { ...i, scale: [s, s, s] as Vec3 };
     });
-    const result = pack(items, suitcases[0]);
+    // Preserve the original single-cavity exhaustion regression separately.
+    const originalBag = { ...suitcases[0], clamshell: false };
+    const result = pack(items, originalBag);
     expect(result.outcome).toBe("search-exhausted");
     expect(result.conflicts).toEqual([]);
-    expect(validatePlan(result, items, suitcases[0]).valid).toBe(true);
+    expect(validatePlan(result, items, originalBag).valid).toBe(true);
   });
   it("identifies a partial supported layout without pretending the heuristic proved a conflict", () => {
     const items = [item("a", [60, 60, 60]), item("b", [60, 60, 60])],

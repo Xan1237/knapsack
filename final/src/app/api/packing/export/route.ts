@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
           photos,
           plan,
           estimated: true,
-          algorithm: "bounded-priority-extreme-edge-v1",
+          algorithm: bag.clamshell
+            ? "bounded-clamshell-priority-extreme-edge-v1"
+            : "bounded-priority-extreme-edge-v1",
         },
         null,
         2,

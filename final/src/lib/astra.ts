@@ -4,6 +4,7 @@ import { z } from "zod";
 import { type Item, type Suitcase, revisionOf, sizeOf } from "./domain";
 import { pack } from "./packing";
 import { validatePlan } from "./validate";
+import { astraModel } from "./model-config";
 
 const selectionSchema = z.object({
   summary: z.string(),
@@ -28,7 +29,7 @@ export async function suggestPacking(
     timeout: 60000,
     maxRetries: 0,
   });
-  const model = process.env.OPENAI_MODEL || "gpt-6-astra";
+  const model = astraModel();
   const response = await client.responses.parse({
     model,
     store: false,
@@ -41,6 +42,9 @@ export async function suggestPacking(
         name: bag.name,
         dimensions: bag.dimensions,
         clearance: bag.clearance,
+        compartments: bag.clamshell
+          ? { count: 2, depthEach: bag.dimensions[2] / 2 }
+          : { count: 1, depthEach: bag.dimensions[2] },
       },
       items: included.map((i) => ({
         id: i.id,

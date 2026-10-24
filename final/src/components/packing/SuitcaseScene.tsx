@@ -28,6 +28,8 @@ import {
   sizeOf,
 } from "@/lib/domain";
 import { itemQuaternion } from "@/lib/render-transform";
+import GeneratedMesh from "./GeneratedMesh";
+import ClamshellCase from "./ClamshellCase";
 
 const unit = 100;
 function Block({
@@ -305,7 +307,17 @@ function Belonging({
       }}
     >
       <group scale={[d[0] / unit, d[2] / unit, d[1] / unit]}>
-        {item.modelUrl ? (
+        {item.mesh ? (
+          <>
+            <GeneratedMesh mesh={item.mesh} />
+            {selected && (
+              <mesh>
+                <boxGeometry args={[1.02, 1.02, 1.02]} />
+                <meshBasicMaterial color="#d18c54" wireframe />
+              </mesh>
+            )}
+          </>
+        ) : item.modelUrl ? (
           <>
             <AssetBoundary
               key={item.modelUrl}
@@ -460,8 +472,56 @@ type Props = {
   view?: "perspective" | "top";
   onModelError?: (message: string) => void;
 };
-function Scene(props: Props) {
+
+function PackedItems({
+  props,
+  compartment,
+}: {
+  props: Props;
+  compartment?: "base" | "lid";
+}) {
   const { items, bag, plan, selected, onSelect, layer, step, exploded } = props;
+  const w = bag.dimensions[0] / unit,
+    l = bag.dimensions[1] / unit;
+  const depth = bag.dimensions[2] / (bag.clamshell ? 2 : 1);
+  return (
+    <>
+      {plan?.placements
+        .filter((p) => p.compartment === compartment)
+        .map((p) => {
+          const item = items.find((i) => i.id === p.id);
+          if (
+            !item ||
+            p.order > step ||
+            p.position[2] >
+              bag.clearance + ((depth - bag.clearance) * layer) / 100 + 0.001
+          )
+            return null;
+          const dims = permutations[p.orientation].map((k) => sizeOf(item)[k]);
+          const position: Vec3 = [
+            (p.position[0] + dims[0] / 2) / unit - w / 2,
+            (p.position[2] + dims[2] / 2) / unit +
+              (exploded ? p.position[2] / 80 : 0),
+            (p.position[1] + dims[1] / 2) / unit - l / 2,
+          ];
+          return (
+            <Belonging
+              key={p.id}
+              item={item}
+              position={position}
+              orientation={p.orientation}
+              selected={selected === p.id}
+              onSelect={onSelect}
+              onModelError={props.onModelError}
+            />
+          );
+        })}
+    </>
+  );
+}
+
+function Scene(props: Props) {
+  const { items, bag, plan, selected, onSelect } = props;
   const w = bag.dimensions[0] / unit,
     l = bag.dimensions[1] / unit;
   const controls = useRef<OrbitControlsImpl>(null);
@@ -485,37 +545,21 @@ function Scene(props: Props) {
       />
       <directionalLight position={[-5, 4, -4]} intensity={1.2} />
       <group position={[-0.5, 0, 0.6]}>
-        <BagModel bag={bag} onModelError={props.onModelError} />
-        {plan?.placements.map((p) => {
-          const item = items.find((i) => i.id === p.id);
-          if (
-            !item ||
-            p.order > step ||
-            p.position[2] >
-              bag.clearance +
-                ((bag.dimensions[2] - bag.clearance) * layer) / 100 +
-                0.001
-          )
-            return null;
-          const dims = permutations[p.orientation].map((k) => sizeOf(item)[k]);
-          const position: Vec3 = [
-            (p.position[0] + dims[0] / 2) / unit - w / 2,
-            (p.position[2] + dims[2] / 2) / unit +
-              (exploded ? p.position[2] / 80 : 0),
-            (p.position[1] + dims[1] / 2) / unit - l / 2,
-          ];
-          return (
-            <Belonging
-              key={p.id}
-              item={item}
-              position={position}
-              orientation={p.orientation}
-              selected={selected === p.id}
-              onSelect={onSelect}
-              onModelError={props.onModelError}
-            />
-          );
-        })}
+        {bag.clamshell ? (
+          <ClamshellCase
+            bag={bag}
+            closed={
+              props.step > (plan?.placements.length ?? 0) && !props.exploded
+            }
+            base={<PackedItems props={props} compartment="base" />}
+            lid={<PackedItems props={props} compartment="lid" />}
+          />
+        ) : (
+          <>
+            <BagModel bag={bag} onModelError={props.onModelError} />
+            <PackedItems props={props} />
+          </>
+        )}
         {unplaced.map((u, index) => {
           const item = items.find((i) => i.id === u.id);
           if (!item) return null;

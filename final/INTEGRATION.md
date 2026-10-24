@@ -9,11 +9,13 @@ Both source implementations remain in their original locations. New work stays i
 ## Combined behavior
 
 - One reducer and IndexedDB inventory connect photo uploads, manual edits, essential pins and packing. A separate database preserves the original app's saved sessions.
+- On `bug-bash`, both model paths share `OPENAI_MODEL` (default `gpt-6-astra`). Photo analysis now returns validated indexed triangle meshes, rendered directly in the suitcase and item editor. Mesh data and model provenance survive persistence, resizing, duplication, native import and export. Invalid generated geometry produces an explicit retryable error. Existing manual/demo items and imported assets remain compatible.
 - Native and step2 collection imports preserve IDs, geometry, permitted rotations and model URLs. Export includes the current inventory and its packing plan.
 - Astra runs server-side, previews its proposed keep/leave selection through the packing engine, and applies only on request. Inventory edits retire old advice.
 - Make room offers checked swaps, protects essentials, names what would be removed and waits for the user's choice.
 - The scene loads optional glTF assets for items and bags with category-shape fallbacks, smooth placement, top view, orbit, zoom, layers, exploded view and animated packing order.
 - Bundled original model assets can be regenerated with `npm run fixtures:models`; `public/example-models.json` demonstrates the native handoff contract. `public/example-collection.json` demonstrates step2 import.
+- Preset bags now have a clamshell flag. Their declared total depth is divided into two usable cavities, and each placement identifies its base or lid compartment. Independent validation checks bounds and overlaps per cavity. The shared shell hinges closed at the final animation step, keeping each side's items attached. Native import/export and persisted custom bags retain this flag; legacy imported asset layouts remain supported.
 
 ## Validation in progress
 

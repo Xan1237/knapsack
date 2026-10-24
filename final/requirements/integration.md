@@ -10,7 +10,17 @@ ok cool so for my part of the projet assume you have 3d models of items and a ba
 
 Astra clarification: Astra suggestions inside the app.
 
+## User's mesh-generation request
+
+make it use astra for both. instead of using app code to construct the 3d objects, have astra return the 3d mesh.
+
+Both photo recognition/geometry and packing suggestions use Astra. New photo-generated items carry actual vertex, triangle and material data supplied by Astra; this data is rendered directly, persists across reload and survives visual edits and native collection export/import. Invalid mesh data produces a retryable error rather than a silent category-template substitution. The app still validates geometry and uses conservative item envelopes to check packing.
+
 ## Combined interface contract
+
+Suitcase update: edit the suitcase to be more like a real suitcase. two sides with space in both, with a final step in the animation to close the suitcase.
+
+Preset suitcase models open as two usable cavities with half of the total interior depth in each. Items are independently packed and validated in both halves. The final playback step closes the lid over the base; Open suitcase restores inspection. The landing story has the same two-sided layout and final closing motion. Capacity must not be doubled and meshes must remain inside the closed suitcase dimensions.
 
 This is a desktop web application at http://127.0.0.1:3000, with a landing page at / and a single combined packing workspace at /pack. Tests must target desktop Chrome, not a mobile emulator. The two source implementations are the root Next.js application and step2.
 

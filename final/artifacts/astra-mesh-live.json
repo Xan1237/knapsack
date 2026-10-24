@@ -1,0 +1,61 @@
+{
+  "kind": "genuine-live-astra-mesh-to-state-to-plan-and-advice",
+  "browserVerified": false,
+  "timestamp": "2026-10-24T22:37:25.896Z",
+  "fixtures": [
+    {
+      "file": "pump-bottle.jpg",
+      "proposals": [
+        {
+          "label": "Black pump bottle",
+          "category": "bottle",
+          "dimensions": [
+            75,
+            60,
+            260
+          ],
+          "model": "gpt-6-astra",
+          "vertices": 72,
+          "triangles": 136,
+          "materials": 2
+        }
+      ]
+    },
+    {
+      "file": "water-bottle.png",
+      "proposals": [
+        {
+          "label": "Clear plastic bottle",
+          "category": "bottle",
+          "dimensions": [
+            65,
+            65,
+            240
+          ],
+          "model": "gpt-6-astra",
+          "vertices": 64,
+          "triangles": 124,
+          "materials": 3
+        }
+      ]
+    }
+  ],
+  "corrections": "Pinned both bottles as essential, allowed tipping, and visually reduced the first to 90 percent",
+  "items": 2,
+  "placed": 2,
+  "validation": {
+    "valid": true,
+    "errors": []
+  },
+  "outcome": "complete",
+  "advice": {
+    "model": "gpt-6-astra",
+    "kept": 2,
+    "left": 0,
+    "preview": {
+      "placed": 2,
+      "unplaced": [],
+      "valid": true
+    }
+  }
+}

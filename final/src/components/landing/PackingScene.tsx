@@ -7,19 +7,28 @@ import {
   useEffect,
   useState,
   useRef,
-  useMemo,
 } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, RoundedBox } from "@react-three/drei";
-import { Group, MathUtils, Shape, Vector3, type Mesh } from "three";
+import { Group, MathUtils, Vector3, type Mesh } from "three";
+import ClamshellCase from "@/components/packing/ClamshellCase";
+import type { Suitcase as SuitcaseDefinition } from "@/lib/domain";
+import { landingReadyToClose } from "@/lib/landing-timeline";
 
 type V3 = [number, number, number];
 type SceneProps = {
   progress: RefObject<number>;
   reducedMotion: RefObject<boolean>;
 };
-const sage = "#798773";
-const trim = "#465640";
+const landingBag: SuitcaseDefinition = {
+  id: "landing",
+  name: "The weekender",
+  subtitle: "Two sides. Everything in its place.",
+  dimensions: [560, 385, 200],
+  clearance: 3,
+  clamshell: true,
+  color: "#798773",
+};
 const ease = (n: number) => {
   const x = MathUtils.clamp(n, 0, 1);
   return x * x * (3 - 2 * x);
@@ -345,292 +354,97 @@ function PackingItem({
 }
 
 function Suitcase({ progress, reducedMotion }: SceneProps) {
-  const lid = useRef<Group>(null);
-  const whole = useRef<Group>(null);
-  const closed = useRef(0);
-  const strap = useMemo(() => {
-    const shape = new Shape();
-    shape.moveTo(-0.62, 0);
-    shape.lineTo(0.62, 0);
-    shape.lineTo(0.62, 0.3);
-    shape.quadraticCurveTo(0.62, 0.44, 0.45, 0.44);
-    shape.lineTo(-0.45, 0.44);
-    shape.quadraticCurveTo(-0.62, 0.44, -0.62, 0.3);
-    shape.closePath();
-    return shape;
-  }, []);
-  useFrame((_, delta) => {
-    const target = ease((progress.current - 0.83) / 0.15);
-    closed.current = reducedMotion.current
-      ? target
-      : MathUtils.damp(closed.current, target, 6, delta);
-    if (lid.current)
-      lid.current.rotation.x = MathUtils.lerp(-1.88, 0, closed.current);
-    if (whole.current)
-      whole.current.rotation.y = MathUtils.lerp(
-        -0.16,
-        0.24,
-        ease(progress.current),
-      );
+  const closing = useRef(0);
+  useFrame(() => {
+    closing.current = landingReadyToClose(progress.current) ? 1 : 0;
   });
+  const itemProps = { progress, reducedMotion };
   return (
-    <group ref={whole} position={[0, -0.65, 0]} rotation={[0, -0.16, -0.035]}>
-      <Box
-        size={[5.6, 0.24, 3.85]}
-        at={[0, -0.23, 0]}
-        color={sage}
-        radius={0.17}
+    <group position={[0, -1.0, 0]} scale={0.8} rotation={[0, -0.12, -0.025]}>
+      <ClamshellCase
+        bag={landingBag}
+        closing={closing}
+        base={
+          <>
+            <PackingItem
+              start={[-2.14, 2.39, 0.68]}
+              end={[-1.62, 0.16, 0.78]}
+              rotation={[0.09, -0.25, -0.16]}
+              index={0}
+              {...itemProps}
+            >
+              <Shirt color="#aebc98" />
+            </PackingItem>
+            <PackingItem
+              start={[-1.3, 3.16, 1.1]}
+              end={[-1.62, 0.61, 0.78]}
+              rotation={[0.04, 0.18, -0.12]}
+              index={1}
+              {...itemProps}
+            >
+              <Shirt color="#e0d5be" knit />
+            </PackingItem>
+            <PackingItem
+              start={[0.35, 2.7, -0.02]}
+              end={[-0.31, 0.2, -0.45]}
+              rotation={[0.12, -0.3, -0.2]}
+              index={2}
+              {...itemProps}
+            >
+              <Sneaker />
+            </PackingItem>
+            <PackingItem
+              start={[-2.06, 1.85, -1.07]}
+              end={[-1.72, 0.09, -1.0]}
+              rotation={[0.1, -0.24, 0.1]}
+              index={6}
+              {...itemProps}
+            >
+              <Book />
+            </PackingItem>
+          </>
+        }
+        lid={
+          <>
+            <PackingItem
+              start={[1.14, 3.19, -0.18]}
+              end={[0.4, 0.2, -0.45]}
+              rotation={[-0.1, -0.25, 0.16]}
+              index={3}
+              {...itemProps}
+            >
+              <Sneaker flip />
+            </PackingItem>
+            <PackingItem
+              start={[2.26, 1.91, 0.96]}
+              end={[1.7, 0.32, 0.98]}
+              rotation={[0.12, -0.21, 0.12]}
+              index={4}
+              {...itemProps}
+            >
+              <Pouch />
+            </PackingItem>
+            <PackingItem
+              start={[2.55, 2.95, -0.9]}
+              end={[2.14, 0.22, -0.62]}
+              rotation={[0.08, 0.3, -0.18]}
+              index={5}
+              {...itemProps}
+            >
+              <Bottle />
+            </PackingItem>
+            <PackingItem
+              start={[0.93, 1.61, 2.13]}
+              end={[0.2, 0.15, 1.1]}
+              rotation={[0.15, -0.12, -0.24]}
+              index={7}
+              {...itemProps}
+            >
+              <Sunglasses />
+            </PackingItem>
+          </>
+        }
       />
-      <Box
-        size={[5.28, 0.12, 3.53]}
-        at={[0, -0.08, 0]}
-        color="#d6d5c2"
-        radius={0.12}
-      />
-      {[-1, 1].map((s) => (
-        <group key={s}>
-          <Box
-            size={[0.19, 1.27, 3.7]}
-            at={[s * 2.7, 0.35, 0]}
-            color={sage}
-            radius={0.08}
-          />
-          <Box
-            size={[5.48, 1.27, 0.19]}
-            at={[0, 0.35, s * 1.82]}
-            color={sage}
-            radius={0.08}
-          />
-          <Box
-            size={[0.055, 0.055, 3.67]}
-            at={[s * 2.71, 1.01, 0]}
-            color={trim}
-            radius={0.02}
-          />
-          <Box
-            size={[5.45, 0.055, 0.055]}
-            at={[0, 1.01, s * 1.83]}
-            color={trim}
-            radius={0.02}
-          />
-          <Box
-            size={[0.07, 0.91, 3.38]}
-            at={[s * 2.575, 0.44, 0]}
-            color="#b3b9a2"
-            radius={0.02}
-          />
-          {[-1, 1].map((z) => (
-            <group key={z} position={[s * 2.35, -0.52, z * 1.52]}>
-              <mesh castShadow rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.22, 0.22, 0.21, 28]} />
-                <meshStandardMaterial color="#394237" roughness={0.7} />
-              </mesh>
-              <mesh rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.11, 0.11, 0.225, 24]} />
-                <meshStandardMaterial
-                  color="#6c7463"
-                  metalness={0.4}
-                  roughness={0.5}
-                />
-              </mesh>
-            </group>
-          ))}
-        </group>
-      ))}
-      {Array.from({ length: 13 }, (_, i) => (
-        <Box
-          key={i}
-          size={[0.025, 0.91, 0.025]}
-          at={[-2.32 + i * 0.387, 0.31, 1.924]}
-          color="#65735f"
-          radius={0.008}
-        />
-      ))}
-      <mesh position={[0, 0.1, 1.92]} castShadow>
-        <extrudeGeometry
-          args={[
-            strap,
-            {
-              depth: 0.13,
-              bevelEnabled: true,
-              bevelSize: 0.025,
-              bevelThickness: 0.025,
-              bevelSegments: 3,
-              steps: 1,
-            },
-          ]}
-        />
-        <meshStandardMaterial color={trim} roughness={0.55} />
-      </mesh>
-      <Box
-        size={[0.88, 0.23, 0.16]}
-        at={[0, 0.32, 2.1]}
-        color="#7e8a70"
-        radius={0.05}
-      />
-      <Box
-        size={[0.02, 0.08, 3.31]}
-        at={[-0.59, 0.02, 0]}
-        color="#acb39d"
-        radius={0.005}
-      />
-      <group ref={lid} position={[0, 1.0, -1.83]} rotation={[-1.88, 0, 0]}>
-        <Box
-          size={[5.6, 0.24, 3.85]}
-          at={[0, 0.06, 1.83]}
-          color={sage}
-          radius={0.17}
-        />
-        <Box
-          size={[5.24, 0.075, 3.48]}
-          at={[0, -0.095, 1.83]}
-          color="#b7bea6"
-          radius={0.1}
-        />
-        <Box
-          size={[5.29, 0.045, 0.045]}
-          at={[0, -0.15, 0.2]}
-          color={trim}
-          radius={0.012}
-        />
-        <Box
-          size={[5.29, 0.045, 0.045]}
-          at={[0, -0.15, 3.46]}
-          color={trim}
-          radius={0.012}
-        />
-        {[-1, 1].map((s) => (
-          <Box
-            key={s}
-            size={[0.045, 0.045, 3.3]}
-            at={[s * 2.63, -0.15, 1.83]}
-            color={trim}
-            radius={0.012}
-          />
-        ))}
-        <Box
-          size={[4.72, 0.04, 1.36]}
-          at={[0, -0.155, 2.4]}
-          color="#a9b298"
-          radius={0.08}
-        />
-        <Box
-          size={[4.6, 0.016, 0.045]}
-          at={[0, -0.183, 1.8]}
-          color="#d5d6bf"
-          radius={0.008}
-        />
-        <Box
-          size={[0.1, 0.025, 0.18]}
-          at={[1.89, -0.2, 1.82]}
-          color="#8d8e6a"
-          radius={0.015}
-        />
-        {Array.from({ length: 24 }, (_, i) => (
-          <Box
-            key={i}
-            size={[0.012, 0.008, 1.16]}
-            at={[-2.2 + i * 0.19, -0.182, 2.43]}
-            color="#98a38a"
-            radius={0.002}
-          />
-        ))}
-        <Box
-          size={[0.62, 0.025, 0.25]}
-          at={[0, -0.15, 0.77]}
-          color="#d7d7bd"
-          radius={0.025}
-        />
-        {Array.from({ length: 13 }, (_, i) => (
-          <Box
-            key={i}
-            size={[0.035, 0.04, 2.91]}
-            at={[-2.3 + i * 0.383, 0.194, 1.83]}
-            color="#6b7a64"
-            radius={0.014}
-          />
-        ))}
-      </group>
-      <PackingItem
-        start={[-2.14, 2.39, 0.68]}
-        end={[-1.62, 0.16, 0.78]}
-        rotation={[0.09, -0.25, -0.16]}
-        index={0}
-        progress={progress}
-        reducedMotion={reducedMotion}
-      >
-        <Shirt color="#aebc98" />
-      </PackingItem>
-      <PackingItem
-        start={[-1.3, 3.16, 1.1]}
-        end={[-1.62, 0.61, 0.78]}
-        rotation={[0.04, 0.18, -0.12]}
-        index={1}
-        progress={progress}
-        reducedMotion={reducedMotion}
-      >
-        <Shirt color="#e0d5be" knit />
-      </PackingItem>
-      <PackingItem
-        start={[0.35, 2.7, -0.02]}
-        end={[-0.31, 0.2, -0.45]}
-        rotation={[0.12, -0.3, -0.2]}
-        index={2}
-        progress={progress}
-        reducedMotion={reducedMotion}
-      >
-        <Sneaker />
-      </PackingItem>
-      <PackingItem
-        start={[1.14, 3.19, -0.18]}
-        end={[0.4, 0.2, -0.45]}
-        rotation={[-0.1, -0.25, 0.16]}
-        index={3}
-        progress={progress}
-        reducedMotion={reducedMotion}
-      >
-        <Sneaker flip />
-      </PackingItem>
-      <PackingItem
-        start={[2.26, 1.91, 0.96]}
-        end={[1.7, 0.32, 0.98]}
-        rotation={[0.12, -0.21, 0.12]}
-        index={4}
-        progress={progress}
-        reducedMotion={reducedMotion}
-      >
-        <Pouch />
-      </PackingItem>
-      <PackingItem
-        start={[2.55, 2.95, -0.9]}
-        end={[2.14, 0.22, -0.62]}
-        rotation={[0.08, 0.3, -0.18]}
-        index={5}
-        progress={progress}
-        reducedMotion={reducedMotion}
-      >
-        <Bottle />
-      </PackingItem>
-      <PackingItem
-        start={[-2.06, 1.85, -1.07]}
-        end={[-1.72, 0.09, -1.0]}
-        rotation={[0.1, -0.24, 0.1]}
-        index={6}
-        progress={progress}
-        reducedMotion={reducedMotion}
-      >
-        <Book />
-      </PackingItem>
-      <PackingItem
-        start={[0.93, 1.61, 2.13]}
-        end={[0.2, 0.15, 1.1]}
-        rotation={[0.15, -0.12, -0.24]}
-        index={7}
-        progress={progress}
-        reducedMotion={reducedMotion}
-      >
-        <Sunglasses />
-      </PackingItem>
     </group>
   );
 }

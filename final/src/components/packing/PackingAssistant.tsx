@@ -11,7 +11,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import type { Item, Suitcase } from "@/lib/domain";
+import { type Item, type Suitcase, packingItems } from "@/lib/domain";
 import type { AstraAdvice } from "@/lib/astra";
 import type { PackingChoice } from "@/lib/choices";
 import styles from "./PackingAssistant.module.css";
@@ -82,7 +82,7 @@ export default function PackingAssistant({
     fetch("/api/packing/choices", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items, bag, wantedId }),
+      body: JSON.stringify({ items: packingItems(items), bag, wantedId }),
       signal: abort.signal,
     })
       .then(async (response) => {
@@ -128,7 +128,7 @@ export default function PackingAssistant({
       const response = await fetch("/api/astra/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, bag, preference }),
+        body: JSON.stringify({ items: packingItems(items), bag, preference }),
         signal: abort.signal,
       });
       const data = await response.json();

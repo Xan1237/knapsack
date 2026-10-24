@@ -1,6 +1,6 @@
 # Knapsack architecture
 
-Source reviewed: `ab661a3`, pulled from `origin/main` on 2026-10-24. This describes the implemented code. Review findings below are separate from changes already implemented.
+Source reviewed: `ab661a3`, pulled from `origin/main` on 2026-10-24. Updated for the Astra mesh increment on `bug-bash`. Review findings below are separate from changes already implemented.
 
 ## Repository and application boundaries
 
@@ -25,7 +25,7 @@ flowchart TD
   Workspace <--> State
   State <-->|Debounced local saving| DB[("IndexedDB: knapsack-final")]
   Photos["Uploaded photos"] --> Analyze["POST /api/analyze"]
-  Analyze <--> Vision["OpenAI vision adapter"]
+  Analyze <--> Vision["Astra recognition + triangle meshes"]
   Analyze -->|Validated item proposals| State
   State -->|Items, bag, revision| Worker["Browser packing worker"]
   Worker --> Solver["pack() — bounded geometry search"]
@@ -60,7 +60,7 @@ The landing scene builds its suitcase and eight travel items procedurally. Each 
 
 `PackingAssistant.tsx` owns the Astra and make-room dialogs, request cancellation, current-revision filtering, suggestion preview, and explicit apply controls. Its styles are a CSS Module. The main workspace still uses application-wide CSS classes.
 
-`SuitcaseScene.tsx` renders the computed plan. It supports procedural category shapes, optional glTF item and bag assets, animated placement, selection, orbit/zoom, top view, reset, layer filtering, exploded inspection, and packing-order playback. Failed asset loads fall back to category geometry; a lost WebGL context presents a retry action. These display settings do not change which items the solver includes.
+`SuitcaseScene.tsx` renders the computed plan. Astra photo items render their supplied triangle meshes through `GeneratedMesh.tsx`; the item editor uses the same geometry renderer. It also supports manual/demo category shapes, optional glTF item and bag assets, animated placement, selection, orbit/zoom, top view, reset, layer filtering, exploded inspection, and packing-order playback. Failed imported-asset loads fall back to category geometry; failed photo mesh generation produces an explicit photo error. A lost WebGL context presents a retry action. These display settings do not change which items the solver includes.
 
 ## Domain and state
 
@@ -79,7 +79,9 @@ The app limits retained state to 80 items and 12 photos. Playback, selection, la
 
 ## Packing engine and geometry
 
-The combined app's canonical units are millimeters, with X = width, Y = length, and Z = up. The renderer converts to Y-up world coordinates at 100 millimeters per world unit. `render-transform.ts` maps permitted solver rotations to signed Three.js quaternions.
+The combined app's canonical units are millimeters, with X = width, Y = length, and Z = up. The renderer converts to Y-up world coordinates at 100 millimeters per world unit. `render-transform.ts` maps permitted solver rotations to signed Three.js quaternions and provides the shared clamshell hinge pose.
+
+Preset bags have `clamshell: true`. Their total interior depth is split into equal main and lid cavities. A placement's `compartment` field selects its local cavity; identical coordinates in different halves represent separate physical space. Bounds, clearance, support and overlap are evaluated inside each cavity. `ClamshellCase.tsx` is shared by the landing and workspace renderers. The lid and its contents rotate together about the seam, and packing playback adds a final closing step. Tests transform placement corners into the closed pose to check they remain inside the original bag dimensions. Native imports and exports preserve the flag; custom bags without it retain their single-cavity/asset contract.
 
 `lib/packing.ts` uses a deterministic bounded search over rectangular item envelopes. It tries four item orders and adds an essential/priority-first order when those settings matter. Candidate positions come from the clearance origin and placed-item edges. It checks allowed axis permutations, wall clearance, item separation, and support. A raised item requires at least 65% footprint support during search. The default evaluation budget is 80,000 per attempted order; partial results favor essentials and higher-priority items.
 
@@ -101,9 +103,9 @@ All combined APIs run inside the Next application; the old Express server is not
 | `POST /api/packing/choices` | Calculate explicit swap options for an unplaced wanted item | Validated inventory; essential items excluded from removal candidates; remaining previously packed items retained |
 | `POST /api/packing/export` | Recompute and download the latest validated plan | Same-origin helper, validated form payload, named JSON attachment, no-store response |
 
-`lib/vision.ts` uses the server-side OpenAI SDK and structured output. The configured default is `OPENAI_VISION_MODEL=gpt-4.1-mini`. Vision returns labels, categories, colors, appearance, and estimated dimensions. Application code creates the procedural 3D shapes; the vision call does not reconstruct a photorealistic mesh.
+`lib/vision.ts` uses Astra through the server-side OpenAI SDK and structured output. `lib/model-config.ts` supplies `OPENAI_MODEL` (default `gpt-6-astra`) to both recognition and advice. Recognition returns labels, estimated dimensions, and actual low-poly vertex/triangle/material data, not shape-construction instructions. `mesh.ts` validates finite normalized coordinates, limits, topology references and nondegenerate three-dimensional geometry. `mesh-geometry.ts` converts that supplied topology to Three.js coordinates without inferring category shapes. Meshes remain approximate reconstructions rather than measured or photorealistic scans. The old vision-specific model setting is unused in the combined app.
 
-`lib/astra.ts` uses the separate `OPENAI_MODEL` setting, defaulting to `gpt-6-astra`. It receives item IDs and metadata plus the current fit result, then returns a proposed keep/leave selection. The server validates the IDs and essentials and computes its own geometry preview. The browser applies a suggestion only after the user chooses to apply it. These model names are defaults in this code, not a claim about model availability for another account.
+`lib/astra.ts` uses the same model setting. It receives item IDs and metadata plus the current fit result, then returns a proposed keep/leave selection. The server validates the IDs and essentials and computes its own geometry preview. Generated mesh arrays are stripped from worker and advice payloads; the UI, storage and exports retain them. The browser applies a suggestion only after the user chooses to apply it. The model name is a code default, not a claim about model availability for another account.
 
 Both adapters use `OPENAI_API_KEY` only on the server and request `store: false`. Missing credentials produce explicit unavailable states; manual editing, demo packing, and swap calculations do not need a model call. Neither adapter is the source of geometric truth.
 
@@ -149,4 +151,4 @@ This review did not make paid provider calls or rerun browser journeys. Existing
 5. **Bound server computation before a multi-user deployment.** Swap search can run a baseline solve, ten single-removal solves, and 45 pair-removal solves synchronously in a request. The photo concurrency counter is per process, and suggestions/exports have no shared job scheduling. Keep these limits explicit and move expensive search into bounded workers/jobs if concurrent use is introduced.
 6. **Close the integration evidence gap.** The direct-test baseline is healthy, but corrected photo, Astra, import, export, persistence, and 3D browser journeys still need complete passing runs. Add independent support validation if support is intended to be part of the validator's guarantee; retain the distinction between geometric estimates and physical packing proof.
 
-These findings are documented for review; no runtime refactor or package migration was performed in this session.
+The package ownership, workspace orchestration, advice freshness, and deployment findings remain recommendations. The later Astra mesh and clamshell increments described above do not implement that broader package migration or UI refactor.

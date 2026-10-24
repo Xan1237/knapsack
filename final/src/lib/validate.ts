@@ -23,11 +23,16 @@ export function validatePlan(
     [1, 2, 0],
     [2, 1, 0],
   ];
+  const cavity = [
+    bag.dimensions[0],
+    bag.dimensions[1],
+    bag.dimensions[2] / (bag.clamshell ? 2 : 1),
+  ];
   if (plan.revision !== revisionOf(items, bag)) errors.push("Stale revision");
   if (
     !Number.isFinite(bag.clearance) ||
     bag.clearance < 0 ||
-    bag.dimensions.some((n) => !Number.isFinite(n) || n <= bag.clearance * 2)
+    cavity.some((n) => !Number.isFinite(n) || n <= bag.clearance * 2)
   )
     errors.push("Invalid suitcase dimensions");
   if (new Set(items.map((i) => i.id)).size !== items.length)
@@ -44,6 +49,12 @@ export function validatePlan(
     items.filter((i) => i.included).map((i) => [i.id, i]),
   );
   for (const p of plan.placements) {
+    if (
+      bag.clamshell
+        ? !["base", "lid"].includes(p.compartment || "")
+        : !!p.compartment
+    )
+      errors.push(`Invalid compartment ${p.id}`);
     const item = included.get(p.id);
     if (!item || seen.has(p.id)) {
       errors.push(`Unknown or duplicate placement ${p.id}`);
@@ -73,7 +84,7 @@ export function validatePlan(
         (n, k) =>
           !Number.isFinite(n) ||
           n < bag.clearance - epsilon ||
-          n + p.dimensions[k] > bag.dimensions[k] - bag.clearance + epsilon,
+          n + p.dimensions[k] > cavity[k] - bag.clearance + epsilon,
       )
     )
       errors.push(`Out of bounds ${p.id}`);
@@ -90,6 +101,7 @@ export function validatePlan(
     for (let j = i + 1; j < plan.placements.length; j++) {
       const a = plan.placements[i],
         b = plan.placements[j];
+      if (a.compartment !== b.compartment) continue;
       const separate = [0, 1, 2].some(
         (k) =>
           a.position[k] + a.dimensions[k] + bag.clearance <=
