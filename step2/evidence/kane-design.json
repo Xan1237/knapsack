@@ -1,0 +1,732 @@
+{
+    "generatedBy":  "Kane CLI assurance",
+    "requirementSource":  "requirements/mvp.md",
+    "review":  "User approved both use cases and automatic review of consistent generated tests",
+    "summary":  {
+                    "nodes":  26,
+                    "edges":  64,
+                    "byLabel":  {
+                                    "source":  2,
+                                    "usecase":  2,
+                                    "ac":  8,
+                                    "gap":  4,
+                                    "scenario":  5,
+                                    "test":  5
+                                },
+                    "trust":  {
+                                  "trusted":  20,
+                                  "derived":  4,
+                                  "archived":  0
+                              },
+                    "fresh":  {
+                                  "fresh":  26,
+                                  "stale":  0,
+                                  "orphaned":  0,
+                                  "superseded":  0
+                              },
+                    "usecases":  2,
+                    "designed":  2,
+                    "coverage":  {
+                                     "pct":  100,
+                                     "nothingRunYet":  false
+                                 }
+                },
+    "nodes":  [
+                  {
+                      "slug":  "uc-1",
+                      "label":  "usecase",
+                      "title":  "Visualize an optimized bag packing",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "ac-1",
+                      "label":  "ac",
+                      "title":  "The app shows an animated 3D arrangement of the available modeled items within the modeled bag.",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "ac-2",
+                      "label":  "ac",
+                      "title":  "The app shows Astra packing suggestions inside the app.",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "sc-1",
+                      "label":  "scenario",
+                      "title":  "View animated 3D packing of modeled items",
+                      "trust":  "derived",
+                      "fresh":  "superseded"
+                  },
+                  {
+                      "slug":  "sc-2",
+                      "label":  "scenario",
+                      "title":  "View Astra packing suggestions in the app",
+                      "trust":  "derived",
+                      "fresh":  "superseded"
+                  },
+                  {
+                      "slug":  "t-1",
+                      "label":  "test",
+                      "title":  "Observe animated modeled-bag packing",
+                      "trust":  "derived",
+                      "fresh":  "superseded"
+                  },
+                  {
+                      "slug":  "t-2",
+                      "label":  "test",
+                      "title":  "Observe in-app Astra packing advice",
+                      "trust":  "derived",
+                      "fresh":  "superseded"
+                  },
+                  {
+                      "slug":  "sc-3",
+                      "label":  "scenario",
+                      "title":  "Play animated 3D packing of modeled items",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "sc-4",
+                      "label":  "scenario",
+                      "title":  "Request, preview and apply an Astra packing suggestion",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "ac-3",
+                      "label":  "ac",
+                      "title":  "During packing playback, an items placed counter is visible.",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "ac-4",
+                      "label":  "ac",
+                      "title":  "The previewed Astra item selection becomes applied when the user applies it.",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "t-3",
+                      "label":  "test",
+                      "title":  "Request and apply a real Astra suggestion on desktop web",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "t-4",
+                      "label":  "test",
+                      "title":  "Play modeled-bag packing animation on desktop web",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "uc-2",
+                      "label":  "usecase",
+                      "title":  "Choose which non-fitting items to keep",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "ac-5",
+                      "label":  "ac",
+                      "title":  "When modeled items do not all fit in the bag, the interface offers the person a choice of which items to keep.",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "ac-6",
+                      "label":  "ac",
+                      "title":  "After the person chooses which items to keep from a non-fitting set, the selected items reflect the person\u0027s keep choice.",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "ac-7",
+                      "label":  "ac",
+                      "title":  "Choosing which non-fitting items to keep does not require selecting a replacement product.",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "sc-5",
+                      "label":  "scenario",
+                      "title":  "Resolve a bag-capacity conflict by keeping preferred items",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "sc-6",
+                      "label":  "scenario",
+                      "title":  "Exclude an item not chosen to keep from the resulting selection",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "sc-7",
+                      "label":  "scenario",
+                      "title":  "Complete a keep choice without selecting a replacement product",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "ac-8",
+                      "label":  "ac",
+                      "title":  "After the person chooses which items to keep from a non-fitting set, an item the person chose not to keep is absent from the resulting selected-item set.",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "t-5",
+                      "label":  "test",
+                      "title":  "Keep preferred modeled items through a capacity conflict on web",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "t-6",
+                      "label":  "test",
+                      "title":  "Leave an unchosen modeled item out of the selected set on web",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "t-7",
+                      "label":  "test",
+                      "title":  "Finish a keep decision without a replacement product on web",
+                      "trust":  "trusted",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "gap-1",
+                      "label":  "gap",
+                      "title":  "[object Object]",
+                      "trust":  "derived",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "gap-2",
+                      "label":  "gap",
+                      "title":  "[object Object]",
+                      "trust":  "derived",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "gap-3",
+                      "label":  "gap",
+                      "title":  "[object Object]",
+                      "trust":  "derived",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "gap-4",
+                      "label":  "gap",
+                      "title":  "[object Object]",
+                      "trust":  "derived",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "mvp",
+                      "label":  "source",
+                      "title":  "mvp",
+                      "trust":  "derived",
+                      "fresh":  "fresh"
+                  },
+                  {
+                      "slug":  "readme",
+                      "label":  "source",
+                      "title":  "readme",
+                      "trust":  "derived",
+                      "fresh":  "fresh"
+                  }
+              ],
+    "links":  [
+                  {
+                      "type":  "DERIVES",
+                      "src":  "sha256:80e05fd5a0340f18ee6b24450b62d9d4c8ac7e5921305116f424cf0dee448f65",
+                      "dst":  "sha256:7e8a80dbdc4678e7d8c7ac1a2a8bc847a80d940075ade7c2da324e2a2be178eb",
+                      "anchors":  [
+                                      "L5-L5",
+                                      "L9-L9",
+                                      "L5-L5",
+                                      "L9-L9"
+                                  ]
+                  },
+                  {
+                      "type":  "DERIVES",
+                      "src":  "sha256:80e05fd5a0340f18ee6b24450b62d9d4c8ac7e5921305116f424cf0dee448f65",
+                      "dst":  "sha256:1a3fde9c645a8cadbf71298b55a3185fcab454e2ca64338faa1b56a345f79d51",
+                      "anchors":  [
+                                      "L5-L5",
+                                      "L5-L5"
+                                  ]
+                  },
+                  {
+                      "type":  "scoped_to",
+                      "src":  "sha256:d39850648e569ea9fdfdfaf8a12716c2b1c5d996b12ff1d41c5907eca73c80a6",
+                      "dst":  "sha256:03e3638a3dc2055fcfb5aef0e217a986093e27857ac5692c213ecf88eb0631e5",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "scoped_to",
+                      "src":  "sha256:6014f2e9abde0234af37bac7a91e9426df6bd90df24b3a6f240e9dd8dfe5f6f5",
+                      "dst":  "sha256:7b89a4afcd6682fcbafa934fc78d9d9375814a3aee5a8bf6190671b62511364b",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "belongs_to",
+                      "src":  "sha256:5e62ce8e8b2abd2f7467877bc22f60fdefd6e22f826bad76f2deef9487c20a4d",
+                      "dst":  "sha256:7e8a80dbdc4678e7d8c7ac1a2a8bc847a80d940075ade7c2da324e2a2be178eb",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:5e62ce8e8b2abd2f7467877bc22f60fdefd6e22f826bad76f2deef9487c20a4d",
+                      "dst":  "sha256:d39850648e569ea9fdfdfaf8a12716c2b1c5d996b12ff1d41c5907eca73c80a6",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:5e62ce8e8b2abd2f7467877bc22f60fdefd6e22f826bad76f2deef9487c20a4d",
+                      "dst":  "sha256:6014f2e9abde0234af37bac7a91e9426df6bd90df24b3a6f240e9dd8dfe5f6f5",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "belongs_to",
+                      "src":  "sha256:9d04d79dc46049807f9b2431376b171bbe694aba00ff662726c564fc0d3761fb",
+                      "dst":  "sha256:7e8a80dbdc4678e7d8c7ac1a2a8bc847a80d940075ade7c2da324e2a2be178eb",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:9d04d79dc46049807f9b2431376b171bbe694aba00ff662726c564fc0d3761fb",
+                      "dst":  "sha256:d39850648e569ea9fdfdfaf8a12716c2b1c5d996b12ff1d41c5907eca73c80a6",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:9d04d79dc46049807f9b2431376b171bbe694aba00ff662726c564fc0d3761fb",
+                      "dst":  "sha256:6014f2e9abde0234af37bac7a91e9426df6bd90df24b3a6f240e9dd8dfe5f6f5",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:2ced6c54bbdcf78c5baff64fd20d73ef322f9e882dd397a26e538c2d9fbbc652",
+                      "dst":  "sha256:d39850648e569ea9fdfdfaf8a12716c2b1c5d996b12ff1d41c5907eca73c80a6",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:2ced6c54bbdcf78c5baff64fd20d73ef322f9e882dd397a26e538c2d9fbbc652",
+                      "dst":  "sha256:6014f2e9abde0234af37bac7a91e9426df6bd90df24b3a6f240e9dd8dfe5f6f5",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "automates",
+                      "src":  "sha256:2ced6c54bbdcf78c5baff64fd20d73ef322f9e882dd397a26e538c2d9fbbc652",
+                      "dst":  "sha256:03e3638a3dc2055fcfb5aef0e217a986093e27857ac5692c213ecf88eb0631e5",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:5867e76c2f56df655e219c362bb056b95f936e7880969ea178ca683676d6b917",
+                      "dst":  "sha256:d39850648e569ea9fdfdfaf8a12716c2b1c5d996b12ff1d41c5907eca73c80a6",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:5867e76c2f56df655e219c362bb056b95f936e7880969ea178ca683676d6b917",
+                      "dst":  "sha256:6014f2e9abde0234af37bac7a91e9426df6bd90df24b3a6f240e9dd8dfe5f6f5",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "automates",
+                      "src":  "sha256:5867e76c2f56df655e219c362bb056b95f936e7880969ea178ca683676d6b917",
+                      "dst":  "sha256:7b89a4afcd6682fcbafa934fc78d9d9375814a3aee5a8bf6190671b62511364b",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "belongs_to",
+                      "src":  "sha256:03e3638a3dc2055fcfb5aef0e217a986093e27857ac5692c213ecf88eb0631e5",
+                      "dst":  "sha256:7e8a80dbdc4678e7d8c7ac1a2a8bc847a80d940075ade7c2da324e2a2be178eb",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:03e3638a3dc2055fcfb5aef0e217a986093e27857ac5692c213ecf88eb0631e5",
+                      "dst":  "sha256:d39850648e569ea9fdfdfaf8a12716c2b1c5d996b12ff1d41c5907eca73c80a6",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:03e3638a3dc2055fcfb5aef0e217a986093e27857ac5692c213ecf88eb0631e5",
+                      "dst":  "sha256:fa8caca4eee690d52351fc05dd2c95fcebcbb26d209702c83b49cb8e844a4fac",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "belongs_to",
+                      "src":  "sha256:7b89a4afcd6682fcbafa934fc78d9d9375814a3aee5a8bf6190671b62511364b",
+                      "dst":  "sha256:7e8a80dbdc4678e7d8c7ac1a2a8bc847a80d940075ade7c2da324e2a2be178eb",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:7b89a4afcd6682fcbafa934fc78d9d9375814a3aee5a8bf6190671b62511364b",
+                      "dst":  "sha256:6014f2e9abde0234af37bac7a91e9426df6bd90df24b3a6f240e9dd8dfe5f6f5",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:7b89a4afcd6682fcbafa934fc78d9d9375814a3aee5a8bf6190671b62511364b",
+                      "dst":  "sha256:550e67e51c46b9197aa9d713b4171c4f62f4fcfe3e472c572c8514f268842ea9",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "scoped_to",
+                      "src":  "sha256:fa8caca4eee690d52351fc05dd2c95fcebcbb26d209702c83b49cb8e844a4fac",
+                      "dst":  "sha256:03e3638a3dc2055fcfb5aef0e217a986093e27857ac5692c213ecf88eb0631e5",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "scoped_to",
+                      "src":  "sha256:550e67e51c46b9197aa9d713b4171c4f62f4fcfe3e472c572c8514f268842ea9",
+                      "dst":  "sha256:7b89a4afcd6682fcbafa934fc78d9d9375814a3aee5a8bf6190671b62511364b",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "automates",
+                      "src":  "sha256:1c20afb0acc98efcf1be88264e2adbf67f8254fbdf443f5005b27de37d723f43",
+                      "dst":  "sha256:7b89a4afcd6682fcbafa934fc78d9d9375814a3aee5a8bf6190671b62511364b",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:1c20afb0acc98efcf1be88264e2adbf67f8254fbdf443f5005b27de37d723f43",
+                      "dst":  "sha256:6014f2e9abde0234af37bac7a91e9426df6bd90df24b3a6f240e9dd8dfe5f6f5",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:1c20afb0acc98efcf1be88264e2adbf67f8254fbdf443f5005b27de37d723f43",
+                      "dst":  "sha256:550e67e51c46b9197aa9d713b4171c4f62f4fcfe3e472c572c8514f268842ea9",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "automates",
+                      "src":  "sha256:e0601aba1beb7b12ec89358c6edc0c2ddd84325d4fa5eb2978501a03a73f14bb",
+                      "dst":  "sha256:03e3638a3dc2055fcfb5aef0e217a986093e27857ac5692c213ecf88eb0631e5",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:e0601aba1beb7b12ec89358c6edc0c2ddd84325d4fa5eb2978501a03a73f14bb",
+                      "dst":  "sha256:d39850648e569ea9fdfdfaf8a12716c2b1c5d996b12ff1d41c5907eca73c80a6",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:e0601aba1beb7b12ec89358c6edc0c2ddd84325d4fa5eb2978501a03a73f14bb",
+                      "dst":  "sha256:fa8caca4eee690d52351fc05dd2c95fcebcbb26d209702c83b49cb8e844a4fac",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "scoped_to",
+                      "src":  "sha256:ff44b55c19de9f5aa02356e78c3533915228870244bf47e3f204fb2c94ada7fa",
+                      "dst":  "sha256:1a3fde9c645a8cadbf71298b55a3185fcab454e2ca64338faa1b56a345f79d51",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "scoped_to",
+                      "src":  "sha256:0d94591e37dcaff9226b57ab596cf83f445f9ecee601ed26bed9e773e199fef7",
+                      "dst":  "sha256:1a3fde9c645a8cadbf71298b55a3185fcab454e2ca64338faa1b56a345f79d51",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "scoped_to",
+                      "src":  "sha256:c53404e70874acb224f451840f0b88e1dd35d2280bd1331f4653c2574e3a073c",
+                      "dst":  "sha256:1a3fde9c645a8cadbf71298b55a3185fcab454e2ca64338faa1b56a345f79d51",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "belongs_to",
+                      "src":  "sha256:5df9e026463eadb902373f8e88bf998e8a8be1217881bc7825fc6632605b238d",
+                      "dst":  "sha256:1a3fde9c645a8cadbf71298b55a3185fcab454e2ca64338faa1b56a345f79d51",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:5df9e026463eadb902373f8e88bf998e8a8be1217881bc7825fc6632605b238d",
+                      "dst":  "sha256:ff44b55c19de9f5aa02356e78c3533915228870244bf47e3f204fb2c94ada7fa",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:5df9e026463eadb902373f8e88bf998e8a8be1217881bc7825fc6632605b238d",
+                      "dst":  "sha256:0d94591e37dcaff9226b57ab596cf83f445f9ecee601ed26bed9e773e199fef7",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:5df9e026463eadb902373f8e88bf998e8a8be1217881bc7825fc6632605b238d",
+                      "dst":  "sha256:c53404e70874acb224f451840f0b88e1dd35d2280bd1331f4653c2574e3a073c",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "belongs_to",
+                      "src":  "sha256:d3033f2f548341d4f06ffd90e0f09df33580e7a895ee2c532af25cb2a07d5392",
+                      "dst":  "sha256:1a3fde9c645a8cadbf71298b55a3185fcab454e2ca64338faa1b56a345f79d51",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:d3033f2f548341d4f06ffd90e0f09df33580e7a895ee2c532af25cb2a07d5392",
+                      "dst":  "sha256:ff44b55c19de9f5aa02356e78c3533915228870244bf47e3f204fb2c94ada7fa",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:d3033f2f548341d4f06ffd90e0f09df33580e7a895ee2c532af25cb2a07d5392",
+                      "dst":  "sha256:0d94591e37dcaff9226b57ab596cf83f445f9ecee601ed26bed9e773e199fef7",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:d3033f2f548341d4f06ffd90e0f09df33580e7a895ee2c532af25cb2a07d5392",
+                      "dst":  "sha256:c53404e70874acb224f451840f0b88e1dd35d2280bd1331f4653c2574e3a073c",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:d3033f2f548341d4f06ffd90e0f09df33580e7a895ee2c532af25cb2a07d5392",
+                      "dst":  "sha256:b7327c1f80daa9e9917027b2998e38d9f0f7f474745ac5417d198adb37666170",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "belongs_to",
+                      "src":  "sha256:21449f9069d95847b1b2dfb05332e7645e6d89917db767cf4d5e3dd54676f27b",
+                      "dst":  "sha256:1a3fde9c645a8cadbf71298b55a3185fcab454e2ca64338faa1b56a345f79d51",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:21449f9069d95847b1b2dfb05332e7645e6d89917db767cf4d5e3dd54676f27b",
+                      "dst":  "sha256:ff44b55c19de9f5aa02356e78c3533915228870244bf47e3f204fb2c94ada7fa",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:21449f9069d95847b1b2dfb05332e7645e6d89917db767cf4d5e3dd54676f27b",
+                      "dst":  "sha256:0d94591e37dcaff9226b57ab596cf83f445f9ecee601ed26bed9e773e199fef7",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "exercises",
+                      "src":  "sha256:21449f9069d95847b1b2dfb05332e7645e6d89917db767cf4d5e3dd54676f27b",
+                      "dst":  "sha256:c53404e70874acb224f451840f0b88e1dd35d2280bd1331f4653c2574e3a073c",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "scoped_to",
+                      "src":  "sha256:b7327c1f80daa9e9917027b2998e38d9f0f7f474745ac5417d198adb37666170",
+                      "dst":  "sha256:d3033f2f548341d4f06ffd90e0f09df33580e7a895ee2c532af25cb2a07d5392",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "automates",
+                      "src":  "sha256:e053ec88935a6afed0d6e00e9c02c7565a4d8d0f6ae57da9e905f1957af8d0e0",
+                      "dst":  "sha256:5df9e026463eadb902373f8e88bf998e8a8be1217881bc7825fc6632605b238d",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:e053ec88935a6afed0d6e00e9c02c7565a4d8d0f6ae57da9e905f1957af8d0e0",
+                      "dst":  "sha256:ff44b55c19de9f5aa02356e78c3533915228870244bf47e3f204fb2c94ada7fa",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:e053ec88935a6afed0d6e00e9c02c7565a4d8d0f6ae57da9e905f1957af8d0e0",
+                      "dst":  "sha256:0d94591e37dcaff9226b57ab596cf83f445f9ecee601ed26bed9e773e199fef7",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:e053ec88935a6afed0d6e00e9c02c7565a4d8d0f6ae57da9e905f1957af8d0e0",
+                      "dst":  "sha256:c53404e70874acb224f451840f0b88e1dd35d2280bd1331f4653c2574e3a073c",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "automates",
+                      "src":  "sha256:015faf1b4867522157bfeed3b8526fe6a1b599779264247a19c1fe8c0e82ef66",
+                      "dst":  "sha256:d3033f2f548341d4f06ffd90e0f09df33580e7a895ee2c532af25cb2a07d5392",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:015faf1b4867522157bfeed3b8526fe6a1b599779264247a19c1fe8c0e82ef66",
+                      "dst":  "sha256:ff44b55c19de9f5aa02356e78c3533915228870244bf47e3f204fb2c94ada7fa",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:015faf1b4867522157bfeed3b8526fe6a1b599779264247a19c1fe8c0e82ef66",
+                      "dst":  "sha256:0d94591e37dcaff9226b57ab596cf83f445f9ecee601ed26bed9e773e199fef7",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:015faf1b4867522157bfeed3b8526fe6a1b599779264247a19c1fe8c0e82ef66",
+                      "dst":  "sha256:c53404e70874acb224f451840f0b88e1dd35d2280bd1331f4653c2574e3a073c",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:015faf1b4867522157bfeed3b8526fe6a1b599779264247a19c1fe8c0e82ef66",
+                      "dst":  "sha256:b7327c1f80daa9e9917027b2998e38d9f0f7f474745ac5417d198adb37666170",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "automates",
+                      "src":  "sha256:69250d95ac5ef49466958c588d426e625c465e3e0275eafe0bb2f7294e640363",
+                      "dst":  "sha256:21449f9069d95847b1b2dfb05332e7645e6d89917db767cf4d5e3dd54676f27b",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:69250d95ac5ef49466958c588d426e625c465e3e0275eafe0bb2f7294e640363",
+                      "dst":  "sha256:ff44b55c19de9f5aa02356e78c3533915228870244bf47e3f204fb2c94ada7fa",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:69250d95ac5ef49466958c588d426e625c465e3e0275eafe0bb2f7294e640363",
+                      "dst":  "sha256:0d94591e37dcaff9226b57ab596cf83f445f9ecee601ed26bed9e773e199fef7",
+                      "anchors":  [
+
+                                  ]
+                  },
+                  {
+                      "type":  "verifies",
+                      "src":  "sha256:69250d95ac5ef49466958c588d426e625c465e3e0275eafe0bb2f7294e640363",
+                      "dst":  "sha256:c53404e70874acb224f451840f0b88e1dd35d2280bd1331f4653c2574e3a073c",
+                      "anchors":  [
+
+                                  ]
+                  }
+              ]
+}

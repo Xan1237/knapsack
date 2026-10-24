@@ -1,0 +1,81 @@
+{
+    "generatedAt":  "2026-10-24T20:52:51.9633873Z",
+    "tool":  "Kane CLI 0.10.0-rc.3",
+    "applicationCommit":  "6440576250ecc477cc5310ab112d42e24be61f7b",
+    "url":  "http://127.0.0.1:5173",
+    "browser":  "Chrome 155 on Windows, 1920x1080",
+    "suite":  {
+                  "tests":  5,
+                  "passed":  5,
+                  "failed":  0,
+                  "durationSeconds":  696.863,
+                  "creditsUsed":  268.15,
+                  "creditsRemaining":  100689.3671
+              },
+    "coverage":  {
+                     "pct":  100,
+                     "usecases":  {
+                                      "total":  2,
+                                      "proven":  2,
+                                      "partial":  0,
+                                      "failing":  0,
+                                      "not_run":  0,
+                                      "not_designed":  0,
+                                      "no_criteria":  0
+                                  },
+                     "criteria":  {
+                                      "total":  8,
+                                      "proven":  8
+                                  }
+                 },
+    "runs":  [
+                 {
+                     "test":  "finish-a-keep-decision-without-a-replacement-product-on-web_test.md",
+                     "status":  "passed",
+                     "durationMs":  126102,
+                     "steps":  8,
+                     "executionId":  "fe4098a7-3aca-4391-9d5b-5fa36bad35f1",
+                     "reportUrl":  "https://test-manager.lambdatest.com/projects/01M5QS30K2QDBZCNJCP82N490P/test-cases/01M5QT586R595KTANQ3FAJV0JM/dashboard/share/US_IJIWW7VHM7BAO6QZQTCEUXERA1NU2F2654QEDL4E8TKPDD16SO45J0GCCT8ON2PI?type=summary\u0026agentView=true\u0026fqdn=summary-page"
+                 },
+                 {
+                     "test":  "keep-preferred-modeled-items-through-a-capacity-conflict-on_test.md",
+                     "status":  "passed",
+                     "durationMs":  106898,
+                     "steps":  8,
+                     "executionId":  "6ba1cffb-43f4-49ee-b8f1-229c99eaae57",
+                     "reportUrl":  null
+                 },
+                 {
+                     "test":  "leave-an-unchosen-modeled-item-out-of-the-selected-set-on_test.md",
+                     "status":  "passed",
+                     "durationMs":  109685,
+                     "steps":  11,
+                     "executionId":  "18671fa3-d7c6-4b94-9bd3-c4e3f9c3af8f",
+                     "reportUrl":  null
+                 },
+                 {
+                     "test":  "play-modeled-bag-packing-animation-on-desktop-web_test.md",
+                     "status":  "passed",
+                     "durationMs":  102822,
+                     "steps":  9,
+                     "executionId":  "7c5b5f50-857c-4c23-80e9-d9bd3eddccb4",
+                     "reportUrl":  null
+                 },
+                 {
+                     "test":  "request-and-apply-a-real-astra-suggestion-on-desktop-web_test.md",
+                     "status":  "passed",
+                     "durationMs":  202639,
+                     "steps":  19,
+                     "executionId":  "05c83aa5-9803-426a-b077-f07be84aa4e3",
+                     "reportUrl":  null
+                 }
+             ],
+    "notes":  [
+                  "All five tests were generated through Kane assurance and executed through Kane CLI.",
+                  "Folder coverage reports 8 of 8 approved MVP criteria; this does not establish full production or combined-app coverage.",
+                  "The suite summary emitted 38 percent for its run-scope coverage; cover gaps reports 100 percent across the folder history.",
+                  "Initial design notes about platform, credentials and fixture variables were answered before execution.",
+                  "The packed-scene use case currently has happy-path browser coverage.",
+                  "The applications remain separate pending route, style, and state integration."
+              ]
+}

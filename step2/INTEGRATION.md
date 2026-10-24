@@ -49,3 +49,9 @@ For a shared React application, `normalizeSession(collection)` in `src/data.js` 
 - The MVP supports up to 80 items and positive dimensions up to 300 cm. Arbitrary mesh collision, automatic scale inference, and compressed-asset decoders are outside this adapter.
 
 The exported packing plan adds positions, occupied dimensions, and axis permutations in this same coordinate system. Its `estimated` flag is true. A result may be partial even when a different arrangement exists.
+
+## Combining the two applications
+
+The source handoff and runtime checks are ready; the applications currently have separate entry points. Keep the main app's photo analysis and inventory state, and feed that state through `normalizeSession` when mounting the step-two studio. The Express Astra handler lives in `step2/server/index.js`; it can become a Next route at `/api/astra/suggest` using the main server's OpenAI configuration. Its request and response payloads already use the collection contract.
+
+The main app and step two both define global UI classes. Scope the studio stylesheet when embedding its components into the Next layout. Reuse one packing renderer for the final combined screen and keep conversion at the input boundary; applying the unit/axis conversion twice would corrupt the layout. Step two's local session key is `knapsack-step2-v1`, while the main app persists through IndexedDB. Decide which state owner to retain when joining the routes.

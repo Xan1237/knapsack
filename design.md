@@ -204,7 +204,9 @@ Kane CLI is part of the implementation workflow, not a final-demo-only check. Fo
 
 The E2E journeys must cover photo processing, visual edits, inventory corrections, repacking, and plan inspection as those features are implemented. Use additional focused validation for packing constraints and recognition quality: test fixed inventories including rotations, tight fits, oversized items, and incomplete searches; validate recognition against labeled photos; and compare a representative simulated arrangement with a real packing trial. Kane CLI verifies user journeys; these focused checks assess algorithmic correctness and approximation quality.
 
-Keep Kane CLI run evidence and coverage available with the project so the design and implementation record shows which requirements were exercised and what passed. Inspect failures, fix the relevant behavior, and rerun the affected checks. No Kane CLI runs or coverage are claimed yet.
+Keep Kane CLI run evidence and coverage available with the project so the design and implementation record shows which requirements were exercised and what passed. Inspect failures, fix the relevant behavior, and rerun the affected checks.
+
+The standalone step-two MVP completed five Kane-generated desktop E2E tests on 2026-10-24: packing animation, keep/exclude decisions, and real Astra suggestions with user-applied selection. All five passed; the folder rollup proves 8/8 criteria across the two approved use cases. The [step-two validation record](step2/evidence/README.md) contains results, screenshots, and traceability. The combined Next application still needs integration validation.
 
 ## Technical references
 

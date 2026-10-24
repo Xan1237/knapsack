@@ -29,3 +29,12 @@ The engine tries six item orders, allowed axis rotations, and supported free-spa
 ## Kane CLI in the build flow
 
 Kane CLI 0.10.0-rc.3 is installed on the development machine. `requirements/mvp.md` preserves the user's brief. Kane's assurance commands derive use cases, criteria, scenarios, and runnable tests from it; no Kane test files are written by hand. Generated tests and the validation history will be retained here as checks finish. See [evidence/README.md](evidence/README.md) for actual run status.
+
+The active suite is in `.testmuai/tests/`. With the app running, prepare its nonsecret fixture values and run it from PowerShell:
+
+```powershell
+npm run kane:fixtures
+cmd /c "kane-cli testrun run --agent < NUL"
+```
+
+`npm run test:geometry` additionally checks geometry and the main-app handoff without a browser. The Kane-generated design graph is summarized in [evidence/kane-design.json](evidence/kane-design.json); raw recordings, local variables, and credentials are ignored.
