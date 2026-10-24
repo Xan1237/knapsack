@@ -14,7 +14,7 @@ Latest scope: user time-boxed completion to 10 minutes at 2026-10-24 20:45 UTC, 
 
 ## Verified
 
-- Final local typecheck, lint, formatting, 29 direct tests and production build passed at ~20:46 UTC.
+- Final local typecheck, main-app lint, formatting, 29 direct tests and production build passed; typecheck/tests/format/build were repeated after preserving concurrent remote commits. Repository-wide lint then found four existing errors in the standalone step2 package; details in artifacts/validation.md. No lint rules were weakened.
 - Genuine two-upload API → state → corrected plan test passed earlier; artifacts/live-api-smoke.json explicitly says browserVerified=false. One photograph plus one stock illustration. Recognition can miss items: the full cosmetics photograph missed a small jar.
 - Kane generated/reviewed tests only; no generated steps/pins hand-edited. User approved seven use cases and generated design. Internal design save errors were recovered with user-authorized force/phase restarts.
 - Initial three-test browser batch: 2 passed, 1 failed; terminal result and process exit both checked. Execution 77b676ae-1aaa-4832-905b-2e2a711e2662. Layer/playback and partial/unplaced checks passed; full 3D inspection failed on Kane's pre-zoom baseline capture, classified as automation error, with no app console errors.
@@ -36,3 +36,7 @@ Latest scope: user time-boxed completion to 10 minutes at 2026-10-24 20:45 UTC, 
 - Unexecuted generated Kane drafts and local review snapshots remain local; only executed/generated packing tests are included in the completion commit.
 - Experimental deterministic vision helper was never connected to the app and was set aside in ignored artifacts/raw/deferred-fixture-adapter. No fixture vision mode is shipped or claimed.
 - Existing concurrent landing-page work and component moves were preserved; base application commit 79438d4.
+
+## Completion integration
+
+Final smoke passed against the production build. Preserved remote commits through 6440576, resolving README by keeping both sections. Tested main-app code is the completion commit on top of those changes; report-only updates follow. Commit/push are authorized by the final user instruction. No broader browser suite was run after that instruction.

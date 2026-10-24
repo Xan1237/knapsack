@@ -84,7 +84,7 @@ Kane CLI E2E checks are required throughout implementation. Generate requirement
 
 ## Validation status
 
-See [the validation report](artifacts/validation.md) for final commands, browser smoke results, actual Kane coverage, and unverified paths. Full browser coverage is not claimed. The genuine live API check is separate from browser evidence.
+See [the validation report](artifacts/validation.md) for final commands, browser smoke results, actual Kane coverage, and unverified paths. Full browser coverage is not claimed (Kane currently reports 2%, 3/106 criteria). The genuine live API check is separate from browser evidence. Main-app checks pass; repository-wide lint also includes the separate step2 studio and currently reports four errors there, listed in the report.
 
 For the committed packing smoke tests, copy the nonsecret fixture definitions before execution:
 

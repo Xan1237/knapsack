@@ -7,7 +7,8 @@ Completion was time-boxed by the user at 20:45 UTC: stop expanding browser cover
 | Command | Result |
 | --- | --- |
 | `npm run typecheck` | Passed |
-| `npm run lint` | Passed |
+| Main-app ESLint (`npx eslint src scripts eslint.config.mjs vitest.config.mts vitest.live.config.mts`) | Passed |
+| Repository-wide `npm run lint` after remote integration | Failed: four pre-existing errors in the independently maintained step2 package; see integration note below |
 | `npm test` | 29 tests passed across four files |
 | `npm run format:check` | Passed |
 | `npm run build` | Passed; production server then started on port 3000 |
@@ -37,3 +38,11 @@ A genuine live two-upload API → state → corrected complete plan check passed
 Unverified: the full live photo-to-plan browser journey; complete camera inspection/reset/exploded-view regression; WebGL failure recovery; phone-width planner behavior; browser persistence, retry, stale-response and cap regressions; the full generated suite; and a real physical packing trial. Minimum-layer behavior was corrected after the earlier layer test and received the final packing smoke, but no complete layer regression was rerun within the time box.
 
 Raw evidence, photos from browser runs, provider payloads and credentials are not committed. No public deployment or hackathon submission was performed. The user separately authorized this completion commit and push.
+
+## Remote integration and remaining lint failure
+
+Preserved remote commits a8bb877, b3ad229, and 6440576 by rebasing the unpublished completion commit; the README conflict was resolved by retaining both sections. Main-app typecheck, all 29 tests, formatting and production build passed again after integration. No additional browser coverage was added. The root application source was unchanged by these remote commits, so the production packing smoke still applies to it.
+
+The newly integrated standalone `step2` package is outside this task’s verified main-app scope. Repository-wide ESLint now reports four errors: App.jsx:47 synchronous state in an effect; App.jsx:115 Next-specific link rule applied to its standalone Vite app; Scene.jsx:175 ref update during render; Scene.jsx:179 synchronous state in an effect. These were documented rather than changing unrelated code or suppressing rules. Main-app ESLint passes with the explicit command above. The standalone studio was not newly browser-validated in this time box.
+
+The tested main-app source/config fingerprint is in [validation-state.json](validation-state.json). Unexecuted local test drafts and local assurance-review snapshots remain outside the completion commit.
