@@ -1,0 +1,23 @@
+{
+  "source": "kane-cli cover gaps --json",
+  "scope": "current local assurance graph",
+  "coverage": {
+    "pct": 2.1778584392014517,
+    "usecases": {
+      "total": 7,
+      "proven": 0,
+      "partial": 1,
+      "failing": 0,
+      "not_run": 5,
+      "not_designed": 1,
+      "no_criteria": 0
+    },
+    "criteria": {
+      "total": 106,
+      "proven": 3
+    }
+  },
+  "final_smoke_execution": "b61a3ac1-4679-44d0-872c-d8d28c883fdb",
+  "historical_browser_batch_execution": "77b676ae-1aaa-4832-905b-2e2a711e2662",
+  "note": "Historical superseded tests are supplementary evidence and excluded from the current graph. Full browser coverage is not claimed."
+}

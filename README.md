@@ -81,3 +81,16 @@ The OpenAI adapter follows official [image input](https://developers.openai.com/
 The separately runnable [step2 MVP](step2/README.md) adds a 3D packing studio, animated placement, essential-item pins, user-selected swaps for items that do not fit, model URL import, and a server-side Astra suggestions adapter. See [its handoff contract](step2/INTEGRATION.md) for integration with the main app.
 
 Kane CLI E2E checks are required throughout implementation. Generate requirement-linked tests, run them as features are implemented, and retain evidence. See the [design workflow](design.md#kane-cli-development-and-evidence-workflow) and [step-two validation record](step2/evidence/README.md).
+
+## Validation status
+
+See [the validation report](artifacts/validation.md) for final commands, browser smoke results, actual Kane coverage, and unverified paths. Full browser coverage is not claimed (Kane currently reports 2%, 3/106 criteria). The genuine live API check is separate from browser evidence. Main-app checks pass; repository-wide lint also includes the separate step2 studio and currently reports four errors there, listed in the report.
+
+For the committed packing smoke tests, copy the nonsecret fixture definitions before execution:
+
+```sh
+mkdir -p .testmuai/variables
+cp scripts/kane-variables.example.json .testmuai/variables/knapsack.json
+```
+
+Unexecuted local Kane drafts are outside the completed verification scope. The application ships demo inventory and real OpenAI analysis; no deterministic photo-analysis adapter is enabled.
