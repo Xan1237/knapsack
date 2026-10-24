@@ -1,7 +1,14 @@
 "use client";
 
-import { Component, type ReactNode, useRef, useMemo, useState } from "react";
-import { Canvas, type ThreeEvent } from "@react-three/fiber";
+import {
+  Component,
+  type ReactNode,
+  useRef,
+  useMemo,
+  useState,
+  useEffect,
+} from "react";
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, RoundedBox, Html } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
@@ -299,7 +306,10 @@ function Scene(props: Props) {
           if (
             !item ||
             p.order > step ||
-            p.position[2] > (bag.dimensions[2] * layer) / 100 + 0.001
+            p.position[2] >
+              bag.clearance +
+                ((bag.dimensions[2] - bag.clearance) * layer) / 100 +
+                0.001
           )
             return null;
           const dims = permutations[p.orientation].map((k) => sizeOf(item)[k]);
@@ -383,7 +393,37 @@ class SceneBoundary extends Component<
     );
   }
 }
+function ContextMonitor({ onLost }: { onLost: (lost: boolean) => void }) {
+  const gl = useThree((state) => state.gl);
+  useEffect(() => {
+    const handleLost = (event: Event) => {
+      event.preventDefault();
+      onLost(true);
+    };
+    gl.domElement.addEventListener("webglcontextlost", handleLost);
+    return () =>
+      gl.domElement.removeEventListener("webglcontextlost", handleLost);
+  }, [gl, onLost]);
+  return null;
+}
 export default function SuitcaseScene(props: Props) {
+  const [contextLost, setContextLost] = useState(false);
+  if (contextLost)
+    return (
+      <div className="scene-error" role="alert">
+        <strong>The 3D view was interrupted</strong>
+        <p>
+          Your browser lost its WebGL context. Your inventory and validated
+          packing plan are safe.
+        </p>
+        <button
+          className="primary-button"
+          onClick={() => setContextLost(false)}
+        >
+          Retry 3D view
+        </button>
+      </div>
+    );
   return (
     <SceneBoundary>
       <Canvas
@@ -395,6 +435,7 @@ export default function SuitcaseScene(props: Props) {
         aria-label="Interactive 3D packed suitcase. Drag to orbit, scroll to zoom, click an object to select it."
       >
         <Scene {...props} />
+        <ContextMonitor onLost={setContextLost} />
       </Canvas>
     </SceneBoundary>
   );
