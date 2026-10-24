@@ -130,6 +130,13 @@ describe("combined inventory contract", () => {
   it("applies a computed swap deterministically while retaining protected and other packed items", () => {
     const state = initialState(),
       bag = suitcases[1];
+    // Keep swap coverage independent of the tightly fitted presentation demo.
+    state.items = Array.from({ length: 9 }, (_, index) => ({
+      ...createItem("other", `swap-${index}`),
+      dimensions: [120, 160, 70],
+      estimate: [120, 160, 70],
+      orientations: [0],
+    }));
     state.items[6] = { ...state.items[6], required: true };
     const original = pack(state.items, bag);
     const wanted = original.unplaced.find(

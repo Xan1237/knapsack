@@ -59,6 +59,7 @@ import { initialState, reducer, mergeSuggestions } from "@/lib/state";
 import { loadSession, saveSession } from "@/lib/persistence";
 import { validatePlan } from "@/lib/validate";
 import { bagForState, importCollection } from "@/lib/collection";
+import { demoBottleSpace } from "@/lib/demo";
 import PackingAssistant from "./PackingAssistant";
 
 const GeneratedMeshPreview = dynamic(() => import("./GeneratedMeshPreview"), {
@@ -168,8 +169,13 @@ export default function PackingWorkspace() {
       0,
     ) ?? 0;
   const fill = current
-    ? Math.round((usedVolume / bag.dimensions.reduce((v, n) => v * n, 1)) * 100)
+    ? Math.round(
+        (usedVolume / bag.dimensions.reduce((v, n) => v * n, 1)) * 1000,
+      ) / 10
     : 0;
+  const bottleSpace = state.demo
+    ? demoBottleSpace(state.items, bag, plan)
+    : null;
 
   useEffect(() => {
     let mounted = true;
@@ -900,6 +906,7 @@ export default function PackingWorkspace() {
               resetKey={resetKey}
               view={view}
               onModelError={setNotice}
+              reservedSpace={bottleSpace}
               moveMode={
                 moveMode &&
                 current &&
@@ -1106,6 +1113,15 @@ export default function PackingWorkspace() {
               <ChevronDown size={18} />
             </button>
           </div>
+          {bottleSpace && (
+            <div className="demo-bottle-card">
+              <FlaskConical size={23} strokeWidth={1.4} />
+              <div>
+                <strong>Saved a little room for your bottle.</strong>
+                <p>Upload a photo of your water bottle when you’re ready.</p>
+              </div>
+            </div>
+          )}
           {current && plan.unplaced.length > 0 && (
             <div className="unplaced-list">
               <strong>

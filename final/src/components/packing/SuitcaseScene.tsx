@@ -16,7 +16,7 @@ import {
   useThree,
   type ThreeEvent,
 } from "@react-three/fiber";
-import { OrbitControls, RoundedBox, useGLTF } from "@react-three/drei";
+import { Edges, OrbitControls, RoundedBox, useGLTF } from "@react-three/drei";
 import { Box3, Group, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
@@ -25,6 +25,7 @@ import {
   type Suitcase,
   type Vec3,
   type ItemAnchor,
+  type Placement,
   permutations,
   sizeOf,
 } from "@/lib/domain";
@@ -487,6 +488,7 @@ type Props = {
   moveMode?: boolean;
   onMove?: (id: string, anchor: ItemAnchor) => void;
   onHover?: (label: string | null) => void;
+  reservedSpace?: Placement | null;
 };
 
 function PackedItems({
@@ -504,6 +506,47 @@ function PackedItems({
   const depth = bag.dimensions[2] / (bag.clamshell ? 2 : 1);
   return (
     <>
+      {props.reservedSpace &&
+        props.reservedSpace.compartment === compartment &&
+        !exploded &&
+        step === plan?.placements.length &&
+        layer === 100 && (
+          <mesh
+            position={[
+              (props.reservedSpace.position[0] +
+                props.reservedSpace.dimensions[0] / 2) /
+                unit -
+                w / 2,
+              (props.reservedSpace.position[2] +
+                props.reservedSpace.dimensions[2] / 2) /
+                unit,
+              (props.reservedSpace.position[1] +
+                props.reservedSpace.dimensions[1] / 2) /
+                unit -
+                l / 2,
+            ]}
+            onPointerOver={(event) => {
+              event.stopPropagation();
+              props.onHover?.("Room for your 500 ml water bottle");
+            }}
+            onPointerOut={() => props.onHover?.(null)}
+          >
+            <boxGeometry
+              args={[
+                props.reservedSpace.dimensions[0] / unit,
+                props.reservedSpace.dimensions[2] / unit,
+                props.reservedSpace.dimensions[1] / unit,
+              ]}
+            />
+            <meshBasicMaterial
+              color="#b78b56"
+              transparent
+              opacity={0.08}
+              depthWrite={false}
+            />
+            <Edges color="#b78b56" />
+          </mesh>
+        )}
       {plan?.placements
         .filter((p) => p.compartment === compartment)
         .map((p) => {
