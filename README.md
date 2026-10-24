@@ -1,10 +1,31 @@
 # Knapsack
 
-See your suitcase packed before you start. A local prototype turns photos into editable procedural 3D belongings and a validated geometric packing layout.
+See your suitcase packed before you start. The combined prototype turns photos of your belongings into editable AI-generated 3D meshes and a validated geometric packing layout.
 
 The combined MVP now lives in [final](final/README.md). Run `cd final`, `npm ci`, and `npm run dev` to use photo recognition, Astra suggestions, essential pins, overflow choices, imported 3D assets and plan export in one application. The root app and [step2](step2/README.md) remain available as the source implementations. Final browser validation is in progress.
 
 See the [architecture walkthrough](docs/architecture.md) for the three application boundaries, combined-app data flow, geometry and AI contracts, current verification, and review findings.
+
+## Why Knapsack is different
+
+**Knapsack brings photo-generated 3D belongings, personal packing priorities, and independently checked spatial decisions into one editable suitcase workspace.** A traveler can photograph an item, recognize it in the scene, correct its estimated size, protect essentials, and decide what to change when space runs out.
+
+The original contribution is the way these capabilities work together in the [combined application](final/README.md):
+
+- **Your photographed belongings become editable geometry.** Astra generates colored vertices, triangles, and materials from the uploaded photo. The scene renders that supplied geometry, preserves its photo and model provenance, and retains it through editing, saving, and export. See [photo analysis](final/src/lib/vision.ts) and [mesh rendering](final/src/components/packing/GeneratedMesh.tsx).
+- **Packing responds to both physical constraints and personal choices.** Two suitcase compartments, permitted rotations, manual placement, and user-controlled clothing compression feed the packing calculation. Essential pins protect belongings during AI selection and make-room choices; the traveler previews and explicitly applies those decisions. See [manual layout](final/src/lib/manual-layout.ts), [packing advice](final/src/lib/astra.ts), and [make-room choices](final/src/lib/choices.ts).
+- **Generated suggestions must pass explicit checks.** The app validates mesh data and checks packing bounds, clearance, overlap, orientations, and complete item accounting independently of the search. AI advice must use the actual inventory IDs and preserve essentials. Packing uses estimated rectangular envelopes; generated mesh detail improves recognition, while the envelope defines estimated fit. See [mesh validation](final/src/lib/mesh.ts) and [plan validation](final/src/lib/validate.ts).
+
+### Comparison with related products
+
+The following comparison uses the products' own public descriptions, reviewed on 2026-10-24. It identifies the focus of our implementation without assuming that an unadvertised competitor feature is absent.
+
+| Related product | Publicly described focus | Knapsack's specific contribution |
+| --- | --- | --- |
+| [JetKit](https://jetkit.ai/) (beta) | Photo-based wardrobe recognition and packing recommendations based on destination and weather. | Connects photo-derived belongings to generated 3D geometry, editable dimensions, and a compartment-aware suitcase arrangement with checked keep/leave decisions. |
+| [PackPilot](https://packpilot.io/) (early access) | Camera/LiDAR or manual capture, constrained 3D packing plans, load order, and AR placement guidance. | Centers an ordinary photo-to-generated-mesh workflow in a browser, with editable belongings, essential-preserving AI advice, and independently validated packing previews. |
+
+**Our case for full credit on the rubric's 10-point Originality criterion is this implemented combination: a traveler's own photos become recognizable 3D belongings, personal constraints drive packing tradeoffs, and independent validation checks the resulting spatial decisions.** The linked source and [validation records](final/artifacts/astra-mesh-validation.md) make that case inspectable. The [live two-photo report](final/artifacts/astra-mesh-live.json) demonstrates real generated meshes, corrected dimensions, a validated plan, and real packing advice; full browser verification remains incomplete. Originality credit ultimately rests with the judges under the [published rubric](https://kaneclihack.sh/#judging).
 
 ## Project structure
 

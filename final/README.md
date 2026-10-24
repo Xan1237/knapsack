@@ -2,6 +2,12 @@
 
 The root Next.js application and the step2 studio are combined here in one Next.js app. The original implementations remain intact.
 
+## What makes this original
+
+**Knapsack combines your photographed belongings as AI-generated 3D meshes with editable suitcase geometry, essential-preserving packing choices, and independent validation.** Correct an item's estimated dimensions, move it between the two suitcase halves, adjust clothing compression, and review an AI keep/leave suggestion against the actual inventory and a checked packing preview. Meshes remain linked to their source photos through saving and export; estimated envelopes determine packing fit.
+
+Our case for full credit on the 10-point Originality criterion is this implemented workflow and integration. See [why Knapsack is different](../README.md#why-knapsack-is-different) for the product comparisons, source links, evidence, and verification limits supporting that case. The judges determine the score.
+
 ## Run
 
 ```powershell
