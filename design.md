@@ -188,9 +188,13 @@ The prototype is successful when a traveler can upload photos, review generated 
 
 Every included item must be accounted for as placed or unplaced. A complete plan must pass independent bounds and overlap checks. Repacking must preserve user edits and ignore stale results.
 
-Validate packing behavior directly with fixed inventories, including rotations, tight fits, oversized items, and incomplete searches. Validate recognition separately against labeled photos. Compare a representative simulated arrangement with a real packing trial to assess the approximation.
+### Kane CLI development and evidence workflow
 
-Use Kane CLI for the browser journey and regression evidence. Generate runnable tests through Kane's assurance workflow from these requirements; do not hand-author Kane test cases. Include coverage of photo processing, visual edits, inventory corrections, repacking, and plan inspection. Codex should inspect failures, fix the relevant behavior, and rerun the affected checks. No runs or coverage are claimed yet.
+Kane CLI is part of the implementation workflow, not a final-demo-only check. For each user-visible feature or fix, use Kane CLI's assurance workflow to derive requirement-linked E2E tests from this design, run the relevant browser journey, and retain the run evidence and coverage results. Re-run affected journeys after fixes and run the full core journey before calling the prototype complete. Do not hand-author Kane test cases; use the assurance commands to generate them.
+
+The E2E journeys must cover photo processing, visual edits, inventory corrections, repacking, and plan inspection as those features are implemented. Use additional focused validation for packing constraints and recognition quality: test fixed inventories including rotations, tight fits, oversized items, and incomplete searches; validate recognition against labeled photos; and compare a representative simulated arrangement with a real packing trial. Kane CLI verifies user journeys; these focused checks assess algorithmic correctness and approximation quality.
+
+Keep Kane CLI run evidence and coverage available with the project so the design and implementation record shows which requirements were exercised and what passed. Inspect failures, fix the relevant behavior, and rerun the affected checks. No Kane CLI runs or coverage are claimed yet.
 
 ## Technical references
 

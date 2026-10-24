@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.testmuai/variables/
+.testmuai/evidence/
+.testmuai/tests/output-*/
+evidence/*.evidence
+*.log
+# kane-cli context store: shared through a location, never merged with git
+.context/
