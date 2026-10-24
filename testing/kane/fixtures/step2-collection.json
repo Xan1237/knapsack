@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "bag": { "id": "from-step-one", "name": "My weekend bag", "dimensions": [40, 18, 28], "color": "#91a38e" },
+  "items": [
+    { "id": "shoes-1", "name": "Everyday sneakers", "category": "shoes", "dimensions": [29, 12, 21], "color": "#e3dfd1", "required": true, "priority": 4 },
+    { "id": "sweater-1", "name": "Sunday sweater", "category": "clothing", "dimensions": [28, 7, 24], "color": "#c97452", "priority": 2 },
+    { "id": "jeans-1", "name": "Favorite jeans", "category": "clothing", "dimensions": [30, 5, 24], "color": "#738aa1", "priority": 3 },
+    { "id": "camera-1", "name": "Little film camera", "category": "camera", "dimensions": [14, 9, 11], "color": "#3c4945", "priority": 2 },
+    { "id": "pouch-1", "name": "Daily essentials", "category": "pouch", "dimensions": [20, 8, 12], "color": "#caab72", "required": true, "priority": 5 }
+  ]
+}

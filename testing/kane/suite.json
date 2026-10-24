@@ -1,0 +1,94 @@
+﻿{
+  "cliVersion": "0.10.0-rc.3",
+  "parallel": 2,
+  "testTimeoutSeconds": 30,
+  "tests": [
+    {
+      "id": "dismissed-make-room-keeps-the-demo-selection-intact",
+      "file": "dismissed-make-room-keeps-the-demo-selection-intact_test.md",
+      "live": false,
+      "designRef": "t-22"
+    },
+    {
+      "id": "all-pinned-demo-overflow-remains-visible",
+      "file": "all-pinned-demo-overflow-remains-visible_test.md",
+      "live": false,
+      "designRef": "t-23"
+    },
+    {
+      "id": "live-astra-advice-does-not-leave-behind-a-pinned-demo",
+      "file": "live-astra-advice-does-not-leave-behind-a-pinned-demo_test.md",
+      "live": true,
+      "designRef": "t-24"
+    },
+    {
+      "id": "smallest-bag-demo-result-accounts-for-included-items",
+      "file": "smallest-bag-demo-result-accounts-for-included-items_test.md",
+      "live": false,
+      "designRef": "t-25"
+    },
+    {
+      "id": "make-room-dialog-identifies-displaced-demo-items",
+      "file": "make-room-dialog-identifies-displaced-demo-items_test.md",
+      "live": false,
+      "designRef": "t-26"
+    },
+    {
+      "id": "workspace-bounded-search-wording-does-not-claim",
+      "file": "workspace-bounded-search-wording-does-not-claim_test.md",
+      "live": false,
+      "designRef": "t-27"
+    },
+    {
+      "id": "chosen-make-room-swap-is-reflected-in-the-selection",
+      "file": "chosen-make-room-swap-is-reflected-in-the-selection_test.md",
+      "live": false,
+      "designRef": "t-28"
+    },
+    {
+      "id": "explicit-leave-out-excludes-the-selected-unplaced-item",
+      "file": "explicit-leave-out-excludes-the-selected-unplaced-item_test.md",
+      "live": false,
+      "designRef": "t-29"
+    }
+  ],
+  "suites": {
+    "smoke": {
+      "timeoutSeconds": 120,
+      "tests": [
+        "smallest-bag-demo-result-accounts-for-included-items",
+        "workspace-bounded-search-wording-does-not-claim",
+        "explicit-leave-out-excludes-the-selected-unplaced-item"
+      ]
+    },
+    "regression": {
+      "timeoutSeconds": 240,
+      "tests": [
+        "dismissed-make-room-keeps-the-demo-selection-intact",
+        "all-pinned-demo-overflow-remains-visible",
+        "smallest-bag-demo-result-accounts-for-included-items",
+        "make-room-dialog-identifies-displaced-demo-items",
+        "workspace-bounded-search-wording-does-not-claim",
+        "chosen-make-room-swap-is-reflected-in-the-selection",
+        "explicit-leave-out-excludes-the-selected-unplaced-item"
+      ]
+    },
+    "live": {
+      "timeoutSeconds": 180,
+      "tests": ["live-astra-advice-does-not-leave-behind-a-pinned-demo"]
+    },
+    "all": {
+      "timeoutSeconds": 360,
+      "tests": [
+        "dismissed-make-room-keeps-the-demo-selection-intact",
+        "all-pinned-demo-overflow-remains-visible",
+        "live-astra-advice-does-not-leave-behind-a-pinned-demo",
+        "smallest-bag-demo-result-accounts-for-included-items",
+        "make-room-dialog-identifies-displaced-demo-items",
+        "workspace-bounded-search-wording-does-not-claim",
+        "chosen-make-room-swap-is-reflected-in-the-selection",
+        "explicit-leave-out-excludes-the-selected-unplaced-item"
+      ]
+    }
+  }
+}

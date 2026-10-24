@@ -1,0 +1,211 @@
+name: Kane CLI
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ["final/**", "testing/kane/**", ".github/workflows/kane.yml"]
+  push:
+    branches: [main, kane-cli]
+    paths: ["final/**", "testing/kane/**", ".github/workflows/kane.yml"]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Browser suite
+        type: choice
+        options: [smoke, regression, live, all]
+        default: smoke
+      mode:
+        description: Check replays strictly; record creates or repairs recordings
+        type: choice
+        options: [check, record]
+        default: check
+      application_ref:
+        description: Application branch or commit to test; blank uses this run's commit
+        type: string
+        default: ""
+      application_directory:
+        description: Application folder in that branch
+        type: choice
+        options: [final, "."]
+        default: final
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kane-${{ github.event.pull_request.number || github.ref }}-${{ inputs.mode || 'check' }}-${{ inputs.suite || 'smoke' }}-${{ inputs.application_ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  KANE_CLI_USER_AGENT: codex
+  KANE_APP_DIR: ${{ github.workspace }}/application/${{ inputs.application_directory || 'final' }}
+  KANE_BASE_URL: http://127.0.0.1:3000
+  KANE_SUITE: ${{ inputs.suite || 'smoke' }}
+  KANE_MODE: ${{ inputs.mode || (github.event_name == 'push' && contains(github.event.head_commit.message, '[kane:record]') && 'record') || 'check' }}
+
+jobs:
+  source-checks:
+    name: Source and harness checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      application_sha: ${{ steps.application-ref.outputs.sha }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Check out application separately
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.application_ref || github.sha }}
+          path: application
+          persist-credentials: false
+      - name: Record exact application commit
+        id: application-ref
+        working-directory: application
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            testing/kane/package-lock.json
+            application/${{ inputs.application_directory || 'final' }}/package-lock.json
+      - name: Install harness
+        working-directory: testing/kane
+        run: npm ci --no-audit --no-fund
+      - name: Validate workflow and suites
+        working-directory: testing/kane
+        run: npm run check
+      - name: Test the CI harness
+        working-directory: testing/kane
+        run: npm test
+      - name: Install application
+        working-directory: ${{ env.KANE_APP_DIR }}
+        run: npm ci --no-audit --no-fund
+      - name: Restore Next build cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ env.KANE_APP_DIR }}/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('application/final/package-lock.json', 'application/package-lock.json') }}-${{ hashFiles('application/final/src/**', 'application/src/**', 'application/final/next.config.*', 'application/next.config.*') }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('application/final/package-lock.json', 'application/package-lock.json') }}-
+      - name: Lint application
+        working-directory: ${{ env.KANE_APP_DIR }}
+        run: npm run lint
+      - name: Test application
+        working-directory: ${{ env.KANE_APP_DIR }}
+        run: npm test
+      - name: Build application (includes TypeScript checks)
+        working-directory: ${{ env.KANE_APP_DIR }}
+        run: npm run build
+      - name: Pass the production build to browser tests
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: kane-application-build
+          path: |
+            ${{ env.KANE_APP_DIR }}/.next
+            !${{ env.KANE_APP_DIR }}/.next/cache
+          include-hidden-files: true
+          retention-days: 1
+
+  browser:
+    name: Recorded browser checks
+    needs: source-checks
+    # Forks get source checks without access to account or provider secrets.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ (inputs.mode == 'record' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[kane:record]'))) && 45 || 10 }}
+    env:
+      KANE_APPLICATION_REF: ${{ needs.source-checks.outputs.application_sha }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Check out the exact application build source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.source-checks.outputs.application_sha }}
+          path: application
+          persist-credentials: false
+      - name: Require credentials without printing values
+        env:
+          LT_USERNAME: ${{ secrets.LT_USERNAME }}
+          LT_ACCESS_KEY: ${{ secrets.LT_ACCESS_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          node -e "const names=['LT_USERNAME','LT_ACCESS_KEY']; if(['live','all'].includes(process.env.KANE_SUITE)) names.push('OPENAI_API_KEY'); for(const name of names) if(!process.env[name]) { console.error('Missing repository secret: '+name); process.exitCode=2; }"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            testing/kane/package-lock.json
+            application/${{ inputs.application_directory || 'final' }}/package-lock.json
+      - name: Install harness
+        working-directory: testing/kane
+        run: npm ci --no-audit --no-fund
+      - name: Install application runtime dependencies
+        working-directory: ${{ env.KANE_APP_DIR }}
+        run: npm ci --omit=dev --no-audit --no-fund
+      - name: Restore production build
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: kane-application-build
+          path: ${{ env.KANE_APP_DIR }}/.next
+      - name: Install Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@48483d551c22a1fe6154c6a195ccc6d5773dc8c4 # v2
+        with:
+          chrome-version: stable
+      - name: Restore managed Kane runtime
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cache/v16-runner
+            ~/.local/share/v16-runner
+          key: kane-runtime-${{ runner.os }}-${{ hashFiles('testing/kane/package-lock.json') }}
+      - name: Restore approved recordings
+        id: recordings
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            testing/kane/.testmuai/tests/output-*
+            testing/kane/.testmuai/recordings.json
+          key: kane-tapes-${{ runner.os }}-${{ hashFiles('testing/kane/recording-version.txt', 'testing/kane/package-lock.json') }}-${{ hashFiles('testing/kane/.testmuai/tests/*_test.md') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            kane-tapes-${{ runner.os }}-${{ hashFiles('testing/kane/recording-version.txt', 'testing/kane/package-lock.json') }}-${{ hashFiles('testing/kane/.testmuai/tests/*_test.md') }}-
+            kane-tapes-${{ runner.os }}-${{ hashFiles('testing/kane/recording-version.txt', 'testing/kane/package-lock.json') }}-
+      - name: Run Kane against the production server
+        id: kane
+        working-directory: testing/kane
+        env:
+          LT_USERNAME: ${{ secrets.LT_USERNAME }}
+          LT_ACCESS_KEY: ${{ secrets.LT_ACCESS_KEY }}
+          OPENAI_API_KEY: ${{ (inputs.suite == 'live' || inputs.suite == 'all') && secrets.OPENAI_API_KEY || '' }}
+          KANE_CLI_CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: npm run run -- --start-server --headless
+      - name: Check for approved recording entries
+        id: cache-ready
+        if: always() && env.KANE_MODE == 'record' && github.event_name != 'pull_request'
+        working-directory: testing/kane
+        run: node scripts/cache-ready.mjs
+      - name: Save successful recordings only from trusted recording runs
+        if: always() && env.KANE_MODE == 'record' && github.event_name != 'pull_request' && steps.cache-ready.outputs.approved == 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            testing/kane/.testmuai/tests/output-*
+            testing/kane/.testmuai/recordings.json
+          key: ${{ steps.recordings.outputs.cache-primary-key }}
+      - name: Upload Kane result and evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: kane-${{ env.KANE_SUITE }}-${{ env.KANE_MODE }}-${{ github.run_attempt }}
+          path: |
+            testing/kane/results/
+            testing/kane/.testmuai/evidence/*.evidence
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
