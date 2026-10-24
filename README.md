@@ -1,121 +1,115 @@
 # Knapsack
 
-See your suitcase packed before you start. The combined prototype turns photos of your belongings into editable AI-generated 3D meshes and a validated geometric packing layout.
+**See what fits. Keep what matters.**
 
-The combined MVP now lives in [final](final/README.md). Run `cd final`, `npm ci`, and `npm run dev` to use photo recognition, Astra suggestions, essential pins, overflow choices, imported 3D assets and plan export in one application. The root app and [step2](step2/README.md) remain available as the source implementations. Final browser validation is in progress.
+Knapsack turns ordinary photos of your belongings into editable, AI-generated 3D objects and helps you arrange them inside a suitcase. Correct an estimated size, protect an essential, move something between compartments, and preview what would need to change to bring another item.
 
-See the [architecture walkthrough](docs/architecture.md) for the three application boundaries, combined-app data flow, geometry and AI contracts, current verification, and review findings.
+The traveler’s question is concrete: **“Can these particular belongings fit together, and which tradeoff am I willing to make?”** Knapsack connects what an object looks like, how much space it needs, and how much it matters to the person packing it.
+
+[Open the live workspace](https://knapsack.pontrolcanel.top/pack) · [Run the combined app](final/README.md) · [Architecture](docs/architecture.md) · [Validation and limitations](final/artifacts/validation.md)
 
 ## Why Knapsack is different
 
-**Knapsack brings photo-generated 3D belongings, personal packing priorities, and independently checked spatial decisions into one editable suitcase workspace.** A traveler can photograph an item, recognize it in the scene, correct its estimated size, protect essentials, and decide what to change when space runs out.
+**A photographed belonging keeps the same identity as it moves through recognition, generated geometry, visual correction, packing, and a keep-or-leave decision.** That continuity is the core of Knapsack’s originality: the traveler can change the model’s interpretation and inspect how that correction changes the actual packing plan.
 
-The original contribution is the way these capabilities work together in the [combined application](final/README.md):
+### 1. A photo becomes geometry you can correct
 
-- **Your photographed belongings become editable geometry.** Astra generates colored vertices, triangles, and materials from the uploaded photo. The scene renders that supplied geometry, preserves its photo and model provenance, and retains it through editing, saving, and export. See [photo analysis](final/src/lib/vision.ts) and [mesh rendering](final/src/components/packing/GeneratedMesh.tsx).
-- **Packing responds to both physical constraints and personal choices.** Two suitcase compartments, permitted rotations, manual placement, and user-controlled clothing compression feed the packing calculation. Essential pins protect belongings during AI selection and make-room choices; the traveler previews and explicitly applies those decisions. See [manual layout](final/src/lib/manual-layout.ts), [packing advice](final/src/lib/astra.ts), and [make-room choices](final/src/lib/choices.ts).
-- **Generated suggestions must pass explicit checks.** The app validates mesh data and checks packing bounds, clearance, overlap, orientations, and complete item accounting independently of the search. AI advice must use the actual inventory IDs and preserve essentials. Packing uses estimated rectangular envelopes; generated mesh detail improves recognition, while the envelope defines estimated fit. See [mesh validation](final/src/lib/mesh.ts) and [plan validation](final/src/lib/validate.ts).
+Astra returns colored vertices, triangle indices, and materials for the photographed object. Knapsack renders that supplied mesh in both the suitcase and the item editor. A bottle’s pump or nozzle can remain recognizable as you resize it beside the suitcase.
 
-### Comparison with related products
+The item retains its source photo and model provenance through duplication, saving, collection import, and export. The visual mesh and its estimated packing envelope scale together. Reviewing a photo and correcting its size become part of the same spatial interaction.
 
-The following comparison uses the products' own public descriptions, reviewed on 2026-10-24. It identifies the focus of our implementation without assuming that an unadvertised competitor feature is absent.
+Implementation: [photo-to-mesh generation](final/src/lib/vision.ts), [generated-mesh rendering](final/src/components/packing/GeneratedMesh.tsx), and [mesh validation](final/src/lib/mesh.ts).
 
-| Related product | Publicly described focus | Knapsack's specific contribution |
+### 2. “Must bring” changes the available tradeoffs
+
+An essential pin protects an item from removal by AI advice and make-room alternatives. When another belonging cannot fit, Knapsack can calculate alternatives using the actual inventory IDs, preserve those essentials, and show the resulting arrangement before the traveler applies a choice.
+
+For example, **“Keep my charger. Help me bring this bottle.”** becomes an inspectable packing decision: which belongings remain, which would be excluded, and where the selected items would go. Essential status protects a belonging from suggested removal; geometric feasibility is still checked separately.
+
+Implementation: [packing advice](final/src/lib/astra.ts), [make-room alternatives](final/src/lib/choices.ts), and [independent plan validation](final/src/lib/validate.ts).
+
+### 3. The traveler can revise the spatial assumptions
+
+Drag an item to a floor position in either suitcase half, change its permitted rotations, or adjust a garment’s folded thickness with the clothing-compression control. These edits change the geometry used by the solver and validator. The suitcase’s two compartments share its declared capacity, and overflow remains visible beside it.
+
+Generated meshes provide a recognizable visual reference. Conservative rectangular envelopes define estimated fit. This separation lets the app show detailed belongings while checking bounds, clearance, overlaps, orientations, and complete item accounting with explicit rules.
+
+Implementation: [manual placement](final/src/lib/manual-layout.ts), [packing engine](final/src/lib/packing.ts), and [validator](final/src/lib/validate.ts).
+
+**The contribution is the connected decision process: your photos become persistent objects, your corrections and priorities affect the arrangement, and proposed tradeoffs produce a preview that can be checked before you accept it.**
+
+### Related work and positioning
+
+These descriptions were reviewed on 2026-10-24 using the products’ own websites. Each row summarizes a published product focus; Knapsack’s originality claim concerns the workflow implemented here.
+
+| Product | Publicly described focus | Knapsack’s emphasis |
 | --- | --- | --- |
-| [JetKit](https://jetkit.ai/) (beta) | Photo-based wardrobe recognition and packing recommendations based on destination and weather. | Connects photo-derived belongings to generated 3D geometry, editable dimensions, and a compartment-aware suitcase arrangement with checked keep/leave decisions. |
-| [PackPilot](https://packpilot.io/) (early access) | Camera/LiDAR or manual capture, constrained 3D packing plans, load order, and AR placement guidance. | Centers an ordinary photo-to-generated-mesh workflow in a browser, with editable belongings, essential-preserving AI advice, and independently validated packing previews. |
+| [JetKit](https://jetkit.ai/) | Recognizing a personal wardrobe from photos and recommending what to bring for a destination, weather, and trip. | Connect photographed belongings to editable generated meshes and a spatial packing plan whose tradeoffs respect the traveler’s essentials. |
+| [PackPilot](https://packpilot.io/) | Capturing spaces and objects with camera/LiDAR, AR tracing, or manual input; constrained 3D packing, load order, and AR guidance. | Bring ordinary photo uploads, generated mesh data, visual correction, essential-preserving choices, and independently checked previews into one browser workspace. |
 
-**Our case for full credit on the rubric's 10-point Originality criterion is this implemented combination: a traveler's own photos become recognizable 3D belongings, personal constraints drive packing tradeoffs, and independent validation checks the resulting spatial decisions.** The linked source and [validation records](final/artifacts/astra-mesh-validation.md) make that case inspectable. The [live two-photo report](final/artifacts/astra-mesh-live.json) demonstrates real generated meshes, corrected dimensions, a validated plan, and real packing advice; full browser verification remains incomplete. Originality credit ultimately rests with the judges under the [published rubric](https://kaneclihack.sh/#judging).
+## Inspect the evidence
 
-## Project structure
+The implementation and verification records make the originality claim reviewable.
 
-```text
-src/
-  app/                    Routes, layouts, global styles, and API handlers
-  components/
-    landing/              Landing page and scroll-driven 3D packing animation
-    packing/              Packing workspace and interactive suitcase viewer
-  lib/                    Shared domain, packing, persistence, vision, and tests
-public/fixtures/          Bundled recognition images and source information
-scripts/                  Development utilities
-.testmuai/tests/          Kane-generated browser journeys
-```
+| Evidence | What it establishes | Scope |
+| --- | --- | --- |
+| [Live Astra mesh report](final/artifacts/astra-mesh-live.json) | The pump-bottle fixture produced 72 vertices and 136 triangles; the water-bottle fixture produced 64 vertices and 124 triangles. Both items packed after explicit size/orientation corrections, and real Astra advice retained both essentials in a valid preview. | Genuine provider API → generated meshes → corrected inventory → validated plan and advice. The inputs include one real photograph and one stock illustration. |
+| [Mesh and suitcase validation](final/artifacts/astra-mesh-validation.md) | Mesh data is bounded and validated; geometry survives editing and persistence; compartment packing and closed-suitcase bounds have direct tests. | Source checks, direct tests, live API evidence, and explicitly limited browser observations. |
+| [Studio Kane results](step2/evidence/kane-results.json) | Five generated browser journeys passed, including capacity choices, essential protection, animation, and requesting and applying real Astra advice. | The earlier studio MVP: eight approved criteria across two use cases. |
+| [Combined-app Kane results](final/artifacts/validation.md) | Kane findings led to individual demo labels, automatic item selection, a server attachment for exports, and generated test-flow refinements. | The initial combined suite passed one journey and failed six; the partial rerun does not establish a full regression pass. |
+| [Landing animation check](final/artifacts/landing-animation-validation.md) | Kane verified sequential arrivals, the completed eight-item arrangement, and reverse scrolling. The increment also records 68 passing direct tests. | The documented landing increment; the visual story uses a fixed illustrative layout. |
 
-Keep route files small and place feature-specific UI beside its 3D components and styles.
+Kane participates in development through requirements ingestion, use-case and acceptance-criteria generation, runnable `_test.md` files, execution, evidence inspection, and coverage reporting. The coding agent used the results to change the implementation and refine tests through Kane’s documented workflow.
+
+**Full browser verification of the current photo-to-packed-suitcase journey remains incomplete.** The studio’s 8/8 coverage applies to its approved MVP scope. The combined app’s initial run reported 11% of 55 criteria proven. These records describe different scopes and are kept separate.
+
+## Try the workflow
+
+1. Open the [packing workspace](https://knapsack.pontrolcanel.top/pack), choose a suitcase, and upload item photos. **Load demo** provides a labeled inventory for exploring the scene without a recognition call.
+2. Compare each generated object with its source photo. Make it bigger or smaller visually, adjust its shape, or correct the inventory. Numerical measurement entry is optional.
+3. Pin the belongings you must bring. Explore rotations, manual placement, and clothing compression, then inspect the resulting arrangement across both suitcase halves.
+4. If an item remains outside, inspect **Make room** alternatives or **Ask Astra**. Review the proposed selection and packing preview before applying it.
+5. Explore layers and packing playback, inspect closure, and export the plan. Inventory and photos persist in this browser.
 
 ## Run locally
 
-Requires Node.js 20.9+ and npm.
+The current combined application lives in **`final/`**. Use Node.js 22 or newer.
 
 ```sh
+cd final
 npm ci
 cp .env.example .env.local
-# Set OPENAI_API_KEY in .env.local, or inherit it from your server environment.
+# Set OPENAI_API_KEY in this ignored file, or inherit it from the server environment.
 npm run dev
 ```
 
-Open [the landing page](http://127.0.0.1:3000) or [the packing workspace](http://127.0.0.1:3000/pack). `npm run build && npm start` serves the production build on the same address. Keep the server running during browser tests; run production builds between test sessions.
+Open `http://127.0.0.1:3000/pack`. The server setting `OPENAI_MODEL` defaults to `gpt-6-astra` and controls photo-to-mesh generation and packing advice. Credentials stay on the server. See [the application README](final/README.md) for configuration and [deployment instructions](final/deploy/README.md) for production hosting.
 
-The server uses `OPENAI_VISION_MODEL=gpt-4.1-mini` by default; configure another model supporting image input and strict structured output if needed. The ignored `.env.local` stays local; `.env.example` contains placeholders only. Never prefix the API key with `NEXT_PUBLIC_`.
-
-## Try it
-
-The workspace opens with **Demo inventory**: nine reproducible belongings, computed by the real packing engine, with no model calls. Select an item in the scene or inventory, resize it visually, duplicate/delete/exclude it, change rotations, or add a category template. Suitcase changes and visual edits repack in a worker. Explore hidden layers, the exploded arrangement, and the packing-order slider or playback.
-
-For **live analysis**, reset the trip to start empty, then upload JPEG, PNG or WebP photos (up to 6 MB each, 12 retained photos, 80 total items). Photos are sent to OpenAI by the server and retained in this browser's IndexedDB; this app does not persist photos on its server. Each photo has independent progress and retries, with at most two in flight. Missing credentials produce a clear error; demo items are never substituted for analysis. Source thumbnails stay linked to generated items. Visually correct estimates and merge multiple views only when they represent one physical belonging.
-
-Use [bundled recognition fixtures](public/fixtures/README.md) for repeatable live checks. Live outputs vary. A separate nine-item inventory in `src/lib/domain.ts` supports deterministic demo regressions.
-
-The trip autosaves locally, including photos, suitcase choice and visual overrides. Reset clears this browser's retained session; Load demo replaces the current trip with the sample inventory. The app reports unavailable or invalid storage and leaves editing usable.
-
-## Validate
+From `final/`, run the local checks:
 
 ```sh
 npm run typecheck
 npm run lint
 npm test
 npm run build
-# Optional genuine live endpoint check; requires the server and API credential:
-npm run test:live
 ```
 
-Vitest covers rotations and renderer transforms, tight clearance, incomplete layouts, overlap and completeness rejection, randomized inventories, stable identities, retries/deletions/late responses, persistence recovery and server upload/concurrency boundaries.
+`npm run test:live` exercises real provider calls against a running server and requires its API credential. Its result is API evidence. Browser journeys use Kane CLI; their requirements and recorded status are linked from the [combined validation report](final/artifacts/validation.md). Credentials, raw recordings, and evidence packs remain ignored; safe reports and available Test Manager links are retained.
 
-Browser tests must be generated through the [Kane CLI skill](https://github.com/LambdaTest/kane-cli). This repo uses a local assurance store, preserves generated `.testmuai/tests/*_test.md`, and ignores raw evidence and credentials. Follow the skill's human review checkpoints before authoring tests. Requirement source: [requirements.md](requirements.md).
+## Boundaries of the prototype
 
-```sh
-# Server must remain running. Browser tests use visible Chrome by default.
-KANE_CLI_USER_AGENT=codex kane-cli testrun run --agent < /dev/null
-KANE_CLI_USER_AGENT=codex kane-cli cover gaps
-```
+Photo-derived dimensions and unseen surfaces are estimates. The meshes are approximate low-poly reconstructions. Packing uses conservative envelopes and a bounded heuristic; a failed search does not prove packing impossible. Clothing compression is a user-supplied spatial assumption. Geometric checks and a closing animation do not establish physical insertion feasibility, fabric behavior, or real-world closure.
 
-See [PROGRESS.md](PROGRESS.md) for current workflow state and [artifacts](artifacts) for safe review/validation summaries. A launched Kane process is not a passed suite.
+Live analysis sends uploaded images to OpenAI. The application retains trip photos and inventory in the visitor’s browser and does not persist uploaded photos on its server. Recognition and provider failures remain visible and retryable; manual additions remain available. These limits are part of the product’s interaction and documented validation scope.
 
-## Model and limits
+## Repository map
 
-All solver geometry uses millimeters, with X=width, Y=length, Z=up. Renderer coordinates are X=width, Y=up, Z=length, at 100 mm per world unit. The signed rotation transform matches each permitted envelope permutation. Four bounded deterministic item orders try lower supported placements, with a 3 mm wall/item margin. An independent module validates dimensions, orientations, bounds, overlaps and complete placed/unplaced accounting before accepting a plan. The plan revision includes all solver inputs, including suitcase selection and clearance; late results are discarded.
+| Path | Role |
+| --- | --- |
+| [`final/`](final/README.md) | Current combined Next.js application and primary demo target. |
+| [`docs/architecture.md`](docs/architecture.md) | Data flow, AI/geometry contracts, application boundaries, and review findings. |
+| [`src/`](src/) | Original Next.js implementation, preserved as a source implementation. |
+| [`step2/`](step2/README.md) | Original packing studio and its separately scoped Kane evidence. |
+| [`artifacts/validation.md`](artifacts/validation.md) | Historical validation of the original root application. |
 
-Rectangular suitcase interiors and conservative envelopes approximate fit. Absolute scale cannot be recovered reliably from arbitrary photos. Category meshes are recognizable approximations; recognition can miss or misclassify belongings. Static geometric layouts and the proposed packing order do not prove physical insertion feasibility, compressibility or cloth behavior. A partial search result does not prove packing impossible. Direct oversized-envelope/total-volume conflicts are reported separately from bounded-search exhaustion.
-
-Full reconstruction, physics, accounts, multiple bags, camera tracking and bag-specific curved interiors are deferred. Storage is per browser/device. This local prototype's process concurrency guard is not a distributed production quota system. Broader device coverage and a physical packing trial require separate validation.
-
-The OpenAI adapter follows official [image input](https://developers.openai.com/api/docs/guides/images-vision), [structured output](https://developers.openai.com/api/docs/guides/structured-outputs), and [GPT-4.1 mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini) documentation. See [design.md](design.md) for architecture decisions.
-
-## Step-two packing studio
-
-The separately runnable [step2 MVP](step2/README.md) adds a 3D packing studio, animated placement, essential-item pins, user-selected swaps for items that do not fit, model URL import, and a server-side Astra suggestions adapter. See [its handoff contract](step2/INTEGRATION.md) for integration with the main app.
-
-Kane CLI E2E checks are required throughout implementation. Generate requirement-linked tests, run them as features are implemented, and retain evidence. See the [design workflow](design.md#kane-cli-development-and-evidence-workflow) and [step-two validation record](step2/evidence/README.md).
-
-## Validation status
-
-See [the validation report](artifacts/validation.md) for the earlier command results, browser smoke results, actual Kane coverage, and unverified paths. Full browser coverage is not claimed (the recorded Kane baseline reports 2%, 3/106 criteria). The genuine live API check is separate from browser evidence. Root TypeScript and ESLint now exclude the independent `final/` and `step2/` packages; both Next.js apps pass their own type checks, lint, and production builds.
-
-For the committed packing smoke tests, copy the nonsecret fixture definitions before execution:
-
-```sh
-mkdir -p .testmuai/variables
-cp scripts/kane-variables.example.json .testmuai/variables/knapsack.json
-```
-
-Unexecuted local Kane drafts are outside the completed verification scope. The application ships demo inventory and real OpenAI analysis; no deterministic photo-analysis adapter is enabled.
+The original source applications remain available; the combined product and its current setup instructions are in `final/`.
