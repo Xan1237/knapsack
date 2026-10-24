@@ -11,3 +11,5 @@ The user authorized automatic review and execution within the seven existing pro
 All three use the configured nonsecret `knapsack_base_url`. They need no provider keys or responses. Each has one independent intent step. Check mode caps each at 30 seconds and the batch at 90 seconds.
 
 The previous packing/overflow smoke selection is retained in manual regression. Its initial CI recording passed two checks and failed the explicit leave-out selection check. This unresolved failure must remain visible in regression results; reducing smoke scope does not establish that behavior as passing. Other generated app designs remain outside this active gate until reviewed and recorded.
+
+Failure inspection found an automation error: the recorded assertion inspected the currently selected Sage linen shirt after clicking Leave out for Cream knit. The screenshot showed Cream knit unchecked and eight items included, while Sage remained selected. No application change was made. The recorded assertion still needs a focused Kane repair before this regression case can pass.

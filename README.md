@@ -96,3 +96,5 @@ cp scripts/kane-variables.example.json .testmuai/variables/knapsack.json
 ```
 
 Unexecuted local Kane drafts are outside the completed verification scope. The application ships demo inventory and real OpenAI analysis; no deterministic photo-analysis adapter is enabled.
+
+The independent [Kane CI harness](testing/kane/README.md) lives in `testing/kane` on the `kane-cli` branch. Its automatic gate runs only a small deterministic smoke suite, with a 30-second limit per recorded test and a target of under five minutes from push to success. Larger suites and recording/repair are manual. It can test a separate application branch without changing application source.
