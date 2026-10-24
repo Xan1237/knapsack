@@ -1,0 +1,133 @@
+{
+  "bag": "cabin",
+  "itemCategory": "other",
+  "count": 30,
+  "items": [
+    {
+      "name": "Essential 01",
+      "sizePercent": 50
+    },
+    {
+      "name": "Essential 02",
+      "sizePercent": 85
+    },
+    {
+      "name": "Essential 03",
+      "sizePercent": 120
+    },
+    {
+      "name": "Essential 04",
+      "sizePercent": 75
+    },
+    {
+      "name": "Essential 05",
+      "sizePercent": 110
+    },
+    {
+      "name": "Essential 06",
+      "sizePercent": 65
+    },
+    {
+      "name": "Essential 07",
+      "sizePercent": 100
+    },
+    {
+      "name": "Essential 08",
+      "sizePercent": 55
+    },
+    {
+      "name": "Essential 09",
+      "sizePercent": 90
+    },
+    {
+      "name": "Essential 10",
+      "sizePercent": 125
+    },
+    {
+      "name": "Essential 11",
+      "sizePercent": 80
+    },
+    {
+      "name": "Essential 12",
+      "sizePercent": 115
+    },
+    {
+      "name": "Essential 13",
+      "sizePercent": 70
+    },
+    {
+      "name": "Essential 14",
+      "sizePercent": 105
+    },
+    {
+      "name": "Essential 15",
+      "sizePercent": 60
+    },
+    {
+      "name": "Essential 16",
+      "sizePercent": 95
+    },
+    {
+      "name": "Essential 17",
+      "sizePercent": 50
+    },
+    {
+      "name": "Essential 18",
+      "sizePercent": 85
+    },
+    {
+      "name": "Essential 19",
+      "sizePercent": 120
+    },
+    {
+      "name": "Essential 20",
+      "sizePercent": 75
+    },
+    {
+      "name": "Essential 21",
+      "sizePercent": 110
+    },
+    {
+      "name": "Essential 22",
+      "sizePercent": 65
+    },
+    {
+      "name": "Essential 23",
+      "sizePercent": 100
+    },
+    {
+      "name": "Essential 24",
+      "sizePercent": 55
+    },
+    {
+      "name": "Essential 25",
+      "sizePercent": 90
+    },
+    {
+      "name": "Essential 26",
+      "sizePercent": 125
+    },
+    {
+      "name": "Essential 27",
+      "sizePercent": 80
+    },
+    {
+      "name": "Essential 28",
+      "sizePercent": 115
+    },
+    {
+      "name": "Essential 29",
+      "sizePercent": 70
+    },
+    {
+      "name": "Essential 30",
+      "sizePercent": 105
+    }
+  ],
+  "expected": {
+    "outcome": "search-exhausted",
+    "placed": 27,
+    "unplaced": 3,
+    "conflicts": []
+  }
+}

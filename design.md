@@ -1,6 +1,16 @@
 # Knapsack design
 
-Status: proposed architecture and implementation plan. No application implementation or validation results exist yet.
+Status: local prototype implemented; validation in progress. Current commands/results and remaining work are in `PROGRESS.md`. Browser tests and approval checkpoints are in progress; implementation is not yet declared fully verified.
+
+## Implemented decisions (2026-10-24)
+
+- One Next.js 16 App Router application: landing at `/`, interactive planner at `/pack`, server vision endpoint at `/api/analyze`. Concurrent landing-page work has been preserved.
+- React Three Fiber / Drei category geometry stays inside conservative rectangular item envelopes. Solver axes are millimeter X=width, Y=length, Z=up; renderer axes swap length/up with 100 mm per world unit and signed proper rotations.
+- Four bounded deterministic candidate orders prefer supported lower placements, 3 mm margins, and 65% footprint support. Worker calculations debounce 180 ms. A separately implemented validator checks all accepted plans, and full geometry/suitcase revisions reject stale results.
+- The server uses OpenAI Responses image input and strict Structured Outputs, configurable `OPENAI_VISION_MODEL` (default `gpt-4.1-mini`). The wire schema uses named width/length/height to avoid tuple prefixItems; application boundaries normalize to a validated tuple. Credentials stay server-side. App server photo retention is zero; provider retention follows the account's policy, with `store:false` for Responses.
+- Per-photo requests support multiple uploads with two concurrent analyses, max 6 MB JPEG/PNG/WebP each, 12 retained photos and 80 total items including manual additions and duplicates. Overflow preserves existing data and reports omitted proposals. Successful analysis records are immutable; retries cannot replace edits or revive deletions.
+- IndexedDB stores photos separately from frequently saved inventory metadata. Reload marks interrupted analyses retryable. Manual additions, corrections, explicit source-preserving merges, layer inspection, exploded views, playback, and empty/partial/error states are implemented.
+- Demo inventory is a fixed nine-item fixture, explicitly labeled and independent of the live adapter. Photo fixtures and recognition expectations live in `public/fixtures/README.md`; live API and browser evidence are recorded separately.
 
 This document records the product decisions made after the initial README. Where they differ, this design takes precedence: the first release centers on uploaded photos, editable 3D items, and a fully packed 3D suitcase. Entering or confirming numerical measurements is not a required step.
 
