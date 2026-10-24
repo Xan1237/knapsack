@@ -33,6 +33,8 @@ import GeneratedMesh from "./GeneratedMesh";
 import ClamshellCase from "./ClamshellCase";
 import { anchorAtPoint } from "@/lib/manual-layout";
 import { useItemDrag } from "./useItemDrag";
+import { explorerLayout } from "@/lib/explorer-layout";
+import ExplorerCamera from "./ExplorerCamera";
 
 const unit = 100;
 function Block({
@@ -547,8 +549,6 @@ function PackedItems({
 
 function Scene(props: Props) {
   const { items, bag, plan, selected, onSelect } = props;
-  const w = bag.dimensions[0] / unit,
-    l = bag.dimensions[1] / unit;
   const controls = useRef<OrbitControlsImpl>(null);
   const caseFrame = useRef<Group>(null);
   const drop = (item: Item, worldPoint: Vector3, orientation: number) => {
@@ -572,6 +572,11 @@ function Scene(props: Props) {
   const unplaced =
     plan?.unplaced ??
     items.filter((i) => i.included).map((i) => ({ id: i.id, reason: "" }));
+  const unplacedIds = new Set(unplaced.map((item) => item.id));
+  const { overflow, bounds } = explorerLayout(
+    items.filter((item) => item.included && unplacedIds.has(item.id)),
+    bag,
+  );
   return (
     <>
       <color attach="background" args={["#eeeae1"]} />
@@ -606,19 +611,25 @@ function Scene(props: Props) {
             <PackedItems props={props} onDrop={drop} />
           </>
         )}
-        {unplaced.map((u, index) => {
+        {overflow.length > 0 && (
+          <Html
+            position={[bounds.max[0] - 0.45, 0.1, bounds.min[2]]}
+            center
+            style={{ pointerEvents: "none" }}
+          >
+            <div className="scene-tooltip">
+              Outside the suitcase · {overflow.length} items
+            </div>
+          </Html>
+        )}
+        {overflow.map((u) => {
           const item = items.find((i) => i.id === u.id);
           if (!item) return null;
-          const d = sizeOf(item);
           return (
             <Belonging
               key={u.id}
               item={item}
-              position={[
-                w / 2 + 1.25 + (index % 2) * 1.65,
-                d[2] / unit / 2,
-                Math.floor(index / 2) * 2 - l / 2,
-              ]}
+              position={u.position}
               orientation={0}
               selected={selected === u.id}
               onSelect={onSelect}
@@ -646,6 +657,11 @@ function Scene(props: Props) {
         maxPolarAngle={Math.PI * 0.48}
         target={[0, 0.6, 0]}
         enableDamping
+      />
+      <ExplorerCamera
+        bounds={bounds}
+        hasOverflow={overflow.length > 0}
+        top={props.view === "top"}
       />
     </>
   );
