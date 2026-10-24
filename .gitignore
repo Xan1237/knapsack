@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.env*
+!.env.example
+coverage/
+.context/
+.testmuai/*
+!.testmuai/tests/
+!.testmuai/variables/
+.testmuai/variables/*.json
+output-*/
+artifacts/raw/
+*.evidence
+*.tsbuildinfo
+.DS_Store
