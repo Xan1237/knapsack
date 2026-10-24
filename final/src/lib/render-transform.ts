@@ -1,5 +1,20 @@
 import { Matrix4, Quaternion, Vector3 } from "three";
 import { permutations } from "./domain";
+
+/** Both halves are floor-up while open; the lid rotates over the center seam. */
+export function clamshellPose(
+  width: number,
+  halfDepth: number,
+  closing: number,
+) {
+  const progress = Math.max(0, Math.min(1, closing));
+  return {
+    rootX: (width / 2) * (1 - progress),
+    lidAngle: -Math.PI * progress,
+    hinge: [-width / 2, halfDepth, 0] as [number, number, number],
+    lidOrigin: [-width / 2, -halfDepth, 0] as [number, number, number],
+  };
+}
 /** Solver [X,Y length,Z up] -> Three [X,Y up,Z length], with proper signed rotations. */
 export function itemQuaternion(orientation: number) {
   const p = permutations[orientation];

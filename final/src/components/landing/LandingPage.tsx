@@ -23,6 +23,10 @@ import {
   Mouse,
 } from "lucide-react";
 import "./landing.css";
+import {
+  landingPackedCount,
+  landingReadyToClose,
+} from "@/lib/landing-timeline";
 
 const PackingScene = dynamic(() => import("./PackingScene"), {
   ssr: false,
@@ -127,8 +131,8 @@ export default function LandingPage() {
       progress.current = p;
       if (meter.current)
         meter.current.style.setProperty("--packing-progress", `${p * 100}%`);
-      setChapter(p < 0.17 ? 0 : p < 0.46 ? 1 : p < 0.83 ? 2 : 3);
-      setPacked(Math.min(8, Math.max(0, Math.floor((p - 0.27) / 0.074) + 1)));
+      setChapter(p < 0.17 ? 0 : p < 0.46 ? 1 : landingReadyToClose(p) ? 3 : 2);
+      setPacked(landingPackedCount(p));
     };
     const requestUpdate = () => {
       if (!frame) frame = window.requestAnimationFrame(update);

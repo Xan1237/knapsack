@@ -23,5 +23,12 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "artifacts", ".context", ".testmuai"]
+  "exclude": [
+    "node_modules",
+    "artifacts",
+    ".context",
+    ".testmuai",
+    "final",
+    "step2"
+  ]
 }

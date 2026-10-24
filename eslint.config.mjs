@@ -10,5 +10,7 @@ export default defineConfig([
     ".testmuai/**",
     "artifacts/**",
     "next-env.d.ts",
+    "final/**",
+    "step2/**",
   ]),
 ]);

@@ -8,6 +8,7 @@ import {
   sizeOf,
   revisionOf,
 } from "./domain";
+import { anchoredPlacement } from "./manual-layout";
 
 const volume = (d: Vec3) => d[0] * d[1] * d[2];
 const overlap = (a: Placement, b: Placement, gap: number) =>
@@ -43,6 +44,14 @@ function supported(p: Placement, placed: Placement[], gap: number): boolean {
 export function pack(items: Item[], bag: Suitcase, budget = 80000): Plan {
   const included = items.filter((i) => i.included),
     gap = bag.clearance;
+  const cavity: Vec3 = [
+    bag.dimensions[0],
+    bag.dimensions[1],
+    bag.dimensions[2] / (bag.clamshell ? 2 : 1),
+  ];
+  const compartments: Placement["compartment"][] = bag.clamshell
+    ? ["base", "lid"]
+    : [undefined];
   const conflicts: string[] = [];
   for (const i of included) {
     const d = sizeOf(i);
@@ -54,22 +63,20 @@ export function pack(items: Item[], bag: Suitcase, budget = 80000): Plan {
       throw new Error("Invalid item dimensions or orientations");
     if (
       !i.orientations.some((o) =>
-        permutations[o].every(
-          (axis, k) => d[axis] + gap * 2 <= bag.dimensions[k],
-        ),
+        permutations[o].every((axis, k) => d[axis] + gap * 2 <= cavity[k]),
       )
     )
       conflicts.push(i.id);
   }
   if (
-    bag.dimensions.some((n) => !Number.isFinite(n) || n <= 0) ||
+    cavity.some((n) => !Number.isFinite(n) || n <= gap * 2) ||
     !Number.isFinite(gap) ||
     gap < 0
   )
     throw new Error("Invalid suitcase");
   const volumeConflict =
     included.reduce((v, i) => v + volume(sizeOf(i)), 0) >
-    volume(bag.dimensions.map((n) => n - gap * 2) as Vec3);
+    volume(cavity.map((n) => n - gap * 2) as Vec3) * compartments.length;
   const orders = [
     [...included].sort(
       (a, b) =>
@@ -117,52 +124,79 @@ export function pack(items: Item[], bag: Suitcase, budget = 80000): Plan {
   let best: Placement[] = [],
     attempts = 0,
     exhausted = false;
+  // The latest moved item is reserved first; every other item may move around it.
+  const anchor = included
+    .map((item) => anchoredPlacement(item, bag))
+    .find((p) => p !== null);
   for (const order of orders) {
     attempts++;
-    const placed: Placement[] = [];
+    const placed: Placement[] = anchor ? [{ ...anchor }] : [];
     let evaluations = 0;
     for (const item of order) {
+      if (item.id === anchor?.id) continue;
       if (conflicts.includes(item.id)) continue;
-      const axes = [0, 1, 2].map((k) =>
-        [
-          ...new Set([
-            gap,
-            ...placed.map((p) => p.position[k] + p.dimensions[k] + gap),
-          ]),
-        ].sort((a, b) => a - b),
-      );
       const d = sizeOf(item);
       let found: Placement | undefined;
-      search: for (const z of axes[2])
-        for (const y of axes[1])
-          for (const x of axes[0])
-            for (const orientation of item.orientations) {
-              if (++evaluations > budget) {
-                exhausted = true;
+      const sides = [...compartments].sort(
+        (a, b) =>
+          placed
+            .filter((p) => p.compartment === a)
+            .reduce((v, p) => v + volume(p.dimensions), 0) -
+          placed
+            .filter((p) => p.compartment === b)
+            .reduce((v, p) => v + volume(p.dimensions), 0),
+      );
+      search: for (const compartment of sides) {
+        const sameSide = placed.filter((p) => p.compartment === compartment);
+        const axes = [0, 1, 2].map((k) =>
+          [
+            ...new Set([
+              gap,
+              ...(anchor
+                ? sameSide
+                    .flatMap((p) =>
+                      item.orientations.map(
+                        (o) => p.position[k] - d[permutations[o][k]] - gap,
+                      ),
+                    )
+                    .filter((n) => n >= gap)
+                : []),
+              ...sameSide.map((p) => p.position[k] + p.dimensions[k] + gap),
+            ]),
+          ].sort((a, b) => a - b),
+        );
+        for (const z of axes[2])
+          for (const y of axes[1])
+            for (const x of axes[0])
+              for (const orientation of item.orientations) {
+                if (++evaluations > budget) {
+                  exhausted = true;
+                  break search;
+                }
+                const dims = permutations[orientation].map((k) => d[k]) as Vec3;
+                const p: Placement = {
+                  id: item.id,
+                  position: [x, y, z],
+                  dimensions: dims,
+                  orientation,
+                  order: placed.length + 1,
+                  ...(compartment ? { compartment } : {}),
+                };
+                if (
+                  p.position.some(
+                    (n, k) => n + dims[k] > cavity[k] - gap + 1e-6,
+                  )
+                )
+                  continue;
+                if (
+                  sameSide.some((b) => overlap(p, b, gap)) ||
+                  !supported(p, sameSide, gap)
+                )
+                  continue;
+                found = p;
                 break search;
               }
-              const dims = permutations[orientation].map((k) => d[k]) as Vec3;
-              const p: Placement = {
-                id: item.id,
-                position: [x, y, z],
-                dimensions: dims,
-                orientation,
-                order: placed.length + 1,
-              };
-              if (
-                p.position.some(
-                  (n, k) => n + dims[k] > bag.dimensions[k] - gap + 1e-6,
-                )
-              )
-                continue;
-              if (
-                placed.some((b) => overlap(p, b, gap)) ||
-                !supported(p, placed, gap)
-              )
-                continue;
-              found = p;
-              break search;
-            }
+      }
       if (found) placed.push(found);
     }
     if (quality(placed) > quality(best)) best = placed;

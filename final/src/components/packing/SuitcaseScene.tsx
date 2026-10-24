@@ -16,7 +16,7 @@ import {
   useThree,
   type ThreeEvent,
 } from "@react-three/fiber";
-import { OrbitControls, RoundedBox, Html, useGLTF } from "@react-three/drei";
+import { OrbitControls, RoundedBox, useGLTF } from "@react-three/drei";
 import { Box3, Group, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
@@ -24,10 +24,17 @@ import {
   type Plan,
   type Suitcase,
   type Vec3,
+  type ItemAnchor,
   permutations,
   sizeOf,
 } from "@/lib/domain";
 import { itemQuaternion } from "@/lib/render-transform";
+import GeneratedMesh from "./GeneratedMesh";
+import ClamshellCase from "./ClamshellCase";
+import { anchorAtPoint } from "@/lib/manual-layout";
+import { useItemDrag } from "./useItemDrag";
+import { explorerLayout } from "@/lib/explorer-layout";
+import ExplorerCamera from "./ExplorerCamera";
 
 const unit = 100;
 function Block({
@@ -246,6 +253,9 @@ function Belonging({
   selected,
   onSelect,
   onModelError,
+  draggable = false,
+  onDrop,
+  onHover,
 }: {
   item: Item;
   position: Vec3;
@@ -253,6 +263,9 @@ function Belonging({
   selected: boolean;
   onSelect: (id: string) => void;
   onModelError?: (message: string) => void;
+  draggable?: boolean;
+  onDrop?: (item: Item, worldPoint: Vector3, orientation: number) => boolean;
+  onHover?: (label: string | null) => void;
 }) {
   const quaternion = useMemo(() => itemQuaternion(orientation), [orientation]);
   const d = sizeOf(item);
@@ -260,18 +273,24 @@ function Belonging({
     event.stopPropagation();
     onSelect(item.id);
   };
-  const [hover, setHover] = useState(false);
   const motion = useRef<Group>(null),
     target = useRef(new Vector3(...position)),
     reduced = useRef(false);
+  const drag = useItemDrag(
+    motion,
+    target,
+    draggable,
+    () => onSelect(item.id),
+    onDrop ? (point) => onDrop(item, point, orientation) : undefined,
+  );
   const [start] = useState<Vec3>(() => [
     position[0],
     position[1] + 2,
     position[2],
   ]);
   useLayoutEffect(() => {
-    target.current.fromArray(position);
-  }, [position]);
+    if (!drag.active.current) target.current.fromArray(position);
+  }, [position, drag.active]);
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => {
@@ -282,7 +301,7 @@ function Belonging({
     return () => preference.removeEventListener("change", update);
   }, []);
   useFrame((_, delta) => {
-    if (motion.current) {
+    if (motion.current && !drag.active.current) {
       if (reduced.current) motion.current.position.copy(target.current);
       else
         motion.current.position.lerp(target.current, 1 - Math.exp(-delta * 10));
@@ -294,18 +313,33 @@ function Belonging({
       position={start}
       quaternion={quaternion}
       onClick={click}
+      {...drag.handlers}
       onPointerOver={(e) => {
         e.stopPropagation();
-        setHover(true);
-        document.body.style.cursor = "pointer";
+        onHover?.(item.label);
+        document.body.style.cursor = drag.active.current
+          ? "grabbing"
+          : draggable
+            ? "grab"
+            : "pointer";
       }}
       onPointerOut={() => {
-        setHover(false);
-        document.body.style.cursor = "auto";
+        onHover?.(null);
+        if (!drag.active.current) document.body.style.cursor = "auto";
       }}
     >
       <group scale={[d[0] / unit, d[2] / unit, d[1] / unit]}>
-        {item.modelUrl ? (
+        {item.mesh ? (
+          <>
+            <GeneratedMesh mesh={item.mesh} />
+            {selected && (
+              <mesh>
+                <boxGeometry args={[1.02, 1.02, 1.02]} />
+                <meshBasicMaterial color="#d18c54" wireframe />
+              </mesh>
+            )}
+          </>
+        ) : item.modelUrl ? (
           <>
             <AssetBoundary
               key={item.modelUrl}
@@ -327,15 +361,6 @@ function Belonging({
           <ItemModel item={item} selected={selected} />
         )}
       </group>
-      {hover && (
-        <Html
-          center
-          position={[0, d[2] / unit / 2 + 0.2, 0]}
-          style={{ pointerEvents: "none" }}
-        >
-          <div className="scene-tooltip">{item.label}</div>
-        </Html>
-      )}
     </group>
   );
 }
@@ -459,42 +484,35 @@ type Props = {
   resetKey: number;
   view?: "perspective" | "top";
   onModelError?: (message: string) => void;
+  moveMode?: boolean;
+  onMove?: (id: string, anchor: ItemAnchor) => void;
+  onHover?: (label: string | null) => void;
 };
-function Scene(props: Props) {
+
+function PackedItems({
+  props,
+  compartment,
+  onDrop,
+}: {
+  props: Props;
+  compartment?: "base" | "lid";
+  onDrop: (item: Item, worldPoint: Vector3, orientation: number) => boolean;
+}) {
   const { items, bag, plan, selected, onSelect, layer, step, exploded } = props;
   const w = bag.dimensions[0] / unit,
     l = bag.dimensions[1] / unit;
-  const controls = useRef<OrbitControlsImpl>(null);
-  const unplaced =
-    plan?.unplaced ??
-    items.filter((i) => i.included).map((i) => ({ id: i.id, reason: "" }));
+  const depth = bag.dimensions[2] / (bag.clamshell ? 2 : 1);
   return (
     <>
-      <color attach="background" args={["#eeeae1"]} />
-      <ambientLight intensity={1.7} />
-      <directionalLight
-        position={[4, 9, 3]}
-        intensity={3}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-10}
-        shadow-camera-right={10}
-        shadow-camera-top={10}
-        shadow-camera-bottom={-10}
-        shadow-bias={-0.001}
-      />
-      <directionalLight position={[-5, 4, -4]} intensity={1.2} />
-      <group position={[-0.5, 0, 0.6]}>
-        <BagModel bag={bag} onModelError={props.onModelError} />
-        {plan?.placements.map((p) => {
+      {plan?.placements
+        .filter((p) => p.compartment === compartment)
+        .map((p) => {
           const item = items.find((i) => i.id === p.id);
           if (
             !item ||
             p.order > step ||
             p.position[2] >
-              bag.clearance +
-                ((bag.dimensions[2] - bag.clearance) * layer) / 100 +
-                0.001
+              bag.clearance + ((depth - bag.clearance) * layer) / 100 + 0.001
           )
             return null;
           const dims = permutations[p.orientation].map((k) => sizeOf(item)[k]);
@@ -513,26 +531,95 @@ function Scene(props: Props) {
               selected={selected === p.id}
               onSelect={onSelect}
               onModelError={props.onModelError}
+              draggable={props.moveMode}
+              onDrop={onDrop}
+              onHover={props.onHover}
             />
           );
         })}
-        {unplaced.map((u, index) => {
+    </>
+  );
+}
+
+function Scene(props: Props) {
+  const { items, bag, plan, selected, onSelect } = props;
+  const controls = useRef<OrbitControlsImpl>(null);
+  const caseFrame = useRef<Group>(null);
+  const drop = (item: Item, worldPoint: Vector3, orientation: number) => {
+    if (!caseFrame.current || !props.onMove) return false;
+    const local = caseFrame.current.worldToLocal(worldPoint.clone());
+    const anchor = anchorAtPoint(
+      item,
+      bag,
+      local.toArray() as Vec3,
+      orientation,
+    );
+    if (!anchor) {
+      props.onModelError?.(
+        "This item cannot fit here in its current orientation. Resize it or allow another rotation.",
+      );
+      return false;
+    }
+    props.onMove(item.id, anchor);
+    return true;
+  };
+  const unplaced =
+    plan?.unplaced ??
+    items.filter((i) => i.included).map((i) => ({ id: i.id, reason: "" }));
+  const unplacedIds = new Set(unplaced.map((item) => item.id));
+  const { overflow, bounds } = explorerLayout(
+    items.filter((item) => item.included && unplacedIds.has(item.id)),
+    bag,
+  );
+  return (
+    <>
+      <color attach="background" args={["#eeeae1"]} />
+      <ambientLight intensity={1.7} />
+      <directionalLight
+        position={[4, 9, 3]}
+        intensity={3}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-10}
+        shadow-camera-right={10}
+        shadow-camera-top={10}
+        shadow-camera-bottom={-10}
+        shadow-bias={-0.001}
+      />
+      <directionalLight position={[-5, 4, -4]} intensity={1.2} />
+      <group ref={caseFrame} position={[-0.5, 0, 0.6]}>
+        {bag.clamshell ? (
+          <ClamshellCase
+            bag={bag}
+            closed={
+              props.step > (plan?.placements.length ?? 0) && !props.exploded
+            }
+            base={
+              <PackedItems props={props} compartment="base" onDrop={drop} />
+            }
+            lid={<PackedItems props={props} compartment="lid" onDrop={drop} />}
+          />
+        ) : (
+          <>
+            <BagModel bag={bag} onModelError={props.onModelError} />
+            <PackedItems props={props} onDrop={drop} />
+          </>
+        )}
+        {overflow.map((u) => {
           const item = items.find((i) => i.id === u.id);
           if (!item) return null;
-          const d = sizeOf(item);
           return (
             <Belonging
               key={u.id}
               item={item}
-              position={[
-                w / 2 + 1.25 + (index % 2) * 1.65,
-                d[2] / unit / 2,
-                Math.floor(index / 2) * 2 - l / 2,
-              ]}
+              position={u.position}
               orientation={0}
               selected={selected === u.id}
               onSelect={onSelect}
               onModelError={props.onModelError}
+              draggable={props.moveMode}
+              onDrop={drop}
+              onHover={props.onHover}
             />
           );
         })}
@@ -554,6 +641,11 @@ function Scene(props: Props) {
         maxPolarAngle={Math.PI * 0.48}
         target={[0, 0.6, 0]}
         enableDamping
+      />
+      <ExplorerCamera
+        bounds={bounds}
+        hasOverflow={overflow.length > 0}
+        top={props.view === "top"}
       />
     </>
   );
@@ -595,6 +687,11 @@ function ContextMonitor({ onLost }: { onLost: (lost: boolean) => void }) {
 }
 export default function SuitcaseScene(props: Props) {
   const [contextLost, setContextLost] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const overflowCount =
+    props.plan?.unplaced.filter((entry) =>
+      props.items.some((item) => item.id === entry.id && item.included),
+    ).length ?? 0;
   if (contextLost)
     return (
       <div className="scene-error" role="alert">
@@ -613,22 +710,51 @@ export default function SuitcaseScene(props: Props) {
     );
   return (
     <SceneBoundary>
-      <Canvas
-        key={props.resetKey}
-        shadows
-        camera={{
-          position: props.view === "top" ? [0, 13, 0.01] : [7.2, 8.8, 10.8],
-          fov: 39,
-          near: 0.1,
-          far: 150,
-        }}
-        dpr={[1, 1.8]}
-        gl={{ antialias: true, preserveDrawingBuffer: true }}
-        aria-label="Interactive 3D packed suitcase. Drag to orbit, scroll to zoom, click an object to select it."
-      >
-        <Scene {...props} />
-        <ContextMonitor onLost={setContextLost} />
-      </Canvas>
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        <Canvas
+          key={props.resetKey}
+          shadows
+          camera={{
+            position: props.view === "top" ? [0, 13, 0.01] : [7.2, 8.8, 10.8],
+            fov: 39,
+            near: 0.1,
+            far: 150,
+          }}
+          dpr={[1, 1.8]}
+          gl={{ antialias: true, preserveDrawingBuffer: true }}
+          aria-label="Interactive 3D packed suitcase. Enable Move items to drag belongings and repack around them. Drag empty space to orbit, scroll to zoom."
+        >
+          <Scene {...props} onHover={setHovered} />
+          <ContextMonitor onLost={setContextLost} />
+        </Canvas>
+        {overflowCount > 0 && (
+          <div
+            className="scene-tooltip"
+            style={{
+              position: "absolute",
+              left: 16,
+              top: 16,
+              pointerEvents: "none",
+            }}
+          >
+            Outside the suitcase · {overflowCount} items
+          </div>
+        )}
+        {hovered && (
+          <div
+            className="scene-tooltip"
+            style={{
+              position: "absolute",
+              bottom: 44,
+              left: "50%",
+              transform: "translateX(-50%)",
+              pointerEvents: "none",
+            }}
+          >
+            {hovered}
+          </div>
+        )}
+      </div>
     </SceneBoundary>
   );
 }

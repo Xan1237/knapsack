@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { analyzePhoto } from "@/lib/vision";
 import { requestOriginMatches } from "@/lib/request-origin";
 export const runtime = "nodejs";
-export const maxDuration = 90;
+export const maxDuration = 180;
 let active = 0;
 export async function POST(request: NextRequest) {
   if (!requestOriginMatches(request))
@@ -76,8 +76,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: timedOut
-          ? "Photo analysis timed out. Retry, or add items manually."
-          : "Photo analysis could not finish. Retry, or add items manually. The existing inventory is safe.",
+          ? "Astra took too long creating the 3D mesh. Retry with a photo of fewer items, or add items manually."
+          : "Astra could not create a valid 3D mesh from this photo. Retry, or add items manually. Your existing inventory is safe.",
       },
       { status: 502 },
     );

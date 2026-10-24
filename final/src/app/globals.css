@@ -1,4 +1,29 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap");
+.compartment-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin: 0 25px 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  font-size: 9px;
+  color: var(--muted);
+}
+.compartment-summary strong {
+  font-weight: 500;
+  color: var(--ink);
+}
+.compartment-summary .text-button {
+  margin-left: auto;
+  font-size: 10px;
+}
+@media (max-width: 640px) {
+  .compartment-summary {
+    margin: 0 18px 16px;
+    gap: 10px 14px;
+  }
+}
 :root {
   --ink: #293a2d;
   --muted: #7c8176;
@@ -698,6 +723,7 @@ input[type="checkbox"] {
 }
 .scene-inspection {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   margin: 0 25px 16px;
@@ -728,6 +754,11 @@ input[type="checkbox"] {
 .scene-inspection .text-button {
   font-size: 9px;
   white-space: nowrap;
+}
+.scene-inspection .text-button[aria-pressed="true"] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 .plan-card {
   display: flex;
@@ -1436,6 +1467,9 @@ input[type="checkbox"] {
   .editor-panel > .resize-control {
     grid-column: 3;
     grid-row: 2/5;
+  }
+  .editor-panel > .compression-control {
+    grid-row: auto;
   }
   .editor-panel > .axis-toggle {
     grid-column: 3;

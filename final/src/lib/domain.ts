@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { meshSchema } from "./mesh";
 
 export const categories = [
   "clothing",
@@ -33,11 +34,23 @@ export const proposalSchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   appearance: z.string().max(240),
   dimensions: dimensionsSchema,
+  mesh: meshSchema.optional(),
+  meshModel: z.string().min(1).max(100).optional(),
 });
 export const analysisSchema = z.object({
   items: z.array(proposalSchema).max(30),
 });
 export type Proposal = z.infer<typeof proposalSchema>;
+export const anchorSchema = z.object({
+  position: z.tuple([
+    z.number().finite().min(0).max(2000),
+    z.number().finite().min(0).max(2000),
+    z.number().finite().min(0).max(2000),
+  ]),
+  orientation: z.number().int().min(0).max(5),
+  compartment: z.enum(["base", "lid"]).optional(),
+});
+export type ItemAnchor = z.infer<typeof anchorSchema>;
 export const itemSchema = proposalSchema.extend({
   id: z.string(),
   sourceIds: z.array(z.string()),
@@ -54,6 +67,8 @@ export const itemSchema = proposalSchema.extend({
   proposalId: z.string().optional(),
   required: z.boolean().optional(),
   priority: z.number().int().min(1).max(5).optional(),
+  compression: z.number().finite().min(0).max(0.4).optional(),
+  anchor: anchorSchema.optional(),
   modelUrl: z
     .string()
     .max(2048)
@@ -61,6 +76,10 @@ export const itemSchema = proposalSchema.extend({
     .optional(),
 });
 export type Item = z.infer<typeof itemSchema>;
+/** Keep generated topology out of packing-worker and advice request payloads. */
+export function packingItems(items: Item[]): Item[] {
+  return items.map((item) => ({ ...item, mesh: undefined }));
+}
 export type Photo = {
   id: string;
   name: string;
@@ -76,6 +95,7 @@ export const suitcaseSchema = z.object({
   subtitle: z.string().max(150),
   dimensions: dimensionsSchema,
   clearance: z.number().finite().min(0).max(50),
+  clamshell: z.boolean().optional(),
   color: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
@@ -98,6 +118,7 @@ export const suitcases: Suitcase[] = [
     subtitle: "Cabin · 35 L",
     dimensions: [340, 500, 210],
     clearance: 3,
+    clamshell: true,
   },
   {
     id: "personal",
@@ -105,6 +126,7 @@ export const suitcases: Suitcase[] = [
     subtitle: "Personal · 18 L",
     dimensions: [280, 400, 160],
     clearance: 3,
+    clamshell: true,
   },
   {
     id: "checked",
@@ -112,6 +134,7 @@ export const suitcases: Suitcase[] = [
     subtitle: "Checked · 69 L",
     dimensions: [430, 650, 250],
     clearance: 3,
+    clamshell: true,
   },
 ];
 export const templates: Record<
@@ -176,8 +199,12 @@ export function createItem(category: Category, id = crypto.randomUUID()): Item {
   };
 }
 export function sizeOf(item: Item): Vec3 {
+  const compression =
+    item.category === "clothing" ? (item.compression ?? 0) : 0;
   return item.estimate.map(
-    (n, i) => Math.round(n * item.scale[i] * 100) / 100,
+    (n, i) =>
+      Math.round(n * item.scale[i] * (i === 2 ? 1 - compression : 1) * 100) /
+      100,
   ) as Vec3;
 }
 export type Placement = {
@@ -186,6 +213,7 @@ export type Placement = {
   dimensions: Vec3;
   orientation: number;
   order: number;
+  compartment?: "base" | "lid";
 };
 export type Plan = {
   revision: string;
@@ -201,6 +229,7 @@ export function revisionOf(items: Item[], bag: Suitcase): string {
     bag.id,
     bag.dimensions,
     bag.clearance,
+    !!bag.clamshell,
     items.map((i) => [
       i.id,
       i.included,
@@ -208,6 +237,7 @@ export function revisionOf(items: Item[], bag: Suitcase): string {
       i.orientations,
       !!i.required,
       i.priority ?? 3,
+      i.anchor ?? null,
     ]),
   ]);
 }
@@ -216,12 +246,12 @@ export function planIsCurrent(plan: Plan, items: Item[], bag: Suitcase) {
 }
 export function demoItems(): Item[] {
   const specs: [Category, string, Vec3, string][] = [
-    ["clothing", "Sage linen shirt", [235, 270, 48], "#adbd98"],
-    ["clothing", "Cream knit", [235, 270, 65], "#e7d8bd"],
-    ["clothing", "Everyday denim", [240, 280, 55], "#729098"],
-    ["clothing", "Terracotta tee", [210, 240, 40], "#c98f75"],
-    ["shoes", "Left sneaker", [105, 275, 100], "#e5d9c6"],
-    ["shoes", "Right sneaker", [105, 275, 100], "#e5d9c6"],
+    ["clothing", "Sage linen shirt", [220, 270, 45], "#adbd98"],
+    ["clothing", "Cream knit", [220, 270, 55], "#e7d8bd"],
+    ["clothing", "Everyday denim", [220, 280, 45], "#729098"],
+    ["clothing", "Terracotta tee", [210, 240, 30], "#c98f75"],
+    ["shoes", "Left sneaker", [105, 275, 95], "#e5d9c6"],
+    ["shoes", "Right sneaker", [105, 275, 95], "#e5d9c6"],
     ["pouch", "Wash bag", [190, 110, 85], "#bf8969"],
     ["bottle", "Daily sunscreen", [60, 60, 145], "#cfbd87"],
     ["other", "Paperback", [125, 190, 25], "#887f9f"],
@@ -229,6 +259,7 @@ export function demoItems(): Item[] {
   return specs.map(([category, label, dimensions, color], i) => ({
     ...createItem(category, `demo-${i}`),
     demo: true,
+    orientations: [0, 1, 2, 3, 4, 5],
     label,
     dimensions,
     estimate: dimensions,

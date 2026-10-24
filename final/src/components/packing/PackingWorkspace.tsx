@@ -53,12 +53,17 @@ import {
   categories,
   suitcases,
   revisionOf,
+  packingItems,
 } from "@/lib/domain";
 import { initialState, reducer, mergeSuggestions } from "@/lib/state";
 import { loadSession, saveSession } from "@/lib/persistence";
 import { validatePlan } from "@/lib/validate";
 import { bagForState, importCollection } from "@/lib/collection";
 import PackingAssistant from "./PackingAssistant";
+
+const GeneratedMeshPreview = dynamic(() => import("./GeneratedMeshPreview"), {
+  ssr: false,
+});
 
 const SuitcaseScene = dynamic(() => import("./SuitcaseScene"), {
   ssr: false,
@@ -136,6 +141,7 @@ export default function PackingWorkspace() {
     [resetConfirm, setResetConfirm] = useState(false);
   const [mergeWith, setMergeWith] = useState("");
   const [astraOpen, setAstraOpen] = useState(false),
+    [moveMode, setMoveMode] = useState(false),
     [wantedId, setWantedId] = useState<string | null>(null),
     [view, setView] = useState<"perspective" | "top">("perspective");
   const collectionInput = useRef<HTMLInputElement>(null);
@@ -153,7 +159,7 @@ export default function PackingWorkspace() {
     playback.revision === revision
       ? playback
       : { revision, step: plan?.placements.length ?? 0, playing: false };
-  const maxStep = plan?.placements.length ?? 0,
+  const maxStep = plan ? plan.placements.length + (bag.clamshell ? 1 : 0) : 0,
     step = Math.min(maxStep, effectivePlayback.step);
   const placedCount = current ? plan.placements.length : 0;
   const usedVolume =
@@ -246,7 +252,11 @@ export default function PackingWorkspace() {
     if (!loaded) return;
     const timer = setTimeout(() => {
       setPackingError("");
-      worker.current?.postMessage({ items: state.items, bag, revision });
+      worker.current?.postMessage({
+        items: packingItems(state.items),
+        bag,
+        revision,
+      });
     }, 180);
     return () => clearTimeout(timer);
   }, [revision, loaded, state.items, bag]);
@@ -666,11 +676,11 @@ export default function PackingWorkspace() {
                     <strong>{p.name}</strong>
                     <span>
                       {p.status === "analyzing"
-                        ? "Analyzing photo…"
+                        ? "Astra is creating your 3D meshes…"
                         : p.status === "queued"
                           ? "Queued for analysis"
                           : p.status === "done"
-                            ? "Photo analyzed"
+                            ? "3D mesh ready"
                             : p.error}
                     </span>
                   </div>
@@ -754,7 +764,7 @@ export default function PackingWorkspace() {
                     <span className="item-text">
                       <strong>{item.label}</strong>
                       <small>
-                        {item.demo ? "Demo · " : ""}
+                        {item.demo ? "Demo · " : item.mesh ? "Astra 3D · " : ""}
                         {categoryNames[item.category]}
                         {item.edited ? " · adjusted" : ""}
                       </small>
@@ -890,6 +900,20 @@ export default function PackingWorkspace() {
               resetKey={resetKey}
               view={view}
               onModelError={setNotice}
+              moveMode={
+                moveMode &&
+                current &&
+                !effectivePlayback.playing &&
+                !exploded &&
+                step <= (plan?.placements.length ?? 0)
+              }
+              onMove={(id, anchor) => {
+                dispatch({ type: "move", id, anchor });
+                setSelected(id);
+                setNotice(
+                  "Position saved. Your other belongings are adjusting around it.",
+                );
+              }}
             />
             <div className="scene-controls">
               <button
@@ -908,7 +932,14 @@ export default function PackingWorkspace() {
                 aria-label="Exploded view"
                 aria-pressed={exploded}
                 title="Exploded view"
-                onClick={() => setExploded((v) => !v)}
+                onClick={() => {
+                  setExploded((v) => !v);
+                  setPlayback({
+                    revision,
+                    step: plan?.placements.length ?? 0,
+                    playing: false,
+                  });
+                }}
               >
                 <Expand size={17} />
               </button>
@@ -925,8 +956,10 @@ export default function PackingWorkspace() {
               </button>
             </div>
             <div className="canvas-caption">
-              <MousePointer2 size={13} /> Drag to orbit <span>·</span> Scroll to
-              zoom <span>·</span> Click to edit
+              <MousePointer2 size={13} />{" "}
+              {moveMode
+                ? "Drag items to move · Drop to repack"
+                : "Drag to orbit · Scroll to zoom · Click to edit"}
             </div>
             {busy && (
               <div className="packing-overlay" role="status">
@@ -942,6 +975,30 @@ export default function PackingWorkspace() {
             )}
           </div>
           <div className="scene-inspection">
+            <button
+              className={`text-button ${moveMode ? "active" : ""}`}
+              aria-pressed={moveMode}
+              onClick={() => {
+                setMoveMode((value) => !value);
+                setExploded(false);
+                setLayer(100);
+                setPlayback({
+                  revision,
+                  step: plan?.placements.length ?? 0,
+                  playing: false,
+                });
+              }}
+            >
+              <Move3D size={16} /> {moveMode ? "Finish moving" : "Move items"}
+            </button>
+            {state.items.some((item) => item.anchor) && (
+              <button
+                className="text-button"
+                onClick={() => dispatch({ type: "auto-layout" })}
+              >
+                Auto arrange
+              </button>
+            )}
             <div className="layer-control">
               <Layers3 size={16} />
               <label htmlFor="layers">Peek inside</label>
@@ -952,7 +1009,14 @@ export default function PackingWorkspace() {
                 min={0}
                 max={100}
                 value={layer}
-                onChange={(e) => setLayer(Number(e.target.value))}
+                onChange={(e) => {
+                  setLayer(Number(e.target.value));
+                  setPlayback({
+                    revision,
+                    step: plan?.placements.length ?? 0,
+                    playing: false,
+                  });
+                }}
               />
               <span>{layer === 100 ? "All layers" : "Lower layers"}</span>
             </div>
@@ -961,12 +1025,54 @@ export default function PackingWorkspace() {
               onClick={() => {
                 setLayer(100);
                 setExploded(false);
-                setPlayback({ revision, step: maxStep, playing: false });
+                setPlayback({
+                  revision,
+                  step: plan?.placements.length ?? 0,
+                  playing: false,
+                });
               }}
             >
               Show all
             </button>
           </div>
+          {bag.clamshell && (
+            <div className="compartment-summary">
+              <span>
+                <strong>Main compartment</strong> ·{" "}
+                {current
+                  ? plan.placements.filter((p) => p.compartment === "base")
+                      .length
+                  : "—"}{" "}
+                items
+              </span>
+              <span>
+                <strong>Lid compartment</strong> ·{" "}
+                {current
+                  ? plan.placements.filter((p) => p.compartment === "lid")
+                      .length
+                  : "—"}{" "}
+                items
+              </span>
+              <button
+                className="text-button"
+                disabled={!current}
+                onClick={() => {
+                  setExploded(false);
+                  setLayer(100);
+                  setPlayback({
+                    revision,
+                    step:
+                      step === maxStep
+                        ? (plan?.placements.length ?? 0)
+                        : maxStep,
+                    playing: false,
+                  });
+                }}
+              >
+                {step === maxStep ? "Open suitcase" : "Close suitcase"}
+              </button>
+            </div>
+          )}
           <div
             className={`plan-card ${current && plan.unplaced.length ? "partial" : ""}`}
             aria-live="polite"
@@ -1095,7 +1201,7 @@ export default function PackingWorkspace() {
                   onClick={() => {
                     setPackingError("");
                     worker.current?.postMessage({
-                      items: state.items,
+                      items: packingItems(state.items),
                       bag,
                       revision,
                     });
@@ -1135,8 +1241,12 @@ export default function PackingWorkspace() {
               <strong>Packing, one step at a time.</strong>
               <span>
                 {step === maxStep
-                  ? "The full picture"
-                  : `Step ${step} of ${maxStep}`}
+                  ? bag.clamshell
+                    ? "Final step · suitcase closed"
+                    : "The full picture"
+                  : bag.clamshell && step === maxStep - 1
+                    ? "Both halves packed · ready to close"
+                    : `Step ${step} of ${maxStep}`}
               </span>
             </div>
             <input
@@ -1175,16 +1285,22 @@ export default function PackingWorkspace() {
                 className="editor-preview"
                 style={{ background: active.color + "35" }}
               >
-                <div
-                  className={`object-preview ${active.category}`}
-                  style={{
-                    background: active.color,
-                    transform: `rotate(-12deg) scale(${Math.min(1.4, Math.max(0.55, uniform))})`,
-                  }}
-                >
-                  <ItemIcon category={active.category} size={46} />
-                </div>
-                <span>ESTIMATED 3D ITEM</span>
+                {active.mesh ? (
+                  <GeneratedMeshPreview item={active} />
+                ) : (
+                  <div
+                    className={`object-preview ${active.category}`}
+                    style={{
+                      background: active.color,
+                      transform: `rotate(-12deg) scale(${Math.min(1.4, Math.max(0.55, uniform))})`,
+                    }}
+                  >
+                    <ItemIcon category={active.category} size={46} />
+                  </div>
+                )}
+                <span>
+                  {active.mesh ? "ASTRA-GENERATED 3D" : "ESTIMATED 3D ITEM"}
+                </span>
               </div>
               <label className="field-label" htmlFor="item-name">
                 ITEM NAME
@@ -1251,6 +1367,39 @@ export default function PackingWorkspace() {
                   <span>Bigger</span>
                 </div>
               </div>
+              {active.category === "clothing" && (
+                <div className="resize-control compression-control">
+                  <div>
+                    <label htmlFor="compression-slider">
+                      Clothing compression
+                    </label>
+                    <span>{Math.round((active.compression ?? 0) * 100)}%</span>
+                  </div>
+                  <p>Press folded clothes flatter to make room.</p>
+                  <input
+                    id="compression-slider"
+                    aria-label="Clothing compression"
+                    type="range"
+                    min={0}
+                    max={40}
+                    step={5}
+                    value={Math.round((active.compression ?? 0) * 100)}
+                    onChange={(event) =>
+                      dispatch({
+                        type: "edit",
+                        id: active.id,
+                        patch: {
+                          compression: Number(event.target.value) / 100,
+                        },
+                      })
+                    }
+                  />
+                  <div className="range-labels">
+                    <span>Relaxed</span>
+                    <span>40% flatter</span>
+                  </div>
+                </div>
+              )}
               <button
                 className="axis-toggle"
                 aria-expanded={advanced}

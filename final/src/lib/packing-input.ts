@@ -13,7 +13,10 @@ export function parsePackingInput(raw: unknown) {
     throw new Error("Duplicate item IDs.");
   if (data.items.some((i) => i.required && !i.included))
     throw new Error("Essential items must stay included.");
-  if (data.bag.dimensions.some((n) => n <= data.bag.clearance * 2))
+  if (
+    data.bag.dimensions.some((n) => n <= data.bag.clearance * 2) ||
+    (data.bag.clamshell && data.bag.dimensions[2] / 2 <= data.bag.clearance * 2)
+  )
     throw new Error("Bag clearance leaves no usable space.");
   return data;
 }

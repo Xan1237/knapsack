@@ -72,7 +72,11 @@ export function importCollection(input: unknown): InventoryState {
         supplied.modelOffset &&
         (stepTwo ? cmToNative(supplied.modelOffset) : supplied.modelOffset),
     });
-    if (customBag.dimensions.some((n) => n <= customBag!.clearance * 2))
+    if (
+      customBag.dimensions.some((n) => n <= customBag!.clearance * 2) ||
+      (customBag.clamshell &&
+        customBag.dimensions[2] / 2 <= customBag.clearance * 2)
+    )
       throw new Error("Bag clearance leaves no usable interior.");
     bagId = customBag.id;
   } else if (!suitcases.some((b) => b.id === bagId))

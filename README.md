@@ -4,6 +4,8 @@ See your suitcase packed before you start. A local prototype turns photos into e
 
 The combined MVP now lives in [final](final/README.md). Run `cd final`, `npm ci`, and `npm run dev` to use photo recognition, Astra suggestions, essential pins, overflow choices, imported 3D assets and plan export in one application. The root app and [step2](step2/README.md) remain available as the source implementations. Final browser validation is in progress.
 
+See the [architecture walkthrough](docs/architecture.md) for the three application boundaries, combined-app data flow, geometry and AI contracts, current verification, and review findings.
+
 ## Project structure
 
 ```text
@@ -86,7 +88,7 @@ Kane CLI E2E checks are required throughout implementation. Generate requirement
 
 ## Validation status
 
-See [the validation report](artifacts/validation.md) for the earlier app validation, browser smoke results, Kane coverage, and unverified paths. Full browser coverage is not claimed (that Kane report was 2%, 3/106 criteria). The genuine live API check is separate from browser evidence. Main-app checks passed in that report; repository-wide lint also included the separate step2 studio and reported four errors there, listed in the report.
+See [the validation report](artifacts/validation.md) for the earlier command results, browser smoke results, actual Kane coverage, and unverified paths. Full browser coverage is not claimed (the recorded Kane baseline reports 2%, 3/106 criteria). The genuine live API check is separate from browser evidence. Root TypeScript and ESLint now exclude the independent `final/` and `step2/` packages; both Next.js apps pass their own type checks, lint, and production builds.
 
 For the committed packing smoke tests, copy the nonsecret fixture definitions before execution:
 
