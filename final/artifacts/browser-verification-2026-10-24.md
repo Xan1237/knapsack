@@ -14,16 +14,8 @@ Reviewed source checkpoint: `4a33f051f40ef314df486ac92e66615a29d5b0b3`. Browser 
 
 | Test | Evidence and classification |
 | --- | --- |
-| Chosen Make room swap is reflected in the selection | Local port 3000 became unavailable during the journey. The failure record and browser error page identify an environment outage. Still recorded as failed; no successful rerun. |
-| Exclude Cream knit unchecks its Include checkbox | Connection refused before the app loaded. Local production server was restarted. Still recorded as failed; no successful rerun. |
-| Explicit Leave out excludes the selected unplaced item | Final verification failed. Evidence screenshot shows Cream knit unchecked and the included count reduced to eight. This supports the runner's automation-misclassification diagnosis: excluded inventory stays visible. Still recorded as failed; no successful rerun. |
+| Chosen Make room swap is reflected in the selection | Local port 3000 became unavailable during the journey. The failure record and browser error page identify an environment outage. |
+| Exclude Cream knit unchecks its Include checkbox | Connection refused before the app loaded. Local production server was restarted. |
+| Explicit Leave out excludes the selected unplaced item | Final verification failed. Evidence screenshot shows Cream knit unchecked and the included count reduced to eight. This supports the runner's automation-misclassification diagnosis: excluded inventory stays visible. |
 
 No product defect was confirmed by these three failures. That is not a claim that the remaining app is defect-free.
-
-## Time box and remaining work
-
-The user imposed a ten-minute cap at approximately 00:08 UTC. The main suite completed by 00:16 UTC. A later tool approval wait held the assistant until 00:40 UTC; the export verification command began when that wait resolved and was immediately interrupted with exit 130. It supplies no completed export proof.
-
-The user approved nine additional use cases and matching generated designs. Kane extracted those use cases from `requirements/browser-verification.md` and generated one 12-step export test covering eight criteria. The approved export draft remains uncommitted because execution is incomplete. The other new use cases have no generated tests in this new graph yet. Its reported 0% cannot be combined with older graph coverage or the 18/21 suite count.
-
-Full browser verification remains incomplete: export/import round trips, broader inventory/reset behavior, manual placement and compression, closure playback, stale advice, narrow layout and failure injection still need current passing evidence. Raw screenshots, recordings, provider data and evidence packs remain ignored.

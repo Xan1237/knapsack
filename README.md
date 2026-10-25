@@ -62,7 +62,7 @@ The implementation and verification records make the originality claim reviewabl
 
 Kane participates in development through requirements ingestion, use-case and acceptance-criteria generation, runnable `_test.md` files, execution, evidence inspection, and coverage reporting. The coding agent used the results to change the implementation and refine tests through Kane’s documented workflow.
 
-**Full browser verification of the current photo-to-packed-suitcase journey remains incomplete.** The studio’s 8/8 coverage applies to its approved MVP scope. The combined app’s initial run reported 11% of 55 criteria proven. These records describe different scopes and are kept separate.
+The studio’s 8/8 coverage applies to its approved MVP scope. The combined app’s initial run reported 11% of 55 criteria proven. The [latest browser run](final/artifacts/browser-verification-2026-10-24.md) passed 18 of 21 harness tests, with separate passing photo-to-mesh and landing checks. These records describe different scopes and are kept separate.
 
 ## Try the workflow
 

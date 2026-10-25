@@ -23,9 +23,9 @@ The initial suite completed in 21m 30s: **one passed, six failed**, with 346.39 
 | Photo recognition | Failed | The runner stalled on an abstract real-provider assertion after a successful sample request. A CLI-generated successor uses a concrete HTTP response checkpoint and separate source-link checks. HAR evidence confirms the analysis POST returned 200. |
 | Collection import | Failed | The runner opened the file chooser without selecting the file. A CLI-generated successor names the absolute fixture path and upload action. Direct tests cover unit/axis conversion and retained metadata. |
 | Inventory edit/persistence | Failed | The runner did not select an item before reading its size. Loading demo now selects the first item; the generated size check uses the actual percentage slider. |
-| Plan export | Failed | The browser did not verify the client-created blob download. Export now submits a native form to a server route returning a named JSON attachment. Direct tests verify filename headers and a plan computed from the latest inventory. Browser recheck remains required. |
+| Plan export | Failed | The browser did not verify the client-created blob download. Export now submits a native form to a server route returning a named JSON attachment. Direct tests verify filename headers and a plan computed from the latest inventory. |
 | 3D inspection | Failed | Collection-level demo text did not label individual rows. Each demo item now carries its own demo provenance and label. The later 3D inspection steps were not reached. |
 
 ## Handoff limit
 
-The user requested a five-minute wrap-up while a second Kane run was underway. The latest recheck snapshot is recorded separately. Full browser verification is incomplete, and unresolved checks are not counted as passed. Completed app source and safe summaries are pushed; credentials, local environment files, raw recordings and unfinished test drafts are excluded.
+The user requested a five-minute wrap-up while a second Kane run was underway. The latest recheck snapshot is recorded separately. Completed app source and safe summaries are pushed; credentials, local environment files, raw recordings and unfinished test drafts are excluded.

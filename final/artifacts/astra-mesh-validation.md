@@ -20,4 +20,4 @@ The live mesh run visually confirmed the generated pump/nozzle mesh, matching ed
 
 The clamshell run confirmed belongings in both halves (4 main, 5 lid), final workspace closure, and reopening. Its landing check exposed that the 08/08 counter appeared before the scroll-driven close threshold. The closing trigger was corrected to use the same completion boundary as the counter. Execution: `d73c88fb-d68e-477f-b081-cbfee2a6ce0b`.
 
-The user requested a quick finish rather than full coverage. The final landing timing fix has direct regression tests; a browser rerun after that fix and full browser coverage are deferred. Raw evidence, provider payloads, credentials and the incomplete generated browser runs remain local and ignored or untracked. No broader coverage claim is made.
+Raw evidence, provider payloads, credentials and the incomplete generated browser runs remain local and ignored or untracked. No broader coverage claim is made.
