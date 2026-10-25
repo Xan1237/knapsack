@@ -107,11 +107,12 @@ Live analysis sends uploaded images to OpenAI. The application retains trip phot
 | Path | Role |
 | --- | --- |
 | [`final/`](final/README.md) | Current combined Next.js application and primary demo target. |
+| [`testing/kane/`](testing/kane/README.md) | Generated browser smoke cases and their CI runner. |
 | [`docs/architecture.md`](docs/architecture.md) | Data flow, AI/geometry contracts, application boundaries, and review findings. |
 | [`src/`](src/) | Original Next.js implementation, preserved as a source implementation. |
 | [`step2/`](step2/README.md) | Original packing studio and its separately scoped Kane evidence. |
 | [`artifacts/validation.md`](artifacts/validation.md) | Historical validation of the original root application. |
 
-The original source applications remain available; the combined product and its current setup instructions are in `final/`.
+The original source applications remain available as implementation history and separate evidence scopes. Start new development and demos in `final/`. The root `PROGRESS.md`, `design.md`, `BUILD_PROMPT.md`, and root `artifacts/` describe earlier work; their test counts are historical.
 
-The independent [Kane CI harness](testing/kane/README.md) lives in `testing/kane`. Its automatic gate runs nine small deterministic smoke checks in parallel and reports actual assertion results and elapsed times. Larger suites and recording/repair are manual. It can test a separate application branch without changing application source.
+The independent [Kane CI harness](testing/kane/README.md) lives in `testing/kane`. Its automatic gate runs nine small deterministic smoke checks in parallel and reports actual assertion results and elapsed times. Larger suites and recording/repair are manual. It can test a separate application branch without changing application source. A green smoke gate establishes only those nine checks.

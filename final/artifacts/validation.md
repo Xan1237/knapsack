@@ -1,6 +1,6 @@
-# Combined MVP validation
+# Initial combined MVP validation
 
-Implementation is in `final`. The root app and `step2` are preserved. The app runs at http://127.0.0.1:3000/pack.
+This is the initial combined-app checkpoint from 2026-10-24. Its 41-test count and Kane result describe that run, not the current repository state. For current local checks, run the commands in [the application README](../README.md). Implementation is in `final`. The root app and `step2` are preserved. The app runs at http://127.0.0.1:3000/pack.
 
 ## Completed source checks
 
