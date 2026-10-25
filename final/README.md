@@ -24,6 +24,8 @@ Open http://127.0.0.1:3000 and choose a packing link. The workspace is http://12
 
 `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` check the combined source. Kane CLI browser journeys are generated from `requirements/integration.md`. Raw browser evidence, credentials and environment files stay ignored.
 
+For a local production run, use `npm run build && npm start` from `final/`. The start command serves Next's standalone output with the built static files and public assets. Set `PORT` and `HOSTNAME` to change its default `127.0.0.1:3000` address.
+
 Production hosting and updates are documented in [deploy/README.md](deploy/README.md).
 
 ### Take a photo with your camera
