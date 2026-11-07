@@ -107,6 +107,7 @@ Live analysis sends uploaded images to OpenAI. The application retains trip phot
 
 | Path | Role |
 | --- | --- |
+| [`mobile/`](mobile/README.md) | Expo Go app and Python backend (the `mobile-app` branch's MVP rewrite). |
 | [`final/`](final/README.md) | Current combined Next.js application and primary demo target. |
 | [`testing/kane/`](testing/kane/README.md) | Generated browser smoke cases and their CI runner. |
 | [`docs/architecture.md`](docs/architecture.md) | Data flow, AI/geometry contracts, application boundaries, and review findings. |
