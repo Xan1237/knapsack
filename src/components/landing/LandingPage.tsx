@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Luggage } from "lucide-react";
-import "./landing.css";
+import { ArrowRight } from "lucide-react";
+import SiteHeader from "./SiteHeader";
+import BackpackDiagram from "./BackpackDiagram";
 
 const steps = [
   {
@@ -23,18 +24,7 @@ const steps = [
 export default function LandingPage() {
   return (
     <div className="landing">
-      <header className="landing-header landing-container">
-        <Link href="/" className="landing-brand" aria-label="Knapsack home">
-          <Luggage size={24} strokeWidth={1.8} aria-hidden="true" />
-          <span>knapsack</span>
-        </Link>
-        <nav aria-label="Main navigation">
-          <a href="#how-it-works">How it works</a>
-          <Link href="/pack" className="landing-header-link">
-            Start packing <ArrowRight size={16} aria-hidden="true" />
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <main>
         <section className="landing-hero landing-container">
@@ -49,25 +39,7 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <div
-            className="landing-illustration"
-            role="img"
-            aria-label="Illustration of an example packing layout in a suitcase"
-          >
-            <div className="landing-illustration-top">
-              <span>YOUR PACKING PLAN</span>
-              <span>EXAMPLE / 01</span>
-            </div>
-            <div className="landing-case">
-              <div className="landing-case-handle" />
-              <div className="landing-case-interior">
-                <div className="landing-packed-item landing-item-clothes" />
-                <div className="landing-packed-item landing-item-shoes" />
-                <div className="landing-packed-item landing-item-pouch" />
-                <div className="landing-packed-item landing-item-book" />
-              </div>
-            </div>
-          </div>
+          <BackpackDiagram />
         </section>
 
         <section className="landing-how" id="how-it-works">
