@@ -1,19 +1,32 @@
 import Link from "next/link";
-import { ArrowRight, Luggage } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import "./landing.css";
 
 export default function SiteHeader() {
   return (
     <header className="landing-header landing-container">
-      <Link href="/" className="landing-brand" aria-label="Knapsack home">
-        <Luggage size={24} strokeWidth={1.8} aria-hidden="true" />
-        <span>knapsack</span>
-      </Link>
+      <div className="landing-masthead">
+        <span className="landing-masthead-note">
+          THE PACKING EDIT
+          <br />
+          ISSUE NO. 01
+        </span>
+        <Link href="/" className="landing-brand" aria-label="Knapsack home">
+          knapsack<span>.</span>
+        </Link>
+        <span className="landing-masthead-note landing-masthead-right">
+          A LITTLE ORDER
+          <br />
+          FOR THE ROAD
+        </span>
+      </div>
       <nav aria-label="Main navigation">
-        <Link href="/about">About</Link>
-        <Link href="/faq">FAQ</Link>
+        <div>
+          <Link href="/about">About</Link>
+          <Link href="/faq">FAQ</Link>
+        </div>
         <Link href="/pack" className="landing-header-link">
-          Start packing <ArrowRight size={16} aria-hidden="true" />
+          Start packing <ArrowUpRight size={15} aria-hidden="true" />
         </Link>
       </nav>
     </header>

@@ -29,8 +29,12 @@ export default function LandingPage() {
       <main>
         <section className="landing-hero landing-container">
           <div className="landing-hero-copy">
-            <p className="landing-eyebrow">A little help for your next trip</p>
-            <h1>See what fits before you pack.</h1>
+            <p className="landing-eyebrow">
+              <span>01</span> THE ART OF PACKING
+            </p>
+            <h1>
+              See what fits <em>before</em> you pack.
+            </h1>
             <p className="landing-intro">
               Turn your belongings into a 3D packing plan.
             </p>
@@ -45,8 +49,8 @@ export default function LandingPage() {
         <section className="landing-how" id="how-it-works">
           <div className="landing-container">
             <div className="landing-section-heading">
-              <p className="landing-eyebrow">HOW IT WORKS</p>
-              <h2>Ready in three steps.</h2>
+              <p className="landing-eyebrow">THE QUICK GUIDE / 01—03</p>
+              <h2>From pile to packed.</h2>
             </div>
             <div className="landing-steps">
               {steps.map((step) => (
