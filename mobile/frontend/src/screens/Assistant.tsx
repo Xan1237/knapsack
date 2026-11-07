@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as api from "../api";
-import { Button, Card, Eyebrow, Icon, IconButton } from "../components/ui";
+import { Banner, Button, Card, Group, Icon, Section } from "../components/ui";
 import type { AstraAdvice, Item, PackingChoice, Suitcase } from "../domain";
-import { colors, serif } from "../theme";
+import { colors, radius, type } from "../theme";
 
 type Props = {
   open: boolean;
@@ -94,65 +94,59 @@ export default function Assistant({ open, wantedId, items, bag, revision, onClos
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView style={styles.safe} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <View style={styles.close}>
-            <IconButton icon="close" label="Close packing assistant" onPress={onClose} />
+          <View style={styles.header}>
+            <Text style={type.heading}>{wanted ? "Make room" : "Ask Astra"}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close" hitSlop={12} onPress={onClose} style={styles.close}>
+              <Icon name="close" size={24} color={colors.ink} />
+            </Pressable>
           </View>
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             {wanted ? (
               <>
-                <Eyebrow>A LITTLE GIVE AND TAKE</Eyebrow>
-                <Text style={styles.title}>
-                  Make room for <Text style={styles.italic}>{wanted.label.toLowerCase()}.</Text>
-                </Text>
-                <Text style={styles.body}>
-                  Choose what stays home. These swaps protect your essentials and keep the rest of your packed items in the bag.
-                </Text>
+                <View style={styles.intro}>
+                  <Text style={type.title}>{wanted.label}</Text>
+                  <Text style={styles.body}>Choose what stays home to fit it. Your essentials stay packed.</Text>
+                </View>
                 {!choices && (
                   <View style={styles.loading}>
                     <ActivityIndicator color={colors.green} />
-                    <Text style={styles.body}>Looking for a little breathing room…</Text>
+                    <Text style={styles.body}>Looking for swaps…</Text>
                   </View>
                 )}
-                {!!choices?.error && <Text style={styles.error}>{choices.error}</Text>}
+                {!!choices?.error && <Banner tone="error">{choices.error}</Banner>}
                 {choices && !choices.options.length && !choices.error && (
-                  <Text style={styles.body}>
-                    No simple swap was found while protecting your essentials. Try a larger bag or unpin an item you can leave behind. This search does not prove that another arrangement is impossible.
-                  </Text>
+                  <Banner>
+                    No simple swap found. Try a larger bag or unpin something you could leave behind. Another arrangement may still be possible.
+                  </Banner>
                 )}
-                {choices?.options.map((option, index) => (
+                {choices?.options.map((option) => (
                   <Card key={option.removeIds.join(",")}>
-                    <Eyebrow>OPTION {index + 1}</Eyebrow>
-                    <Text style={styles.strong}>
-                      Leave {option.removeIds.map((id) => name(id).toLowerCase()).join(" + ")} behind
-                    </Text>
-                    <Text style={styles.body}>
-                      {option.placed} items fit after this swap
+                    <Text style={type.bodyStrong}>Leave behind {option.removeIds.map(name).join(" + ")}</Text>
+                    <Text style={type.secondary}>
+                      {option.placed} items fit
                       {option.unplaced ? ` · ${option.unplaced} still need room` : ""}
                     </Text>
-                    <Button
-                      label="Choose this swap"
-                      icon="arrow-forward"
-                      kind="primary"
-                      onPress={() => onApply(option.includeIds, wanted.id)}
-                    />
+                    <Button label="Choose this swap" kind="primary" size="small" style={styles.cardAction} onPress={() => onApply(option.includeIds, wanted.id)} />
                   </Card>
                 ))}
-                <Button label="Choose the checked bag" onPress={onLargerBag} />
-                {!wanted.required && (
-                  <Button
-                    label="Leave this item out"
-                    onPress={() => onApply(items.filter((i) => i.included && i.id !== wanted.id).map((i) => i.id))}
-                  />
+                {choices && (
+                  <Section title="Other options">
+                    {bag.id !== "checked" && <Button label="Switch to the checked bag" onPress={onLargerBag} />}
+                    {!wanted.required && (
+                      <Button
+                        label="Leave this item out"
+                        onPress={() => onApply(items.filter((i) => i.included && i.id !== wanted.id).map((i) => i.id))}
+                      />
+                    )}
+                  </Section>
                 )}
               </>
             ) : (
               <>
-                <Eyebrow>A LITTLE HELP FROM ASTRA</Eyebrow>
-                <Text style={styles.title}>
-                  Pack for <Text style={styles.italic}>your kind</Text> of getaway.
-                </Text>
-                <Text style={styles.body}>Your plans set the priorities. You get the final say.</Text>
-                <Eyebrow>WHAT'S ON THE ITINERARY?</Eyebrow>
+                <View style={styles.intro}>
+                  <Text style={type.title}>What's the trip?</Text>
+                  <Text style={styles.body}>Astra suggests what to bring. Nothing changes until you apply it.</Text>
+                </View>
                 <TextInput
                   accessibilityLabel="Trip preference"
                   style={styles.input}
@@ -161,68 +155,72 @@ export default function Assistant({ open, wantedId, items, bag, revision, onClos
                   multiline
                   maxLength={1500}
                   placeholder="A weekend of city walks, a camera, and one nice dinner…"
-                  placeholderTextColor={colors.muted}
+                  placeholderTextColor={colors.faint}
                   onChangeText={(text) => {
                     setPreference(text);
                     setAdviceState(null);
                   }}
                 />
                 <Button
-                  label={asking ? "Thinking it through…" : "Ask Astra"}
-                  icon="sparkles-outline"
+                  label={asking ? "Thinking…" : "Get suggestions"}
+                  icon="sparkles"
                   kind="primary"
                   disabled={asking || !items.some((i) => i.included)}
                   onPress={ask}
                 />
                 {connected === false && !error && (
-                  <Text style={styles.body}>
-                    Astra isn't connected yet. The packing controls and item swaps are ready to use.
-                  </Text>
+                  <Banner>Astra isn't connected yet. Packing and swaps still work without it.</Banner>
                 )}
-                {!!error && <Text style={styles.error}>{error}</Text>}
+                {!!error && <Banner tone="error">{error}</Banner>}
                 {adviceState && !advice && (
-                  <Text style={styles.body}>
-                    Your belongings changed. Ask Astra again for a suggestion that matches your latest list.
-                  </Text>
+                  <Banner>Your items changed. Ask again for a suggestion that matches your latest list.</Banner>
                 )}
                 {advice && (
-                  <Card>
-                    <Eyebrow>ASTRA'S SUGGESTION</Eyebrow>
-                    <Text style={styles.body}>{advice.summary}</Text>
-                    <Text style={styles.strong}>Bring along · {advice.keepIds.length}</Text>
-                    {advice.keepIds.map((id) => (
-                      <View key={id} style={styles.listRow}>
-                        <View style={[styles.dot, { backgroundColor: items.find((i) => i.id === id)?.color }]} />
-                        <Text style={styles.body}>{name(id)}</Text>
-                        {items.find((i) => i.id === id)?.required && (
-                          <Icon name="lock-closed" size={12} color={colors.orange} accessibilityLabel="Essential" />
+                  <>
+                    <Text style={styles.summary}>{advice.summary}</Text>
+                    <Section title={`Bring · ${advice.keepIds.length}`}>
+                      <Group>
+                        {advice.keepIds.map((id) => (
+                          <View key={id} style={styles.listRow}>
+                            <View style={[styles.dot, { backgroundColor: items.find((i) => i.id === id)?.color }]} />
+                            <Text style={[type.body, styles.grow]} numberOfLines={1}>
+                              {name(id)}
+                            </Text>
+                            {items.find((i) => i.id === id)?.required && (
+                              <Icon name="lock-closed" size={14} color={colors.warn} accessibilityLabel="Essential" />
+                            )}
+                          </View>
+                        ))}
+                      </Group>
+                    </Section>
+                    <Section title={`Leave behind · ${advice.leaveIds.length}`}>
+                      <Group>
+                        {advice.leaveIds.length ? (
+                          advice.leaveIds.map((id) => (
+                            <View key={id} style={styles.listRow}>
+                              <Text style={[styles.body, styles.grow]} numberOfLines={1}>
+                                {name(id)}
+                              </Text>
+                            </View>
+                          ))
+                        ) : (
+                          <View style={styles.listRow}>
+                            <Text style={styles.body}>Nothing this time</Text>
+                          </View>
                         )}
-                      </View>
-                    ))}
-                    <Text style={styles.strong}>Leave behind · {advice.leaveIds.length}</Text>
-                    {advice.leaveIds.length ? (
-                      advice.leaveIds.map((id) => (
-                        <Text key={id} style={styles.body}>
-                          {name(id)}
-                        </Text>
-                      ))
-                    ) : (
-                      <Text style={styles.body}>Nothing this time.</Text>
-                    )}
-                    <Text style={styles.strong}>
-                      Fit preview: {advice.preview.placed} of {advice.keepIds.length} chosen items packed
-                      {advice.preview.unplaced.length
-                        ? ` · ${advice.preview.unplaced.length} still need room`
-                        : " · all chosen items fit"}
-                      .
-                    </Text>
-                    <Button label="Apply selection" icon="checkmark" kind="primary" onPress={() => onApply(advice.keepIds)} />
-                    <Button label="Keep my current list" onPress={onClose} />
-                  </Card>
+                      </Group>
+                    </Section>
+                    <Banner tone={advice.preview.unplaced.length ? "warn" : "info"}>
+                      {advice.preview.placed} of {advice.keepIds.length} chosen items fit
+                      {advice.preview.unplaced.length ? ` · ${advice.preview.unplaced.length} still need room` : ""}
+                    </Banner>
+                    <View style={styles.actions}>
+                      <Button label="Apply suggestion" icon="checkmark" kind="primary" onPress={() => onApply(advice.keepIds)} />
+                      <Button label="Keep my list" onPress={onClose} />
+                    </View>
+                  </>
                 )}
-                <Text style={styles.footnote}>
-                  Your essentials stay protected. Fit is checked by the packing engine.
-                </Text>
+                {!advice && <Text style={type.secondary}>Essentials are always kept. The packing engine checks every suggestion.</Text>}
               </>
             )}
           </ScrollView>
@@ -234,26 +232,33 @@ export default function Assistant({ open, wantedId, items, bag, revision, onClos
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  close: { alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 10 },
-  content: { padding: 20, paddingTop: 4, gap: 12 },
-  title: { color: colors.ink, fontFamily: serif, fontSize: 30, lineHeight: 36 },
-  italic: { fontStyle: "italic", color: colors.green },
-  body: { color: colors.muted, fontSize: 14, lineHeight: 20, flexShrink: 1 },
-  strong: { color: colors.ink, fontSize: 15, fontWeight: "600" },
-  error: { color: colors.error, fontSize: 14, lineHeight: 20 },
-  loading: { flexDirection: "row", alignItems: "center", gap: 10 },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingLeft: 16,
+    paddingRight: 6,
+    minHeight: 52,
+  },
+  close: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  content: { padding: 16, paddingTop: 8, paddingBottom: 32, gap: 16 },
+  intro: { gap: 6 },
+  grow: { flex: 1 },
+  body: { color: colors.muted, fontSize: 15, lineHeight: 21, flexShrink: 1 },
+  summary: { ...type.body },
+  loading: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 },
+  cardAction: { marginTop: 4 },
   input: {
-    minHeight: 90,
+    minHeight: 110,
     textAlignVertical: "top",
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
+    borderRadius: radius.md,
+    padding: 14,
+    fontSize: 16,
+    lineHeight: 22,
     color: colors.ink,
     backgroundColor: colors.white,
   },
-  listRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  footnote: { color: colors.muted, fontSize: 12, lineHeight: 17 },
+  listRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, minHeight: 44 },
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  actions: { gap: 8 },
 });

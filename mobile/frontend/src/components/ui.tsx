@@ -1,9 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import SliderBase from "@react-native-community/slider";
-import type { ComponentProps, ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { Children, type ComponentProps, Fragment, type ReactNode } from "react";
+import { Pressable, StyleSheet, Switch, Text, View, type ViewStyle } from "react-native";
 import type { Category } from "../domain";
-import { colors } from "../theme";
+import { colors, radius, type } from "../theme";
 
 export type IconName = ComponentProps<typeof Ionicons>["name"];
 export const Icon = Ionicons;
@@ -27,86 +27,170 @@ export function Button({
   icon,
   onPress,
   kind = "secondary",
+  size = "regular",
   disabled,
   style,
 }: {
   label: string;
   icon?: IconName;
   onPress: () => void;
-  kind?: "primary" | "secondary" | "quiet";
+  kind?: "primary" | "secondary" | "quiet" | "danger";
+  size?: "regular" | "small";
   disabled?: boolean;
   style?: ViewStyle;
 }) {
-  const foreground = kind === "primary" ? colors.white : colors.green;
+  const foreground = kind === "primary" ? colors.white : kind === "danger" ? colors.error : colors.green;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        size === "small" && styles.buttonSmall,
         kind === "primary" && styles.primary,
-        kind === "secondary" && styles.secondary,
-        (pressed || disabled) && { opacity: disabled ? 0.45 : 0.7 },
+        (kind === "secondary" || kind === "danger") && styles.secondary,
+        (pressed || disabled) && { opacity: disabled ? 0.4 : 0.7 },
         style,
       ]}
     >
-      {icon && <Ionicons name={icon} size={16} color={foreground} />}
-      <Text style={[styles.buttonText, { color: foreground }]}>{label}</Text>
+      {icon && <Ionicons name={icon} size={size === "small" ? 16 : 18} color={foreground} />}
+      <Text numberOfLines={1} style={[styles.buttonText, size === "small" && styles.buttonTextSmall, { color: foreground }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
+/** An icon-only control with a 44 pt target. */
 export function IconButton({
   icon,
   label,
   onPress,
-  active,
+  color = colors.ink,
   disabled,
 }: {
   icon: IconName;
   label: string;
   onPress: () => void;
-  active?: boolean;
+  color?: string;
   disabled?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ selected: !!active, disabled: !!disabled }}
+      accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
-      hitSlop={6}
       onPress={onPress}
-      style={[styles.iconButton, active && styles.iconActive, disabled && { opacity: 0.45 }]}
+      style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.55 }, disabled && { opacity: 0.4 }]}
     >
-      <Ionicons name={icon} size={19} color={active ? colors.white : colors.green} />
+      <Ionicons name={icon} size={22} color={color} />
     </Pressable>
   );
 }
 
-export function Check({
+/** A titled block of content. */
+export function Section({ title, right, children }: { title?: string; right?: ReactNode; children: ReactNode }) {
+  return (
+    <View style={styles.section}>
+      {(title || right) && (
+        <View style={styles.sectionHeader}>
+          {title && <Text style={type.section}>{title}</Text>}
+          {right}
+        </View>
+      )}
+      {children}
+    </View>
+  );
+}
+
+/** A white rounded group of rows with hairlines between them. */
+export function Group({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+  const rows = Children.toArray(children).filter(Boolean);
+  return (
+    <View style={[styles.group, style]}>
+      {rows.map((row, index) => (
+        <Fragment key={index}>
+          {index > 0 && <View style={styles.hairline} />}
+          {row}
+        </Fragment>
+      ))}
+    </View>
+  );
+}
+
+export function ToggleRow({
   label,
-  checked,
+  hint,
+  value,
   disabled,
   onChange,
 }: {
   label: string;
-  checked: boolean;
+  hint?: string;
+  value: boolean;
   disabled?: boolean;
   onChange: (next: boolean) => void;
 }) {
   return (
+    <View style={[styles.row, disabled && { opacity: 0.55 }]}>
+      <View style={styles.rowText}>
+        <Text style={type.body}>{label}</Text>
+        {!!hint && <Text style={type.secondary}>{hint}</Text>}
+      </View>
+      <Switch
+        accessibilityLabel={label}
+        value={value}
+        disabled={disabled}
+        onValueChange={onChange}
+        trackColor={{ true: colors.green, false: colors.line }}
+        thumbColor={colors.white}
+      />
+    </View>
+  );
+}
+
+/** A tappable row with an icon, used for menus and lists of actions. */
+export function ActionRow({
+  icon,
+  label,
+  hint,
+  onPress,
+  disabled,
+  destructive,
+  trailing,
+}: {
+  icon?: IconName;
+  label: string;
+  hint?: string;
+  onPress: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+  trailing?: ReactNode;
+}) {
+  const color = destructive ? colors.error : colors.green;
+  return (
     <Pressable
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked, disabled: !!disabled }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
-      onPress={() => onChange(!checked)}
-      style={[styles.check, disabled && { opacity: 0.55 }]}
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.paper }, disabled && { opacity: 0.4 }]}
     >
-      <Ionicons name={checked ? "checkbox" : "square-outline"} size={22} color={colors.green} />
-      <Text style={styles.checkLabel}>{label}</Text>
+      {icon && (
+        <View style={[styles.rowIcon, destructive && { backgroundColor: colors.errorSoft }]}>
+          <Ionicons name={icon} size={20} color={color} />
+        </View>
+      )}
+      <View style={styles.rowText}>
+        <Text style={[type.bodyStrong, destructive && { color: colors.error }]}>{label}</Text>
+        {!!hint && <Text style={type.secondary}>{hint}</Text>}
+      </View>
+      {trailing}
     </Pressable>
   );
 }
@@ -145,48 +229,98 @@ export function Slider({
   );
 }
 
-export function Eyebrow({ children }: { children: ReactNode }) {
-  return <Text style={styles.eyebrow}>{children}</Text>;
+/** A slider with its name and current value on one line above it. */
+export function SliderRow({
+  label,
+  valueText,
+  hint,
+  ...slider
+}: ComponentProps<typeof Slider> & { valueText: string; hint?: string }) {
+  return (
+    <View style={styles.sliderRow}>
+      <View style={styles.between}>
+        <Text style={type.body}>{label}</Text>
+        <Text style={type.bodyStrong}>{valueText}</Text>
+      </View>
+      {!!hint && <Text style={type.secondary}>{hint}</Text>}
+      <Slider label={label} {...slider} />
+    </View>
+  );
 }
+
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
+/** An inline message for something the person should know or fix. */
+export function Banner({ tone = "info", children, action }: { tone?: "info" | "warn" | "error"; children: ReactNode; action?: ReactNode }) {
+  const palette = {
+    info: { background: colors.soft, foreground: colors.ink, icon: "information-circle-outline" as const },
+    warn: { background: colors.warnSoft, foreground: colors.ink, icon: "alert-circle-outline" as const },
+    error: { background: colors.errorSoft, foreground: colors.error, icon: "alert-circle-outline" as const },
+  }[tone];
+  return (
+    <View style={[styles.banner, { backgroundColor: palette.background }]}>
+      <View style={styles.bannerBody}>
+        <Ionicons name={palette.icon} size={18} color={palette.foreground} />
+        <Text style={[styles.bannerText, { color: palette.foreground }]}>{children}</Text>
+      </View>
+      {action}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   button: {
-    minHeight: 42,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    minHeight: 48,
+    paddingHorizontal: 16,
+    borderRadius: radius.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 8,
   },
+  buttonSmall: { minHeight: 38, paddingHorizontal: 12, borderRadius: radius.sm, gap: 6 },
   primary: { backgroundColor: colors.green },
   secondary: { borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white },
-  buttonText: { fontSize: 14, fontWeight: "600", flexShrink: 1 },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  buttonText: { fontSize: 15, fontWeight: "600", flexShrink: 1 },
+  buttonTextSmall: { fontSize: 14 },
+  iconButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  section: { gap: 8 },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  group: {
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    overflow: "hidden",
+  },
+  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: colors.line, marginLeft: 14 },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minHeight: 52,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  rowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.line,
+    backgroundColor: colors.soft,
   },
-  iconActive: { backgroundColor: colors.green, borderColor: colors.green },
-  check: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 },
-  checkLabel: { color: colors.ink, fontSize: 15, flexShrink: 1 },
+  rowText: { flex: 1, gap: 1 },
   slider: { width: "100%", height: 40 },
-  eyebrow: { color: colors.muted, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 14,
-    gap: 6,
-  },
+  sliderRow: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4, gap: 2 },
+  between: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  card: { backgroundColor: colors.white, borderRadius: radius.md, padding: 14, gap: 8 },
+  banner: { borderRadius: radius.md, padding: 12, gap: 10 },
+  bannerBody: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
+  bannerText: { flex: 1, fontSize: 14, lineHeight: 20 },
 });

@@ -210,6 +210,10 @@ export function sizeOf(item: Item): Vec3 {
     (n, i) => Math.round(n * item.scale[i] * (i === 2 ? 1 - compression : 1) * 100) / 100,
   ) as Vec3;
 }
+/** Millimetres as a short whole-centimetre label, such as "26 × 30 × 5 cm". */
+export function formatSize(size: Vec3): string {
+  return `${size.map((n) => Math.max(1, Math.round(n / 10))).join(" × ")} cm`;
+}
 /** Keep generated topology out of packing and advice request payloads. */
 export function packingItems(items: Item[]): Item[] {
   return items.map((item) => ({ ...item, mesh: undefined }));

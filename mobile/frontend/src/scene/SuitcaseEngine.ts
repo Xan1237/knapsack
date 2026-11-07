@@ -316,7 +316,7 @@ export class SuitcaseEngine {
     const vertical = (this.camera.fov * Math.PI) / 360;
     const limiting = Math.min(vertical, Math.atan(Math.tan(vertical) * this.aspect));
     // The bounding sphere is conservative for a flat, open case, so frame a little inside it.
-    this.distance = (radius / Math.sin(limiting)) * 0.82;
+    this.distance = (radius / Math.sin(limiting)) * 0.92;
     this.maxDistance = Math.max(22, this.distance * 2);
     this.camera.far = Math.max(150, this.distance + radius * 3);
     this.camera.updateProjectionMatrix();

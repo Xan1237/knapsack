@@ -6,7 +6,8 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as api from "../api";
-import { Icon, IconButton } from "../components/ui";
+import { afterSheet, Sheet } from "../components/Sheet";
+import { ActionRow, Group, Icon, IconButton } from "../components/ui";
 import {
   type Item,
   type Photo,
@@ -14,12 +15,14 @@ import {
   type Plan,
   type Vec3,
   anchorAtPoint,
+  formatSize,
   revisionOf,
+  suitcases,
   uid,
 } from "../domain";
 import { bagForState, initialState, type InventoryState, reducer } from "../state";
 import * as storage from "../storage";
-import { colors } from "../theme";
+import { colors, radius, type } from "../theme";
 import Assistant from "./Assistant";
 import BelongingsTab from "./BelongingsTab";
 import ItemEditor from "./ItemEditor";
@@ -49,6 +52,7 @@ export default function Workspace({ onHome }: { onHome: () => void }) {
   const [playback, setPlayback] = useState({ revision: "", step: 0, playing: false });
   const [astraOpen, setAstraOpen] = useState(false);
   const [wantedId, setWantedId] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<"bags" | "more" | "add" | null>(null);
   const inFlight = useRef(new Map<string, AbortController>());
   const generation = useRef(0);
   const latestRevision = useRef("");
@@ -104,7 +108,7 @@ export default function Workspace({ onHome }: { onHome: () => void }) {
     return () => clearTimeout(timer);
   }, [state, loaded, canPersist]);
 
-  // Notices sit above the scene, so they clear themselves rather than keep it pushed down.
+  // Notices float over the content, so they clear themselves rather than keep covering it.
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 8000);
@@ -340,14 +344,22 @@ export default function Workspace({ onHome }: { onHome: () => void }) {
   }
 
   const confirmReset = () =>
-    Alert.alert(
-      "A fresh start?",
-      "This clears this trip's inventory and retained photos from your phone. Your new suitcase will be empty.",
-      [
-        { text: "Keep my trip", style: "cancel" },
-        { text: "Clear session", style: "destructive", onPress: () => resetTo("reset") },
-      ],
-    );
+    Alert.alert("Clear this trip?", "This removes all items and photos from your phone. You'll start with an empty suitcase.", [
+      { text: "Keep my trip", style: "cancel" },
+      { text: "Clear trip", style: "destructive", onPress: () => resetTo("reset") },
+    ]);
+
+  // The demo replaces the current trip, so anything other than the demo itself gets a warning.
+  const confirmDemo = () => {
+    if (state.demo || state.items.length === 0) {
+      resetTo("demo");
+      return;
+    }
+    Alert.alert("Load the demo trip?", "This replaces your items and photos with the demo.", [
+      { text: "Keep my trip", style: "cancel" },
+      { text: "Load demo", style: "destructive", onPress: () => resetTo("demo") },
+    ]);
+  };
 
   const openEditor = (id: string) => {
     setSelected(id);
@@ -355,25 +367,45 @@ export default function Workspace({ onHome }: { onHome: () => void }) {
     setEditing(true);
   };
 
+  const fromMenu = (action: () => void) => {
+    setSheet(null);
+    afterSheet(action);
+  };
+  const bags = state.customBag ? [...suitcases, state.customBag] : suitcases;
+  const includedCount = state.items.filter((i) => i.included).length;
+  const storageProblem = storageStatus === "Not saving" || storageStatus === "Needs reset";
+
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <View style={styles.header}>
-        <Pressable onPress={onHome} accessibilityRole="button" accessibilityLabel="Knapsack home">
-          <Text style={styles.wordmark}>✳ knapsack</Text>
-        </Pressable>
-        <View style={styles.headerRight}>
-          <Text style={styles.status}>{storageStatus}</Text>
-          <IconButton icon="trash-outline" label="Reset trip" onPress={confirmReset} />
-        </View>
-      </View>
-      {!!notice && (
-        <View style={styles.notice} accessibilityLiveRegion="polite">
-          <Text style={styles.noticeText}>{notice}</Text>
-          <Pressable accessibilityLabel="Dismiss notice" hitSlop={10} onPress={() => setNotice("")}>
-            <Icon name="close" size={18} color={colors.ink} />
+        {tab === "suitcase" ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Suitcase: ${bag.name}, ${bag.subtitle}. Change suitcase`}
+            onPress={() => setSheet("bags")}
+            style={({ pressed }) => [styles.headerMain, pressed && { opacity: 0.6 }]}
+          >
+            <View style={styles.bagTitle}>
+              <Text style={type.title} numberOfLines={1}>
+                {bag.name}
+              </Text>
+              <Icon name="chevron-down" size={18} color={colors.muted} />
+            </View>
+            <Text style={type.secondary} numberOfLines={1}>
+              {bag.subtitle}
+            </Text>
           </Pressable>
-        </View>
-      )}
+        ) : (
+          <View style={styles.headerMain}>
+            <Text style={type.title}>Your items</Text>
+            <Text style={type.secondary} numberOfLines={1}>
+              {state.items.length ? `${includedCount} of ${state.items.length} coming on this trip` : "Nothing added yet"}
+            </Text>
+          </View>
+        )}
+        {storageProblem && <Text style={styles.storageProblem}>{storageStatus}</Text>}
+        <IconButton icon="ellipsis-horizontal" label="More options" onPress={() => setSheet("more")} />
+      </View>
       <View style={styles.body}>
         {tab === "suitcase" ? (
           <SuitcaseTab
@@ -415,34 +447,45 @@ export default function Workspace({ onHome }: { onHome: () => void }) {
               setAstraOpen(false);
               setWantedId(id);
             }}
+            addItems={() => {
+              setTab("belongings");
+              setSheet("add");
+            }}
           />
         ) : (
           <BelongingsTab
             state={state}
             current={current}
-            canSave={!!current}
             ready={loaded}
+            addOpen={sheet === "add"}
+            setAddOpen={(open) => setSheet(open ? "add" : null)}
             dispatch={dispatch}
             onOpen={openEditor}
             addPhotos={addPhotos}
             samplePhoto={samplePhoto}
-            importFile={importFile}
-            savePlan={savePlan}
-            loadDemo={() => resetTo("demo")}
+            loadDemo={confirmDemo}
             reviewMerge={(a, b) => {
               openEditor(a);
               setMergeWith(b);
             }}
           />
         )}
+        {!!notice && (
+          <View style={styles.notice} accessibilityLiveRegion="polite">
+            <Text style={styles.noticeText}>{notice}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Dismiss" hitSlop={12} onPress={() => setNotice("")}>
+              <Icon name="close" size={18} color={colors.white} />
+            </Pressable>
+          </View>
+        )}
       </View>
       <SafeAreaView edges={["bottom"]} style={styles.tabBar}>
         {(
           [
-            ["suitcase", "Suitcase", "briefcase-outline"],
-            ["belongings", `Belongings · ${state.items.length}`, "list-outline"],
+            ["suitcase", "Suitcase", "briefcase", "briefcase-outline"],
+            ["belongings", `Items (${state.items.length})`, "list", "list-outline"],
           ] as const
-        ).map(([key, label, icon]) => (
+        ).map(([key, label, activeIcon, icon]) => (
           <Pressable
             key={key}
             accessibilityRole="tab"
@@ -450,11 +493,51 @@ export default function Workspace({ onHome }: { onHome: () => void }) {
             style={styles.tab}
             onPress={() => setTab(key)}
           >
-            <Icon name={icon} size={20} color={tab === key ? colors.green : colors.muted} />
+            <Icon name={tab === key ? activeIcon : icon} size={24} color={tab === key ? colors.green : colors.muted} />
             <Text style={[styles.tabText, tab === key && styles.tabActive]}>{label}</Text>
           </Pressable>
         ))}
       </SafeAreaView>
+      <Sheet visible={sheet === "bags"} title="Choose a suitcase" onClose={() => setSheet(null)}>
+        <Group>
+          {bags.map((b) => (
+            <ActionRow
+              key={b.id}
+              icon="briefcase-outline"
+              label={b.name}
+              hint={`${b.subtitle} · ${formatSize(b.dimensions)}`}
+              onPress={() => {
+                dispatch({ type: "bag", id: b.id });
+                setSheet(null);
+              }}
+              trailing={b.id === bag.id ? <Icon name="checkmark-circle" size={24} color={colors.green} /> : undefined}
+            />
+          ))}
+        </Group>
+      </Sheet>
+      <Sheet visible={sheet === "more"} onClose={() => setSheet(null)}>
+        <Group>
+          <ActionRow
+            icon="share-outline"
+            label="Save packing plan"
+            hint={current ? "Share or save it as a file" : "Available once the layout is ready"}
+            disabled={!current}
+            onPress={() => fromMenu(savePlan)}
+          />
+          <ActionRow
+            icon="download-outline"
+            label="Import a collection"
+            hint="Replaces your current trip"
+            onPress={() => fromMenu(importFile)}
+          />
+          <ActionRow icon="sparkles-outline" label="Load the demo trip" onPress={() => fromMenu(confirmDemo)} />
+          <ActionRow icon="home-outline" label="Back to welcome screen" onPress={() => fromMenu(onHome)} />
+        </Group>
+        <Group>
+          <ActionRow icon="trash-outline" label="Clear trip" destructive onPress={() => fromMenu(confirmReset)} />
+        </Group>
+        <Text style={styles.storageNote}>{storageStatus}</Text>
+      </Sheet>
       {active && (
         <ItemEditor
           key={active.id}
@@ -506,32 +589,37 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    gap: 8,
+    paddingLeft: 16,
+    paddingRight: 6,
+    paddingVertical: 6,
+    minHeight: 60,
   },
-  wordmark: { color: colors.ink, fontSize: 18, fontWeight: "700" },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
-  status: { color: colors.muted, fontSize: 12 },
+  headerMain: { flex: 1 },
+  bagTitle: { flexDirection: "row", alignItems: "center", gap: 4 },
+  storageProblem: { color: colors.warn, fontSize: 13, fontWeight: "600" },
+  storageNote: { ...type.secondary, textAlign: "center" },
   notice: {
+    position: "absolute",
+    top: 8,
+    left: 12,
+    right: 12,
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: "#f3e7d4",
+    padding: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.ink,
   },
-  noticeText: { flex: 1, color: colors.ink, fontSize: 13, lineHeight: 18 },
+  noticeText: { flex: 1, color: colors.white, fontSize: 14, lineHeight: 20 },
   body: { flex: 1 },
   tabBar: {
     flexDirection: "row",
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.line,
     backgroundColor: colors.white,
   },
-  tab: { flex: 1, alignItems: "center", paddingVertical: 8, gap: 2 },
-  tabText: { color: colors.muted, fontSize: 12 },
+  tab: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 56, gap: 2 },
+  tabText: { color: colors.muted, fontSize: 12, fontWeight: "500" },
   tabActive: { color: colors.green, fontWeight: "700" },
 });

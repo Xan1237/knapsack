@@ -1,11 +1,11 @@
 import { useState, type Dispatch } from "react";
-import { Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ItemPreview from "../components/ItemPreview";
-import { Button, Card, Check, Eyebrow, Icon, IconButton, Slider } from "../components/ui";
-import { type Item, type Photo, type Vec3, categoryNames, uid } from "../domain";
+import { ActionRow, Button, Group, Icon, Section, SliderRow, ToggleRow } from "../components/ui";
+import { type Item, type Photo, type Vec3, categoryNames, formatSize, sizeOf, uid } from "../domain";
 import type { Action } from "../state";
-import { colors, serif } from "../theme";
+import { colors, radius, type } from "../theme";
 
 export default function ItemEditor({
   visible,
@@ -30,6 +30,7 @@ export default function ItemEditor({
 }) {
   const [name, setName] = useState(item.label);
   const [advanced, setAdvanced] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
   const edit = (patch: Extract<Action, { type: "edit" }>["patch"]) =>
     dispatch({ type: "edit", id: item.id, patch });
   const uniform = Math.cbrt(item.scale.reduce((v, n) => v * n, 1));
@@ -38,99 +39,108 @@ export default function ItemEditor({
       scale: item.scale.map((n) => Math.min(5, Math.max(0.1, (n * value) / uniform))) as Vec3,
     });
   const sources = photos.filter((p) => item.sourceIds.includes(p.id) && p.url);
+  const showMerge = mergeOpen || !!mergeWith;
+  const origin = item.sourceIds.length
+    ? `From ${item.sourceIds.length} photo${item.sourceIds.length === 1 ? "" : "s"}`
+    : item.modelUrl
+      ? "3D model shown as a simple shape"
+      : "Standard size";
+
+  const confirmDelete = () =>
+    Alert.alert(`Delete ${item.label}?`, "This removes it from your trip.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          dispatch({ type: "delete", id: item.id });
+          onClose();
+          onSelect(null);
+        },
+      },
+    ]);
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView style={styles.safe} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <View style={styles.heading}>
-            <View>
-              <Eyebrow>MAKE IT YOURS</Eyebrow>
-              <Text style={styles.title}>A better fit.</Text>
-            </View>
-            <IconButton icon="close" label="Close item editor" onPress={onClose} />
+          <View style={styles.header}>
+            <Text style={type.heading}>Edit item</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Done" hitSlop={12} onPress={onClose}>
+              <Text style={styles.done}>Done</Text>
+            </Pressable>
           </View>
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <View style={styles.preview}>
-              {visible && <ItemPreview item={item} background="#eeeae1" />}
+              {visible && <ItemPreview item={item} background={colors.canvas} />}
               <Text style={styles.previewTag} pointerEvents="none">
-                {item.mesh ? "ASTRA-GENERATED 3D" : "ESTIMATED 3D ITEM"}
+                {item.mesh ? "Astra 3D model" : "Estimated shape"}
               </Text>
             </View>
-            <Eyebrow>ITEM NAME</Eyebrow>
-            <TextInput
-              accessibilityLabel="Item name"
-              style={styles.input}
-              value={name}
-              maxLength={60}
-              onChangeText={(text) => {
-                setName(text);
-                if (text.trim()) edit({ label: text });
-              }}
-              onBlur={() => {
-                if (!name.trim()) {
-                  setName("Untitled item");
-                  edit({ label: "Untitled item" });
-                }
-              }}
-            />
-            <Text style={styles.note}>
-              {categoryNames[item.category]} ·{" "}
-              {item.sourceIds.length
-                ? `${item.sourceIds.length} source photo${item.sourceIds.length === 1 ? "" : "s"}`
-                : item.modelUrl
-                  ? "3D model asset (shown as a category shape on mobile)"
-                  : "Category template"}
-            </Text>
-            {sources.length > 0 && (
-              <View style={styles.sources}>
-                {sources.map((p) => (
-                  <Image key={p.id} source={{ uri: p.url }} style={styles.source} accessibilityLabel={`Source photo: ${p.name}`} />
-                ))}
-              </View>
-            )}
-            <Card>
-              <View style={styles.between}>
-                <Text style={styles.strong}>Make room for the real thing.</Text>
-                <Text style={styles.strong}>{Math.round(uniform * 100)}%</Text>
-              </View>
-              <Text style={styles.note}>Adjust its size beside your suitcase.</Text>
-              <Slider label="Item size" value={Math.round(uniform * 100)} min={20} max={300} onChange={(v) => updateScale(v / 100)} />
-            </Card>
-            {item.category === "clothing" && (
-              <Card>
-                <View style={styles.between}>
-                  <Text style={styles.strong}>Clothing compression</Text>
-                  <Text style={styles.strong}>{Math.round((item.compression ?? 0) * 100)}%</Text>
+
+            <Section title="Name">
+              <TextInput
+                accessibilityLabel="Item name"
+                style={styles.input}
+                value={name}
+                maxLength={60}
+                returnKeyType="done"
+                onChangeText={(text) => {
+                  setName(text);
+                  if (text.trim()) edit({ label: text });
+                }}
+                onBlur={() => {
+                  if (!name.trim()) {
+                    setName("Untitled item");
+                    edit({ label: "Untitled item" });
+                  }
+                }}
+              />
+              <Text style={styles.meta}>
+                {categoryNames[item.category]} · {origin}
+              </Text>
+              {sources.length > 0 && (
+                <View style={styles.sources}>
+                  {sources.map((p) => (
+                    <Image key={p.id} source={{ uri: p.url }} style={styles.source} accessibilityLabel={`Source photo: ${p.name}`} />
+                  ))}
                 </View>
-                <Text style={styles.note}>Press folded clothes flatter to make room.</Text>
-                <Slider
-                  label="Clothing compression"
-                  value={Math.round((item.compression ?? 0) * 100)}
-                  min={0}
-                  max={40}
-                  step={5}
-                  onChange={(v) => edit({ compression: v / 100 })}
+              )}
+            </Section>
+
+            <Section title="Size" right={<Text style={type.secondary}>{formatSize(sizeOf(item))}</Text>}>
+              <Group>
+                <SliderRow
+                  label="Overall size"
+                  valueText={`${Math.round(uniform * 100)}%`}
+                  value={Math.round(uniform * 100)}
+                  min={20}
+                  max={300}
+                  onChange={(v) => updateScale(v / 100)}
                 />
-              </Card>
-            )}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ expanded: advanced }}
-              style={styles.between}
-              onPress={() => setAdvanced((v) => !v)}
-            >
-              <Text style={styles.strong}>Fine-tune the shape</Text>
-              <Icon name={advanced ? "chevron-up" : "chevron-down"} size={18} color={colors.ink} />
-            </Pressable>
-            {advanced && (
-              <Card>
-                {["Width", "Length", "Height"].map((label, index) => (
-                  <View key={label}>
-                    <Text style={styles.note}>
-                      {label} · {Math.round(item.scale[index] * 100)}%
-                    </Text>
-                    <Slider
-                      label={`Item ${label.toLowerCase()}`}
+                {item.category === "clothing" && (
+                  <SliderRow
+                    label="Compression"
+                    hint="Press folded clothes flatter to make room."
+                    valueText={`${Math.round((item.compression ?? 0) * 100)}%`}
+                    value={Math.round((item.compression ?? 0) * 100)}
+                    min={0}
+                    max={40}
+                    step={5}
+                    onChange={(v) => edit({ compression: v / 100 })}
+                  />
+                )}
+                <ActionRow
+                  label="Adjust width, length and height"
+                  onPress={() => setAdvanced((v) => !v)}
+                  trailing={<Icon name={advanced ? "chevron-up" : "chevron-down"} size={18} color={colors.faint} />}
+                />
+                {advanced &&
+                  ["Width", "Length", "Height"].map((label, index) => (
+                    <SliderRow
+                      key={label}
+                      label={label}
+                      valueText={`${Math.round(item.scale[index] * 100)}%`}
                       value={Math.round(item.scale[index] * 100)}
                       min={20}
                       max={300}
@@ -140,23 +150,38 @@ export default function ItemEditor({
                         edit({ scale });
                       }}
                     />
-                  </View>
-                ))}
-                <Button label="Restore estimated size" kind="quiet" onPress={() => edit({ scale: [1, 1, 1] })} />
-              </Card>
-            )}
-            <Check label="Include in this trip" checked={item.included} disabled={!!item.required} onChange={(included) => edit({ included })} />
-            <Check label="Always bring this essential" checked={!!item.required} onChange={(required) => edit({ required })} />
-            <Check
-              label="Allow tipping on its side"
-              checked={item.orientations.length === 6}
-              onChange={(on) => edit({ orientations: on ? [0, 1, 2, 3, 4, 5] : [0, 1] })}
-            />
-            <View style={styles.row}>
-              <Button
-                label="Duplicate"
+                  ))}
+                {advanced && <Button label="Restore estimated size" kind="quiet" onPress={() => edit({ scale: [1, 1, 1] })} />}
+              </Group>
+            </Section>
+
+            <Section title="Packing">
+              <Group>
+                <ToggleRow
+                  label="Bring on this trip"
+                  hint={item.required ? "Essentials always come along" : undefined}
+                  value={item.included}
+                  disabled={!!item.required}
+                  onChange={(included) => edit({ included })}
+                />
+                <ToggleRow
+                  label="Essential"
+                  hint="Suggestions never leave it behind"
+                  value={!!item.required}
+                  onChange={(required) => edit({ required })}
+                />
+                <ToggleRow
+                  label="Can lie on its side"
+                  value={item.orientations.length === 6}
+                  onChange={(on) => edit({ orientations: on ? [0, 1, 2, 3, 4, 5] : [0, 1] })}
+                />
+              </Group>
+            </Section>
+
+            <Group>
+              <ActionRow
                 icon="copy-outline"
-                style={styles.grow}
+                label="Duplicate"
                 disabled={items.length >= 80}
                 onPress={() => {
                   const id = uid();
@@ -164,50 +189,52 @@ export default function ItemEditor({
                   onSelect(id);
                 }}
               />
-              <Button
-                label="Delete"
-                icon="trash-outline"
-                style={styles.grow}
-                onPress={() => {
-                  dispatch({ type: "delete", id: item.id });
-                  onClose();
-                  onSelect(null);
-                }}
-              />
-            </View>
-            {items.length > 1 && (
-              <Card>
-                <Text style={styles.strong}>Same belonging in two photos?</Text>
-                <Text style={styles.note}>
-                  Keeps this item's size and combines source photos. Use only for multiple views of one object.
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} keyboardShouldPersistTaps="handled">
-                  {items
-                    .filter((i) => i.id !== item.id)
-                    .map((i) => (
-                      <Pressable
-                        key={i.id}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: mergeWith === i.id }}
-                        style={[styles.chip, mergeWith === i.id && styles.chipActive]}
-                        onPress={() => setMergeWith(mergeWith === i.id ? "" : i.id)}
-                      >
-                        <Text style={[styles.chipText, mergeWith === i.id && styles.chipTextActive]} numberOfLines={1}>
-                          {i.label}
-                        </Text>
-                      </Pressable>
-                    ))}
-                </ScrollView>
-                <Button
-                  label="Merge into selected item"
-                  disabled={!mergeWith}
+              {items.length > 1 && (
+                <ActionRow
+                  icon="git-merge-outline"
+                  label="Merge with another item"
+                  hint="For two photos of the same thing"
                   onPress={() => {
-                    dispatch({ type: "merge", target: item.id, source: mergeWith });
-                    setMergeWith("");
+                    if (showMerge) setMergeWith("");
+                    setMergeOpen(!showMerge);
                   }}
+                  trailing={<Icon name={showMerge ? "chevron-up" : "chevron-down"} size={18} color={colors.faint} />}
                 />
-              </Card>
-            )}
+              )}
+              {items.length > 1 && showMerge && (
+                <View style={styles.merge}>
+                  <Text style={type.secondary}>Keeps this item's size and combines the photos.</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} keyboardShouldPersistTaps="handled">
+                    {items
+                      .filter((i) => i.id !== item.id)
+                      .map((i) => (
+                        <Pressable
+                          key={i.id}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: mergeWith === i.id }}
+                          style={[styles.chip, mergeWith === i.id && styles.chipActive]}
+                          onPress={() => setMergeWith(mergeWith === i.id ? "" : i.id)}
+                        >
+                          <Text style={[styles.chipText, mergeWith === i.id && styles.chipTextActive]} numberOfLines={1}>
+                            {i.label}
+                          </Text>
+                        </Pressable>
+                      ))}
+                  </ScrollView>
+                  <Button
+                    label="Merge into this item"
+                    size="small"
+                    disabled={!mergeWith}
+                    onPress={() => {
+                      dispatch({ type: "merge", target: item.id, source: mergeWith });
+                      setMergeWith("");
+                      setMergeOpen(false);
+                    }}
+                  />
+                </View>
+              )}
+              <ActionRow icon="trash-outline" label="Delete item" destructive onPress={confirmDelete} />
+            </Group>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -217,37 +244,32 @@ export default function ItemEditor({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  heading: {
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    minHeight: 52,
   },
-  title: { color: colors.ink, fontFamily: serif, fontSize: 24 },
-  content: { padding: 16, paddingTop: 4, gap: 12 },
-  preview: { height: 200, borderRadius: 14, overflow: "hidden", backgroundColor: colors.canvas },
-  previewTag: { position: "absolute", left: 10, bottom: 8, fontSize: 10, letterSpacing: 1, color: colors.muted, fontWeight: "700" },
+  done: { color: colors.green, fontSize: 16, fontWeight: "700" },
+  content: { padding: 16, paddingTop: 4, paddingBottom: 32, gap: 20 },
+  preview: { height: 190, borderRadius: radius.md, overflow: "hidden", backgroundColor: colors.canvas },
+  previewTag: { position: "absolute", left: 12, bottom: 10, fontSize: 12, color: colors.muted, fontWeight: "600" },
   input: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    minHeight: 48,
     fontSize: 16,
     color: colors.ink,
     backgroundColor: colors.white,
   },
-  note: { color: colors.muted, fontSize: 12, lineHeight: 17 },
-  strong: { color: colors.ink, fontWeight: "600", fontSize: 14, flexShrink: 1 },
-  between: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, minHeight: 28 },
-  sources: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  source: { width: 48, height: 48, borderRadius: 8 },
-  row: { flexDirection: "row", gap: 8 },
-  grow: { flex: 1 },
+  meta: { ...type.secondary, paddingHorizontal: 4 },
+  sources: { flexDirection: "row", gap: 8, flexWrap: "wrap", paddingHorizontal: 4 },
+  source: { width: 52, height: 52, borderRadius: 8 },
+  merge: { paddingHorizontal: 14, paddingVertical: 12, gap: 10 },
   chips: { gap: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: colors.soft, maxWidth: 190 },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.soft, maxWidth: 190 },
   chipActive: { backgroundColor: colors.green },
-  chipText: { color: colors.ink, fontSize: 13 },
+  chipText: { color: colors.ink, fontSize: 14 },
   chipTextActive: { color: colors.white },
 });

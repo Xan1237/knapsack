@@ -49,7 +49,8 @@ The backend has no authentication yet, so anyone on your network who can reach i
 | `backend/app/collection.py` | Collection import, including web-app exports and the older cm / Y-up format |
 | `frontend/src/state.ts`, `domain.ts` | Inventory reducer and shared types |
 | `frontend/src/scene/` | 3D suitcase: Three.js on `expo-gl` (touch orbit, pinch, tap, drag) |
-| `frontend/src/screens/` | Landing, Suitcase and Belongings tabs, item editor, assistant |
+| `frontend/src/screens/` | Landing, Suitcase and Items tabs, item editor, assistant |
+| `frontend/src/components/` | Shared controls (`ui.tsx`), bottom sheets (`Sheet.tsx`), 3D views |
 
 The app sends its inventory, without mesh data, to `POST /api/pack` whenever it changes. Each plan echoes the app's revision so stale responses are dropped.
 
