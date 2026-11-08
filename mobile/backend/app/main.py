@@ -1,6 +1,7 @@
 """Knapsack API. Credentials stay here; uploaded photos are never written to disk by the app."""
 
 import base64
+import logging
 import os
 import threading
 from pathlib import Path
@@ -75,7 +76,10 @@ async def on_api_error(_: Request, error: ApiError):
 
 
 @app.exception_handler(RequestValidationError)
-async def on_invalid_request(request: Request, _: RequestValidationError):
+async def on_invalid_request(request: Request, error: RequestValidationError):
+    # Log where validation failed, without the submitted values.
+    reasons = [f"{'.'.join(str(p) for p in e.get('loc', ()))}: {e.get('msg')}" for e in error.errors()[:5]]
+    logging.getLogger("uvicorn.error").warning("invalid %s: %s", request.url.path, "; ".join(reasons))
     message = (
         "Choose a JPEG, PNG or WebP photo up to 6 MB."
         if request.url.path == "/api/analyze"

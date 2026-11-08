@@ -218,8 +218,16 @@ export function formatSize(size: Vec3): string {
 }
 /** Keep generated topology out of packing and advice request payloads. */
 export function packingItems(items: Item[]): Item[] {
-  // Items set aside stay out of the search, like ones left at home.
-  return items.map((item) => ({ ...item, mesh: undefined, included: item.included && !item.aside, aside: undefined }));
+  return items.map(packingItem);
+}
+/**
+ * Items set aside stay out of the search, like ones left at home. An essential set aside is
+ * sent as non-essential too, since the server requires essentials to be packed; the pin
+ * itself stays on the item.
+ */
+export function packingItem<T extends Item>(item: T): T {
+  if (!item.aside) return { ...item, mesh: undefined };
+  return { ...item, mesh: undefined, included: false, required: false, aside: undefined };
 }
 export function revisionOf(items: Item[], bag: Suitcase): string {
   return JSON.stringify([
