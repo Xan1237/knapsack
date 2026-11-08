@@ -160,17 +160,26 @@ const templates: Record<Category, { label: string; dimensions: Vec3; color: stri
   other: { label: "Travel essential", dimensions: [120, 90, 40], color: "#b8abc5" },
 };
 /** Folded, full-size travel belongings for the weekender's two 105 mm-deep halves. */
+// Every item fits each suitcase on its own, including the small bag's 74 mm halves, and the
+// whole set packs into the Weekender and the Big trip.
 const travelDemoSpecs: [Category, string, Vec3, string][] = [
   ["clothing", "Sage linen shirt", [256, 300, 48], "#adbd98"],
-  ["clothing", "Cream knit", [334, 211, 99], "#e7d8bd"],
-  ["clothing", "Jeans & chinos", [256, 191, 99], "#729098"],
+  ["clothing", "Cream knit", [334, 211, 70], "#e7d8bd"],
+  ["clothing", "Jeans & chinos", [256, 191, 70], "#729098"],
   ["clothing", "Terracotta tee", [256, 300, 48], "#c98f75"],
-  ["shoes", "Left sneaker", [110, 280, 99], "#e5d9c6"],
-  ["shoes", "Right sneaker", [110, 280, 99], "#e5d9c6"],
-  ["pouch", "Socks & underwear cube", [108, 280, 99], "#a7b5a1"],
-  ["pouch", "Wash bag", [75, 271, 99], "#bf8969"],
+  ["shoes", "Left sneaker", [110, 280, 70], "#e5d9c6"],
+  ["shoes", "Right sneaker", [110, 280, 70], "#e5d9c6"],
+  ["pouch", "Socks & underwear cube", [108, 280, 70], "#a7b5a1"],
+  ["pouch", "Wash bag", [75, 271, 70], "#bf8969"],
   ["other", "Power bank", [75, 180, 21], "#887f9f"],
 ];
+// The knit turns flat to fit the small bag's width; the rest keep the Weekender's tuned layout.
+const demoOrientations: Record<number, number[]> = { 1: [0, 1] };
+// The power bank sits on the Weekender's lid floor, leaving room above it for the reserved
+// water bottle. Changing bags or auto-arranging clears this like any manual position.
+const demoAnchors: Record<number, ItemAnchor> = {
+  8: { position: [262, 277, 3], orientation: 0, compartment: "lid" },
+};
 
 export function uid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -199,7 +208,8 @@ export function demoItems(): Item[] {
   return travelDemoSpecs.map(([category, label, dimensions, color], i) => ({
     ...createItem(category, `demo-${i}`),
     demo: true,
-    orientations: [0],
+    orientations: demoOrientations[i] ?? [0],
+    ...(demoAnchors[i] ? { anchor: demoAnchors[i] } : {}),
     label,
     dimensions: [...dimensions],
     estimate: [...dimensions],
