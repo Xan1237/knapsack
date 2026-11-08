@@ -23,15 +23,15 @@ type Props = {
   exploded: boolean;
   resetKey: number;
   view: "perspective" | "top";
-  moveMode: boolean;
   step: number;
   maxStep: number;
   playing: boolean;
   dispatch: Dispatch<Action>;
   setLayer: (n: number) => void;
+  /** The open tool panel, controlled by the bottom bar. */
+  tool: "steps" | "layers" | null;
   setExploded: Dispatch<SetStateAction<boolean>>;
   setPlayback: (p: Playback) => void;
-  setMoveMode: Dispatch<SetStateAction<boolean>>;
   setView: (v: "perspective" | "top") => void;
   bumpReset: () => void;
   setSelected: (id: string | null) => void;
@@ -45,40 +45,6 @@ type Props = {
 
 // The gesture hint only needs to be seen once per launch, not on every return to this tab.
 let hintDismissed = false;
-
-function ToolButton({
-  icon,
-  label,
-  active,
-  disabled,
-  onPress,
-}: {
-  icon: IconName;
-  label: string;
-  active?: boolean;
-  disabled?: boolean;
-  onPress: () => void;
-}) {
-  const color = active ? colors.green : colors.ink;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected: !!active, disabled: !!disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.tool,
-        active && styles.toolActive,
-        pressed && { opacity: 0.6 },
-        disabled && { opacity: 0.35 },
-      ]}
-    >
-      <Icon name={icon} size={22} color={color} />
-      <Text style={[styles.toolLabel, active && styles.toolLabelActive]}>{label}</Text>
-    </Pressable>
-  );
-}
 
 function SceneChip({ label, icon, active, onPress }: { label?: string; icon?: IconName; active?: boolean; onPress: () => void }) {
   return (
@@ -98,7 +64,7 @@ function SceneChip({ label, icon, active, onPress }: { label?: string; icon?: Ic
 
 export default function SuitcaseTab(p: Props) {
   const { state, bag, plan, current, busy, revision, step, maxStep, playing, dispatch } = p;
-  const [tool, setTool] = useState<"steps" | "layers" | null>(null);
+  const { tool } = p;
   const [fitOpen, setFitOpen] = useState(false);
   const [hintVisible, setHintVisible] = useState(!hintDismissed);
   const included = state.items.filter((i) => i.included);
@@ -111,7 +77,6 @@ export default function SuitcaseTab(p: Props) {
   const overflowCount = current?.unplaced.length ?? 0;
   const aside = included.filter((i) => i.aside);
   const empty = included.length === 0;
-  const closed = !!bag.clamshell && maxStep > 0 && step === maxStep;
   const stepsReady = !!current && !!maxStep;
   const anchored = state.items.some((i) => i.anchor || i.aside);
 
@@ -147,18 +112,6 @@ export default function SuitcaseTab(p: Props) {
           ? "Empty suitcase"
           : `Step ${step} of ${maxStep}`;
 
-  function toggleTool(next: "steps" | "layers") {
-    if (tool === "layers") p.setLayer(100);
-    if (tool === "steps" && (playing || step < packedSteps)) showAll();
-    setTool(tool === next ? null : next);
-  }
-  function toggleMove() {
-    setTool(null);
-    p.setMoveMode((v) => !v);
-    p.setExploded(false);
-    p.setLayer(100);
-    showAll();
-  }
 
   return (
     <View style={styles.root}>
@@ -180,7 +133,7 @@ export default function SuitcaseTab(p: Props) {
           view={p.view}
           resetKey={p.resetKey}
           reservedSpace={p.reservedSpace}
-          moveMode={p.moveMode && !!current && !playing && !p.exploded && step <= packedSteps}
+          canDrag={!!current && !playing && !p.exploded && step <= packedSteps}
           onSelect={p.setSelected}
           onDrop={p.dropItem}
         />
@@ -219,9 +172,9 @@ export default function SuitcaseTab(p: Props) {
         </View>
 
         <View style={styles.floating} pointerEvents="box-none">
-          {hintVisible && !p.moveMode && !tool && !p.active && !empty && !p.packingError && (
+          {hintVisible && !tool && !p.active && !empty && !p.packingError && (
             <Text style={styles.hint} pointerEvents="none">
-              Drag to rotate · Pinch to zoom · Tap an item
+              Drag an item to move it · Drag elsewhere to rotate · Pinch to zoom
             </Text>
           )}
 
@@ -241,7 +194,7 @@ export default function SuitcaseTab(p: Props) {
             </Banner>
           )}
 
-          {p.active && !p.moveMode && (
+          {p.active && (
             <View style={[styles.floatCard, styles.selection]}>
               <View style={[styles.swatch, { backgroundColor: p.active.color }]} />
               <View style={styles.grow}>
@@ -341,47 +294,6 @@ export default function SuitcaseTab(p: Props) {
           <Button label="Ask Astra" icon="sparkles" kind="primary" size="small" onPress={p.askAstra} />
         </View>
 
-        {p.moveMode ? (
-          <View style={styles.moveBar}>
-            <Text style={[type.body, styles.grow]} numberOfLines={2}>
-              Drag an item to move it
-            </Text>
-            {anchored && <Button label="Auto arrange" size="small" onPress={() => dispatch({ type: "auto-layout" })} />}
-            <Button label="Done" kind="primary" size="small" onPress={toggleMove} />
-          </View>
-        ) : (
-          <View style={styles.tools}>
-            <ToolButton icon="move-outline" label="Move" disabled={empty} onPress={toggleMove} />
-            <ToolButton
-              icon="footsteps-outline"
-              label="Steps"
-              active={tool === "steps"}
-              disabled={empty}
-              onPress={() => toggleTool("steps")}
-            />
-            <ToolButton
-              icon="layers-outline"
-              label="Layers"
-              active={tool === "layers"}
-              disabled={empty}
-              onPress={() => toggleTool("layers")}
-            />
-            {bag.clamshell && (
-              <ToolButton
-                icon={closed ? "briefcase" : "briefcase-outline"}
-                label={closed ? "Open" : "Close"}
-                active={closed}
-                disabled={!current}
-                onPress={() => {
-                  setTool(null);
-                  p.setExploded(false);
-                  p.setLayer(100);
-                  p.setPlayback({ revision, step: closed ? packedSteps : maxStep, playing: false });
-                }}
-              />
-            )}
-          </View>
-        )}
       </View>
 
       <Sheet visible={fitOpen} title={title} onClose={() => setFitOpen(false)}>
@@ -568,12 +480,6 @@ const styles = StyleSheet.create({
   dot: { width: 9, height: 9, borderRadius: 5 },
   spinner: { width: 14, height: 14, transform: [{ scale: 0.7 }] },
   summaryTitle: { ...type.heading, flexShrink: 1 },
-  tools: { flexDirection: "row", gap: 6, height: 60 },
-  tool: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, borderRadius: radius.md },
-  toolActive: { backgroundColor: colors.soft },
-  toolLabel: { color: colors.ink, fontSize: 12, fontWeight: "500" },
-  toolLabelActive: { color: colors.green, fontWeight: "700" },
-  moveBar: { flexDirection: "row", alignItems: "center", gap: 8, height: 60 },
   grow: { flex: 1 },
   row: { flexDirection: "row", gap: 8 },
   stats: { flexDirection: "row", gap: 8 },

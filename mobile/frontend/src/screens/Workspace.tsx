@@ -7,7 +7,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as api from "../api";
 import { afterSheet, Sheet } from "../components/Sheet";
-import { ActionRow, Group, Icon, IconButton } from "../components/ui";
+import { ActionRow, Group, Icon, IconButton, type IconName } from "../components/ui";
 import {
   type Item,
   type Photo,
@@ -33,6 +33,37 @@ import SuitcaseTab from "./SuitcaseTab";
 
 const maxPhotos = 12;
 
+/** A suitcase tool in the bottom bar, styled like the tabs beside it. */
+function BarButton({
+  icon,
+  label,
+  active,
+  disabled,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  active?: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: !!active, disabled: !!disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.tab, pressed && { opacity: 0.6 }, disabled && { opacity: 0.35 }]}
+    >
+      <Icon name={icon} size={24} color={active ? colors.green : colors.muted} />
+      <Text style={[styles.tabText, active && styles.tabActive]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export default function Workspace({ userId, email }: { userId: string; email: string }) {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const [tab, setTab] = useState<"suitcase" | "belongings">("suitcase");
@@ -42,6 +73,7 @@ export default function Workspace({ userId, email }: { userId: string; email: st
   const [syncStatus, setSyncStatus] = useState("");
   const [remoteReady, setRemoteReady] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tool, setTool] = useState<"steps" | "layers" | null>(null);
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -54,7 +86,6 @@ export default function Workspace({ userId, email }: { userId: string; email: st
   const [exploded, setExploded] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [view, setView] = useState<"perspective" | "top">("perspective");
-  const [moveMode, setMoveMode] = useState(false);
   const [playback, setPlayback] = useState({ revision: "", step: 0, playing: false });
   const [astraOpen, setAstraOpen] = useState(false);
   const [wantedId, setWantedId] = useState<string | null>(null);
@@ -75,6 +106,30 @@ export default function Workspace({ userId, email }: { userId: string; email: st
   const maxStep = plan ? plan.placements.length + (bag.clamshell ? 1 : 0) : 0;
   const step = Math.min(maxStep, effectivePlayback.step);
   const active = state.items.find((i) => i.id === selected) ?? null;
+  const packedSteps = plan?.placements.length ?? 0;
+  const closed = !!bag.clamshell && maxStep > 0 && step === maxStep;
+  const showAll = () => setPlayback({ revision, step: packedSteps, playing: false });
+
+  /** Leave a tool panel, restoring the full packed view it changed. */
+  function closeTool() {
+    if (tool === "layers") setLayer(100);
+    if (tool === "steps" && (effectivePlayback.playing || step < packedSteps)) showAll();
+    setTool(null);
+  }
+  // The bar's tools act on the suitcase, so they bring its tab forward first.
+  function toggleTool(next: "steps" | "layers") {
+    const reopen = tab !== "suitcase" || tool !== next;
+    closeTool();
+    setTab("suitcase");
+    if (reopen) setTool(next);
+  }
+  function toggleClosed() {
+    setTool(null);
+    setTab("suitcase");
+    setExploded(false);
+    setLayer(100);
+    setPlayback({ revision, step: closed ? packedSteps : maxStep, playing: false });
+  }
 
   // Restore whichever copy changed last: this phone's, or the one saved to the account.
   useEffect(() => {
@@ -235,11 +290,11 @@ export default function Workspace({ userId, email }: { userId: string; email: st
     inFlight.current.clear();
   }
   function clearScene() {
+    setTool(null);
     setPlan(null);
     setReservedSpace(null);
     setLayer(100);
     setExploded(false);
-    setMoveMode(false);
     setPlayback({ revision: "", step: 0, playing: false });
     setAstraOpen(false);
     setWantedId(null);
@@ -490,15 +545,14 @@ export default function Workspace({ userId, email }: { userId: string; email: st
             exploded={exploded}
             resetKey={resetKey}
             view={view}
-            moveMode={moveMode}
             step={step}
             maxStep={maxStep}
             playing={effectivePlayback.playing}
             dispatch={dispatch}
             setLayer={setLayer}
+            tool={tool}
             setExploded={setExploded}
             setPlayback={setPlayback}
-            setMoveMode={setMoveMode}
             setView={setView}
             bumpReset={() => setResetKey((k) => k + 1)}
             setSelected={setSelected}
@@ -546,24 +600,45 @@ export default function Workspace({ userId, email }: { userId: string; email: st
           </View>
         )}
       </View>
+      {/* One bar for everything: the two tabs, then the suitcase's view tools. */}
       <SafeAreaView edges={["bottom"]} style={styles.tabBar}>
         {(
           [
             ["suitcase", "Suitcase", "briefcase", "briefcase-outline"],
-            ["belongings", `Items (${state.items.length})`, "list", "list-outline"],
+            ["belongings", "Items", "list", "list-outline"],
           ] as const
-        ).map(([key, label, activeIcon, icon]) => (
-          <Pressable
-            key={key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === key }}
-            style={styles.tab}
-            onPress={() => setTab(key)}
-          >
-            <Icon name={tab === key ? activeIcon : icon} size={24} color={tab === key ? colors.green : colors.muted} />
-            <Text style={[styles.tabText, tab === key && styles.tabActive]}>{label}</Text>
-          </Pressable>
-        ))}
+        ).map(([key, label, activeIcon, icon]) => {
+          const selectedTab = tab === key && !tool;
+          return (
+            <Pressable
+              key={key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab === key }}
+              style={styles.tab}
+              onPress={() => {
+                closeTool();
+                setTab(key);
+              }}
+            >
+              <Icon name={selectedTab ? activeIcon : icon} size={24} color={selectedTab ? colors.green : colors.muted} />
+              <Text style={[styles.tabText, selectedTab && styles.tabActive]} numberOfLines={1}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+        <View style={styles.tabDivider} />
+        <BarButton icon="footsteps-outline" label="Steps" active={tab === "suitcase" && tool === "steps"} disabled={!includedCount} onPress={() => toggleTool("steps")} />
+        <BarButton icon="layers-outline" label="Layers" active={tab === "suitcase" && tool === "layers"} disabled={!includedCount} onPress={() => toggleTool("layers")} />
+        {bag.clamshell && (
+          <BarButton
+            icon={closed ? "briefcase" : "briefcase-outline"}
+            label={closed ? "Open" : "Close"}
+            active={tab === "suitcase" && closed}
+            disabled={!current}
+            onPress={toggleClosed}
+          />
+        )}
       </SafeAreaView>
       <Sheet visible={sheet === "bags"} title="Choose a suitcase" onClose={() => setSheet(null)}>
         <Group>
@@ -693,7 +768,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.line,
     backgroundColor: colors.white,
   },
-  tab: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 56, gap: 2 },
+  tab: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 56, gap: 2, paddingHorizontal: 2 },
+  tabDivider: { width: StyleSheet.hairlineWidth, marginVertical: 12, backgroundColor: colors.line },
   tabText: { color: colors.muted, fontSize: 12, fontWeight: "500" },
   tabActive: { color: colors.green, fontWeight: "700" },
 });

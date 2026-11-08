@@ -6,7 +6,8 @@ import { type SceneProps, SuitcaseEngine } from "../scene/SuitcaseEngine";
 import { colors } from "../theme";
 
 type Props = Omit<SceneProps, "reduceMotion"> & {
-  moveMode: boolean;
+  /** Whether a drag that starts on a belonging moves it (off while playing steps or exploded). */
+  canDrag: boolean;
   onSelect: (id: string) => void;
   onDrop: (item: Item, point: Vec3, orientation: number) => boolean;
 };
@@ -85,13 +86,19 @@ export default function SuitcaseView(props: Props) {
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (event) => {
         const { locationX: x, locationY: y } = event.nativeEvent;
-        const dragging = latest.current.moveMode && !!engine.current?.beginDrag(x, y);
+        // A touch that starts on a belonging moves it; anywhere else orbits the view.
+        const dragging = latest.current.canDrag && !!engine.current?.beginDrag(x, y);
         gesture.current = { x, y, dx: 0, dy: 0, moved: false, dragging, pinch: 0 };
       },
       onPanResponderMove: (event, state) => {
         const g = gesture.current;
         const touches = event.nativeEvent.touches;
-        if (touches.length >= 2 && !g.dragging) {
+        // A second finger turns a drag into a pinch, and the item goes back where it was.
+        if (touches.length >= 2 && g.dragging) {
+          engine.current?.endDrag(true);
+          g.dragging = false;
+        }
+        if (touches.length >= 2) {
           const distance = Math.hypot(
             touches[0].pageX - touches[1].pageX,
             touches[0].pageY - touches[1].pageY,
