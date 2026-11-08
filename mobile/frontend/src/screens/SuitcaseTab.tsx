@@ -18,14 +18,12 @@ type Props = {
   reservedSpace: Placement | null;
   selected: string | null;
   active: Item | null;
-  layer: number;
   step: number;
   maxStep: number;
   playing: boolean;
   dispatch: Dispatch<Action>;
-  setLayer: (n: number) => void;
   /** The open tool panel, controlled by the bottom bar. */
-  tool: "steps" | "layers" | null;
+  tool: "steps" | null;
   setPlayback: (p: Playback) => void;
   setSelected: (id: string | null) => void;
   openEditor: (id: string) => void;
@@ -98,7 +96,7 @@ export default function SuitcaseTab(p: Props) {
           bag={bag}
           plan={plan}
           selected={p.selected}
-          layer={p.layer}
+          layer={100}
           step={step}
           exploded={false}
           view="perspective"
@@ -163,7 +161,6 @@ export default function SuitcaseTab(p: Props) {
                 accessibilityLabel={playing ? "Pause packing playback" : "Play packing order"}
                 disabled={!stepsReady}
                 onPress={() => {
-                  p.setLayer(100);
                   p.setPlayback({ revision, step: playing ? step : 0, playing: !playing });
                 }}
                 style={[styles.play, !stepsReady && { opacity: 0.4 }]}
@@ -179,29 +176,13 @@ export default function SuitcaseTab(p: Props) {
                   max={Math.max(1, maxStep)}
                   disabled={!stepsReady}
                   onChange={(value) => {
-                    p.setLayer(100);
-                    p.setPlayback({ revision, step: value, playing: false });
+                      p.setPlayback({ revision, step: value, playing: false });
                   }}
                 />
               </View>
             </View>
           )}
 
-          {tool === "layers" && (
-            <View style={[styles.floatCard, styles.layerPanel]}>
-              <Text style={type.bodyStrong}>{p.layer === 100 ? "All layers showing" : "Hiding the top layers"}</Text>
-              <Slider
-                label="Visible layers"
-                value={p.layer}
-                min={0}
-                max={100}
-                onChange={(value) => {
-                  p.setLayer(value);
-                  showAll();
-                }}
-              />
-            </View>
-          )}
         </View>
       </View>
 
@@ -346,7 +327,6 @@ const styles = StyleSheet.create({
   selection: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 12 },
   swatch: { width: 32, height: 32, borderRadius: 8 },
   toolPanel: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, paddingBottom: 6 },
-  layerPanel: { padding: 12, paddingBottom: 6 },
   play: {
     width: 44,
     height: 44,

@@ -73,7 +73,7 @@ export default function Workspace({ userId, email }: { userId: string; email: st
   const [syncStatus, setSyncStatus] = useState("");
   const [remoteReady, setRemoteReady] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [tool, setTool] = useState<"steps" | "layers" | null>(null);
+  const [tool, setTool] = useState<"steps" | null>(null);
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -82,7 +82,6 @@ export default function Workspace({ userId, email }: { userId: string; email: st
   const [reservedSpace, setReservedSpace] = useState<Placement | null>(null);
   const [packingError, setPackingError] = useState("");
   const [packAttempt, setPackAttempt] = useState(0);
-  const [layer, setLayer] = useState(100);
   const [playback, setPlayback] = useState({ revision: "", step: 0, playing: false });
   const [astraOpen, setAstraOpen] = useState(false);
   const [fitOpen, setFitOpen] = useState(false);
@@ -110,12 +109,11 @@ export default function Workspace({ userId, email }: { userId: string; email: st
 
   /** Leave a tool panel, restoring the full packed view it changed. */
   function closeTool() {
-    if (tool === "layers") setLayer(100);
     if (tool === "steps" && (effectivePlayback.playing || step < packedSteps)) showAll();
     setTool(null);
   }
   // The bar's tools act on the suitcase, so they bring its tab forward first.
-  function toggleTool(next: "steps" | "layers") {
+  function toggleTool(next: "steps") {
     const reopen = tab !== "suitcase" || tool !== next;
     closeTool();
     setTab("suitcase");
@@ -124,7 +122,6 @@ export default function Workspace({ userId, email }: { userId: string; email: st
   function toggleClosed() {
     setTool(null);
     setTab("suitcase");
-    setLayer(100);
     setPlayback({ revision, step: closed ? packedSteps : maxStep, playing: false });
   }
 
@@ -290,7 +287,6 @@ export default function Workspace({ userId, email }: { userId: string; email: st
     setTool(null);
     setPlan(null);
     setReservedSpace(null);
-    setLayer(100);
     setPlayback({ revision: "", step: 0, playing: false });
     setAstraOpen(false);
     setWantedId(null);
@@ -532,12 +528,10 @@ export default function Workspace({ userId, email }: { userId: string; email: st
             reservedSpace={reservedSpace}
             selected={selected}
             active={active}
-            layer={layer}
             step={step}
             maxStep={maxStep}
             playing={effectivePlayback.playing}
             dispatch={dispatch}
-            setLayer={setLayer}
             tool={tool}
             setPlayback={setPlayback}
             setSelected={setSelected}
@@ -612,7 +606,6 @@ export default function Workspace({ userId, email }: { userId: string; email: st
         })}
         <View style={styles.tabDivider} />
         <BarButton icon="footsteps-outline" label="Steps" active={tab === "suitcase" && tool === "steps"} disabled={!includedCount} onPress={() => toggleTool("steps")} />
-        <BarButton icon="layers-outline" label="Layers" active={tab === "suitcase" && tool === "layers"} disabled={!includedCount} onPress={() => toggleTool("layers")} />
         {bag.clamshell && (
           <BarButton
             icon={closed ? "briefcase" : "briefcase-outline"}
@@ -721,8 +714,7 @@ export default function Workspace({ userId, email }: { userId: string; email: st
           dispatch({ type: "selection", includeIds, priorityId });
           setAstraOpen(false);
           setWantedId(null);
-          setLayer(100);
-        }}
+              }}
         onLargerBag={() => {
           dispatch({ type: "bag", id: "checked" });
           setAstraOpen(false);
