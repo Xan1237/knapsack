@@ -28,6 +28,7 @@ import { colors, radius, type } from "../theme";
 import Assistant from "./Assistant";
 import BelongingsTab from "./BelongingsTab";
 import ItemEditor from "./ItemEditor";
+import Settings from "./Settings";
 import SuitcaseTab from "./SuitcaseTab";
 
 const maxPhotos = 12;
@@ -40,6 +41,7 @@ export default function Workspace({ userId, email, onHome }: { userId: string; e
   const [storageStatus, setStorageStatus] = useState("Restoring");
   const [syncStatus, setSyncStatus] = useState("");
   const [remoteReady, setRemoteReady] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -468,6 +470,7 @@ export default function Workspace({ userId, email, onHome }: { userId: string; e
           </View>
         )}
         {storageProblem && <Text style={styles.storageProblem}>{storageStatus}</Text>}
+        <IconButton icon="settings-outline" label="Settings" onPress={() => setSettingsOpen(true)} />
         <IconButton icon="ellipsis-horizontal" label="More options" onPress={() => setSheet("more")} />
       </View>
       <View style={styles.body}>
@@ -600,11 +603,16 @@ export default function Workspace({ userId, email, onHome }: { userId: string; e
         <Group>
           <ActionRow icon="trash-outline" label="Clear trip" destructive onPress={() => fromMenu(confirmReset)} />
         </Group>
-        <Group>
-          <ActionRow icon="log-out-outline" label="Sign out" hint={email} onPress={() => fromMenu(confirmSignOut)} />
-        </Group>
         <Text style={styles.storageNote}>{[storageStatus, syncStatus].filter(Boolean).join(" · ")}</Text>
       </Sheet>
+      <Settings
+        visible={settingsOpen}
+        email={email}
+        storageStatus={storageStatus}
+        syncStatus={syncStatus}
+        onSignOut={confirmSignOut}
+        onClose={() => setSettingsOpen(false)}
+      />
       {active && (
         <ItemEditor
           key={active.id}
