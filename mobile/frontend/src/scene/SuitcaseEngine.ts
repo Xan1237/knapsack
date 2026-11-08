@@ -365,7 +365,27 @@ export class SuitcaseEngine {
         node = node.parent;
       }
     }
-    return null;
+    // Small belongings are hard to hit exactly with a finger, so accept a near miss.
+    let nearest: string | null = null;
+    let best = 30;
+    for (const [id, entity] of this.entities) {
+      const p = entity.group.getWorldPosition(new Vector3()).project(this.camera);
+      if (p.z > 1) continue;
+      const distance = Math.hypot(
+        ((p.x + 1) / 2) * this.viewSize.width - x,
+        ((1 - p.y) / 2) * this.viewSize.height - y,
+      );
+      if (distance < best) {
+        best = distance;
+        nearest = id;
+      }
+    }
+    return nearest;
+  }
+
+  /** The drawing buffer's shape, fixed when the GL context was created. */
+  get aspectRatio() {
+    return this.aspect;
   }
 
   beginDrag(x: number, y: number): string | null {

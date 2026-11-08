@@ -18,6 +18,7 @@ export default function SuitcaseView(props: Props) {
   const latest = useRef(props);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [contextKey, setContextKey] = useState(0);
   latest.current = props;
   const sceneProps = { ...props, reduceMotion };
   const sceneRef = useRef(sceneProps);
@@ -138,13 +139,22 @@ export default function SuitcaseView(props: Props) {
       onLayout={(event) => {
         const { width, height } = event.nativeEvent.layout;
         size.current = { width, height };
-        engine.current?.setViewSize(size.current);
+        const current = engine.current;
+        current?.setViewSize(size.current);
+        // The GL drawing buffer keeps the size it was created at, so a view that changes shape
+        // would show a cropped picture that no longer lines up with touches. Start a fresh one.
+        if (current && height > 0 && Math.abs(current.aspectRatio - width / height) > 0.02) {
+          cancelAnimationFrame(frameRequest.current);
+          current.dispose();
+          engine.current = null;
+          setContextKey((k) => k + 1);
+        }
       }}
       {...responder.panHandlers}
     >
       {/* pointerEvents none keeps every touch's coordinates relative to this wrapper. */}
       <View style={styles.fill} pointerEvents="none">
-        <GLView style={styles.fill} msaaSamples={4} onContextCreate={onContextCreate} />
+        <GLView key={contextKey} style={styles.fill} msaaSamples={4} onContextCreate={onContextCreate} />
       </View>
     </View>
   );
