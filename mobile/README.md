@@ -32,9 +32,9 @@ Scan the QR code with Expo Go (Android) or the Camera app (iOS).
 
 ### Accounts (Supabase)
 
-The app uses Supabase only for sign-in, with the publishable key. All trip data goes through the backend (`GET` and `POST /api/trip`).
+The app uses Supabase only for sign-in, with the publishable key. All trip data goes through the backend (`/api/trips` to list and create, `/api/trips/{id}` to load and save, plus `/rename` and `/delete`).
 
-The `trips` table holds one row per user, with the app's trip as JSON. The app's database roles (`anon`, `authenticated`) have no access to it. Row-level security is on with no policies, so the publishable key can't read or write any row. Only the backend reaches the table, with the **secret key** (`SUPABASE_SECRET_KEY` in `backend/.env`). The secret key bypasses row-level security, so `backend/app/trips.py` filters every query by the user id from a verified access token, and checks the trip's shape and size before saving it.
+Each user can have up to 20 trips, picked in the **Trips** tab. Each trip has its own items, suitcase and photos. The `trips` table holds one row per trip (`id`, `user_id`, `name`, the trip as JSON, and a computed `item_count` for the list). Photo files stay on the phone; `knapsack-photo-files.json` there maps photo ids to files, so switching trips reattaches them. The app's database roles (`anon`, `authenticated`) have no access to it. Row-level security is on with no policies, so the publishable key can't read or write any row. Only the backend reaches the table, with the **secret key** (`SUPABASE_SECRET_KEY` in `backend/.env`). The secret key bypasses row-level security, so `backend/app/trips.py` filters every query by the user id from a verified access token, and checks the trip's shape and size before saving it.
 
 The backend verifies access tokens against the project's published signing keys (`/auth/v1/.well-known/jwks.json`). When the app opens, it uses whichever copy changed last, this phone's or the account's. Signing out removes the trip and photos from the phone; the account keeps the trip.
 
@@ -58,7 +58,7 @@ The backend only answers signed-in users, but anyone can create an account and s
 | `backend/app/choices.py`, `demo.py` | Make-room swaps and the demo's reserved bottle space |
 | `backend/app/astra.py` | Photo-to-mesh and packing advice through OpenAI (`OPENAI_MODEL`, default `gpt-6-astra`) |
 | `backend/app/auth.py` | Supabase access-token check for every `/api` route |
-| `backend/app/trips.py` | Each user's saved trip, the only code that touches the database |
+| `backend/app/trips.py` | Each user's saved trips, the only code that touches the database |
 | `backend/app/collection.py` | Collection import, including web-app exports and the older cm / Y-up format |
 | `frontend/src/supabase.ts`, `screens/Auth.tsx` | Supabase sign-in client and the sign-in screen |
 | `frontend/src/state.ts`, `domain.ts` | Inventory reducer and shared types |
