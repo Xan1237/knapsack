@@ -1,8 +1,11 @@
 """Verify Supabase access tokens locally against the project's published signing keys."""
 
+import logging
 import os
 
 import jwt
+
+_log = logging.getLogger("uvicorn.error")
 
 _url = os.environ.get("SUPABASE_URL", "").rstrip("/")
 _issuer = f"{_url}/auth/v1"
@@ -17,6 +20,7 @@ def is_configured() -> bool:
 def user_id(authorization: str | None) -> str | None:
     """The signed-in user's id for a valid `Bearer` token, or None."""
     if not _keys or not authorization or not authorization.lower().startswith("bearer "):
+        _log.warning("auth rejected: no bearer token")
         return None
     token = authorization[7:].strip()
     try:
@@ -27,7 +31,11 @@ def user_id(authorization: str | None) -> str | None:
             algorithms=["ES256", "RS256"],
             audience="authenticated",
             issuer=_issuer,
+            # Tolerate small clock differences between this server and Supabase.
+            leeway=30,
         )
-    except jwt.PyJWTError:
+    except jwt.PyJWTError as error:
+        # Log only the reason, never the token.
+        _log.warning("auth rejected: %s: %s", type(error).__name__, error)
         return None
     return claims.get("sub")

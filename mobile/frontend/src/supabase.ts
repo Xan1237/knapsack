@@ -25,8 +25,17 @@ if (Platform.OS !== "web") {
   });
 }
 
+// The latest token from Supabase's auth events (sign-in, refresh, sign-out). Right after
+// signing in, getSession() can still be waiting on the sign-in to finish, so the workspace's
+// first requests would otherwise go out without a token.
+let latestToken: string | null = null;
+supabase.auth.onAuthStateChange((_event, session) => {
+  latestToken = session?.access_token ?? null;
+});
+
 /** The signed-in user's access token, for the Python backend. */
 export async function accessToken() {
+  if (latestToken) return latestToken;
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
 }
