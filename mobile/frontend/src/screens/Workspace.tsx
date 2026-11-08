@@ -23,6 +23,7 @@ import {
 } from "../domain";
 import { bagForState, initialState, type InventoryState, reducer } from "../state";
 import * as storage from "../storage";
+import { loadTrip, saveTrip, supabase } from "../supabase";
 import { colors, radius, type } from "../theme";
 import Assistant from "./Assistant";
 import BelongingsTab from "./BelongingsTab";
@@ -31,12 +32,14 @@ import SuitcaseTab from "./SuitcaseTab";
 
 const maxPhotos = 12;
 
-export default function Workspace({ onHome }: { onHome: () => void }) {
+export default function Workspace({ userId, email, onHome }: { userId: string; email: string; onHome: () => void }) {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const [tab, setTab] = useState<"suitcase" | "belongings">("suitcase");
   const [loaded, setLoaded] = useState(false);
   const [canPersist, setCanPersist] = useState(true);
   const [storageStatus, setStorageStatus] = useState("Restoring");
+  const [syncStatus, setSyncStatus] = useState("");
+  const [remoteReady, setRemoteReady] = useState(false);
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -71,43 +74,76 @@ export default function Workspace({ onHome }: { onHome: () => void }) {
   const step = Math.min(maxStep, effectivePlayback.step);
   const active = state.items.find((i) => i.id === selected) ?? null;
 
+  // Restore whichever copy changed last: this phone's, or the one saved to the account.
   useEffect(() => {
     let mounted = true;
-    storage
-      .loadSession()
-      .then((saved) => {
-        if (!mounted) return;
-        if (saved) dispatch({ type: "restore", state: saved });
-        setLoaded(true);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setNotice(
-          "Saved data could not be read. A fresh demo is ready; edits stay temporary until Reset trip clears the invalid session.",
-        );
-        setCanPersist(false);
-        setStorageStatus("Needs reset");
-        setLoaded(true);
-      });
+    (async () => {
+      let local: Awaited<ReturnType<typeof storage.loadSession>> = null;
+      let localBroken = false;
+      try {
+        local = await storage.loadSession();
+      } catch {
+        localBroken = true;
+      }
+      // A trip saved on this phone by a different account is never shown or uploaded.
+      const mine = local && (!local.meta.userId || local.meta.userId === userId) ? local : null;
+      let remote: Awaited<ReturnType<typeof loadTrip>> = null;
+      let remoteOk = true;
+      try {
+        remote = await loadTrip(userId);
+      } catch {
+        remoteOk = false;
+      }
+      if (!mounted) return;
+      if (remote && (!mine || remote.updatedAt >= (mine.meta.updatedAt ?? 0))) {
+        // Photo files exist only on the phone that took them; reattach any this phone has.
+        const files = new Map(mine?.state.photos.map((p) => [p.id, p.url]) ?? []);
+        dispatch({
+          type: "restore",
+          state: { ...remote.state, photos: remote.state.photos.map((p) => ({ ...p, url: files.get(p.id) ?? p.url })) },
+        });
+      } else if (mine) dispatch({ type: "restore", state: mine.state });
+      else if (localBroken) {
+        setNotice("Saved data on this phone could not be read, so a fresh demo is ready.");
+      }
+      if (!remoteOk) {
+        setNotice("Couldn't reach your account, so changes are only saved on this phone for now.");
+        setSyncStatus("Not synced to your account");
+      }
+      setRemoteReady(remoteOk);
+      setLoaded(true);
+    })();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (!loaded || !canPersist) return;
+    const updatedAt = Date.now();
     const timer = setTimeout(() => {
       setStorageStatus("Saving");
       storage
-        .saveSession(state)
+        .saveSession(state, { userId, updatedAt })
         .then(() => setStorageStatus("Saved on this phone"))
         .catch(() => {
           setStorageStatus("Not saving");
           setNotice("This phone's storage is unavailable or full. Changes may not survive a restart.");
         });
     }, 350);
-    return () => clearTimeout(timer);
-  }, [state, loaded, canPersist]);
+    // Only write to the account once its copy was read, so a newer trip there is never overwritten.
+    const remoteTimer = remoteReady
+      ? setTimeout(() => {
+          saveTrip(userId, state, updatedAt)
+            .then(() => setSyncStatus("Synced to your account"))
+            .catch(() => setSyncStatus("Not synced yet. Retrying on your next change"));
+        }, 1500)
+      : undefined;
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(remoteTimer);
+    };
+  }, [state, loaded, canPersist, remoteReady, userId]);
 
   // Notices float over the content, so they clear themselves rather than keep covering it.
   useEffect(() => {
@@ -357,6 +393,26 @@ export default function Workspace({ onHome }: { onHome: () => void }) {
       { text: "Clear trip", style: "destructive", onPress: () => resetTo("reset") },
     ]);
 
+  // Signing out removes the trip and photos from this phone; the account keeps the trip.
+  const confirmSignOut = () =>
+    Alert.alert("Sign out?", "Your trip stays in your account. Photos taken on this phone are removed from it.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign out",
+        style: "destructive",
+        onPress: async () => {
+          stopRequests();
+          setCanPersist(false);
+          setRemoteReady(false);
+          try {
+            storage.clearSession();
+            storage.clearPhotos();
+          } catch {}
+          await supabase.auth.signOut();
+        },
+      },
+    ]);
+
   // The demo replaces the current trip, so anything other than the demo itself gets a warning.
   const confirmDemo = () => {
     if (state.demo || state.items.length === 0) {
@@ -544,7 +600,10 @@ export default function Workspace({ onHome }: { onHome: () => void }) {
         <Group>
           <ActionRow icon="trash-outline" label="Clear trip" destructive onPress={() => fromMenu(confirmReset)} />
         </Group>
-        <Text style={styles.storageNote}>{storageStatus}</Text>
+        <Group>
+          <ActionRow icon="log-out-outline" label="Sign out" hint={email} onPress={() => fromMenu(confirmSignOut)} />
+        </Group>
+        <Text style={styles.storageNote}>{[storageStatus, syncStatus].filter(Boolean).join(" · ")}</Text>
       </Sheet>
       {active && (
         <ItemEditor

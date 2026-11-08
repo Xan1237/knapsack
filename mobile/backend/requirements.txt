@@ -4,3 +4,4 @@ python-multipart>=0.0.9
 pydantic>=2.9,<3
 openai>=2.0,<3
 python-dotenv>=1.0,<2
+PyJWT[crypto]>=2.10,<3

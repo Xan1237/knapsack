@@ -10,6 +10,7 @@ from fastapi import Body, FastAPI, File, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from pydantic import Field, ValidationError
 
 from .choices import find_packing_choices
@@ -21,7 +22,7 @@ from .validate import validate_plan
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from . import astra  # noqa: E402  (reads its settings after .env loads)
+from . import astra, auth  # noqa: E402  (they read their settings after .env loads)
 
 MAX_PHOTO_BYTES = 6 * 1024 * 1024
 MAX_ACTIVE_ANALYSES = 2
@@ -44,6 +45,18 @@ async def reject_foreign_browsers(request: Request, call_next):
     origin = request.headers.get("origin")
     if origin and origin not in _allowed_origins:
         return JSONResponse({"error": "This API accepts requests from the Knapsack app."}, 403)
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def require_signed_in_user(request: Request, call_next):
+    # Everything under /api spends server resources or the OpenAI key, so it needs a user.
+    if request.url.path.startswith("/api/") and request.method != "OPTIONS":
+        if not auth.is_configured():
+            return JSONResponse({"error": "Sign-in isn't configured on the server (SUPABASE_URL)."}, 503)
+        header = request.headers.get("authorization")
+        if not await run_in_threadpool(auth.user_id, header):
+            return JSONResponse({"error": "Please sign in again."}, 401)
     return await call_next(request)
 
 
