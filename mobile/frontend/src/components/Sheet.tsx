@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  KeyboardAvoidingView,
   Modal,
   PanResponder,
   Platform,
@@ -95,7 +96,8 @@ export function Sheet({
       navigationBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={styles.root}>
+      {/* Lifts the sheet above the keyboard, so a text field in it stays visible while typing. */}
+      <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Animated.View style={[styles.backdrop, { opacity: progress }]}>
           <Pressable accessibilityLabel="Dismiss" style={styles.fill} onPress={onClose} />
         </Animated.View>
@@ -114,7 +116,7 @@ export function Sheet({
             {children}
           </ScrollView>
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -103,17 +103,43 @@ def _require_trips():
         raise ApiError(503, "Trip saving isn't configured on the server (SUPABASE_SECRET_KEY).")
 
 
-@app.get("/api/trip")
-def get_trip(request: Request):
+# Trips. Every route acts only on the signed-in user's own trips (request.state.user_id).
+@app.get("/api/trips")
+def list_trips(request: Request):
     _require_trips()
-    return {"trip": trips.load(request.state.user_id)}
+    return {"trips": trips.list_trips(request.state.user_id)}
 
 
-@app.post("/api/trip")
-def save_trip(request: Request, body: dict = Body(...)):
+@app.post("/api/trips")
+def create_trip(request: Request, body: dict = Body(...)):
     _require_trips()
-    trips.save(request.state.user_id, body.get("state"), body.get("updatedAt"))
+    return {"trip": trips.create(request.state.user_id, body.get("name"))}
+
+
+@app.get("/api/trips/{trip_id}")
+def get_trip(trip_id: str, request: Request):
+    _require_trips()
+    return {"trip": trips.load(request.state.user_id, trip_id)}
+
+
+@app.post("/api/trips/{trip_id}")
+def save_trip(trip_id: str, request: Request, body: dict = Body(...)):
+    _require_trips()
+    trips.save(request.state.user_id, trip_id, body.get("state"), body.get("updatedAt"))
     return {"ok": True}
+
+
+@app.post("/api/trips/{trip_id}/rename")
+def rename_trip(trip_id: str, request: Request, body: dict = Body(...)):
+    _require_trips()
+    trips.rename(request.state.user_id, trip_id, body.get("name"))
+    return {"ok": True}
+
+
+@app.post("/api/trips/{trip_id}/delete")
+def delete_trip(trip_id: str, request: Request):
+    _require_trips()
+    return {"photoIds": trips.delete(request.state.user_id, trip_id)}
 
 
 @app.get("/api/astra/status")

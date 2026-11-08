@@ -151,26 +151,35 @@ export const suitcases: Suitcase[] = [
 ];
 const templates: Record<Category, { label: string; dimensions: Vec3; color: string }> = {
   clothing: { label: "Folded shirt", dimensions: [220, 270, 45], color: "#b9c9a4" },
-  shoes: { label: "Sneaker", dimensions: [110, 280, 105], color: "#e3cba7" },
-  bottle: { label: "Travel bottle", dimensions: [65, 65, 160], color: "#9db5c7" },
-  pouch: { label: "Toiletry pouch", dimensions: [180, 110, 85], color: "#d9a180" },
-  camera: { label: "Little film camera", dimensions: [140, 110, 90], color: "#4d6056" },
-  headphones: { label: "Over-ear headphones", dimensions: [180, 160, 80], color: "#b3a0b5" },
+  shoes: { label: "Sneaker", dimensions: [110, 280, 70], color: "#e3cba7" },
+  bottle: { label: "Travel bottle", dimensions: [50, 50, 70], color: "#9db5c7" },
+  pouch: { label: "Toiletry pouch", dimensions: [180, 110, 70], color: "#d9a180" },
+  camera: { label: "Little film camera", dimensions: [140, 110, 70], color: "#4d6056" },
+  headphones: { label: "Over-ear headphones", dimensions: [180, 160, 70], color: "#b3a0b5" },
   book: { label: "A good paperback", dimensions: [140, 210, 30], color: "#d3a250" },
   other: { label: "Travel essential", dimensions: [120, 90, 40], color: "#b8abc5" },
 };
 /** Folded, full-size travel belongings for the weekender's two 105 mm-deep halves. */
+// Every item fits each suitcase on its own, including the small bag's 74 mm halves, and the
+// whole set packs into the Weekender and the Big trip.
 const travelDemoSpecs: [Category, string, Vec3, string][] = [
   ["clothing", "Sage linen shirt", [256, 300, 48], "#adbd98"],
-  ["clothing", "Cream knit", [334, 211, 99], "#e7d8bd"],
-  ["clothing", "Jeans & chinos", [256, 191, 99], "#729098"],
+  ["clothing", "Cream knit", [334, 211, 70], "#e7d8bd"],
+  ["clothing", "Jeans & chinos", [256, 191, 70], "#729098"],
   ["clothing", "Terracotta tee", [256, 300, 48], "#c98f75"],
-  ["shoes", "Left sneaker", [110, 280, 99], "#e5d9c6"],
-  ["shoes", "Right sneaker", [110, 280, 99], "#e5d9c6"],
-  ["pouch", "Socks & underwear cube", [108, 280, 99], "#a7b5a1"],
-  ["pouch", "Wash bag", [75, 271, 99], "#bf8969"],
+  ["shoes", "Left sneaker", [110, 280, 70], "#e5d9c6"],
+  ["shoes", "Right sneaker", [110, 280, 70], "#e5d9c6"],
+  ["pouch", "Socks & underwear cube", [108, 280, 70], "#a7b5a1"],
+  ["pouch", "Wash bag", [75, 271, 70], "#bf8969"],
   ["other", "Power bank", [75, 180, 21], "#887f9f"],
 ];
+// The knit turns flat to fit the small bag's width; the rest keep the Weekender's tuned layout.
+const demoOrientations: Record<number, number[]> = { 1: [0, 1] };
+// The power bank sits on the Weekender's lid floor, leaving room above it for the reserved
+// water bottle. Changing bags or auto-arranging clears this like any manual position.
+const demoAnchors: Record<number, ItemAnchor> = {
+  8: { position: [262, 277, 3], orientation: 0, compartment: "lid" },
+};
 
 export function uid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -199,7 +208,8 @@ export function demoItems(): Item[] {
   return travelDemoSpecs.map(([category, label, dimensions, color], i) => ({
     ...createItem(category, `demo-${i}`),
     demo: true,
-    orientations: [0],
+    orientations: demoOrientations[i] ?? [0],
+    ...(demoAnchors[i] ? { anchor: demoAnchors[i] } : {}),
     label,
     dimensions: [...dimensions],
     estimate: [...dimensions],

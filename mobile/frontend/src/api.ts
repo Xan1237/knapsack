@@ -140,15 +140,33 @@ export function importCollection(raw: object) {
   });
 }
 
-export type RemoteTrip = { state: InventoryState; updatedAt: number };
+export type TripSummary = { id: string; name: string; updatedAt: number; itemCount: number };
+export type RemoteTrip = { id: string; name: string; state: InventoryState; updatedAt: number };
 
-/** The signed-in user's trip, through the backend (the app can't reach the database itself). */
-export async function loadTrip(): Promise<RemoteTrip | null> {
-  return (await send<{ trip: RemoteTrip | null }>("/api/trip")).trip;
+// Trips go through the backend; the app can't reach the database itself.
+export async function listTrips() {
+  return (await send<{ trips: TripSummary[] }>("/api/trips")).trips;
+}
+
+export async function createTrip(name: string) {
+  return (await send<{ trip: TripSummary }>("/api/trips", { name })).trip;
+}
+
+export async function loadTrip(id: string) {
+  return (await send<{ trip: RemoteTrip }>(`/api/trips/${encodeURIComponent(id)}`)).trip;
 }
 
 /** Photo files stay on the phone, so only their records go to the account. */
-export function saveTrip(state: InventoryState, updatedAt: number) {
+export function saveTrip(id: string, state: InventoryState, updatedAt: number) {
   const synced: InventoryState = { ...state, photos: state.photos.map((p) => ({ ...p, url: "" })) };
-  return send<{ ok: true }>("/api/trip", { state: synced, updatedAt });
+  return send<{ ok: true }>(`/api/trips/${encodeURIComponent(id)}`, { state: synced, updatedAt });
+}
+
+export function renameTrip(id: string, name: string) {
+  return send<{ ok: true }>(`/api/trips/${encodeURIComponent(id)}/rename`, { name });
+}
+
+/** Returns the deleted trip's photo ids, so the phone can remove those files. */
+export function deleteTrip(id: string) {
+  return send<{ photoIds: string[] }>(`/api/trips/${encodeURIComponent(id)}/delete`, {});
 }

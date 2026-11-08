@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Auth from "./src/screens/Auth";
-import Workspace from "./src/screens/Workspace";
+import TripHost from "./src/screens/TripHost";
 import { supabase } from "./src/supabase";
 import { colors } from "./src/theme";
 
@@ -31,12 +31,8 @@ export default function App() {
       ) : !session || !userId ? (
         <Auth />
       ) : (
-        // Keyed by user so switching accounts starts a fresh workspace.
-        <Workspace
-          key={userId}
-          userId={userId}
-          email={session.user.email ?? ""}
-        />
+        // Keyed by user so switching accounts starts fresh.
+        <TripHost key={userId} userId={userId} email={session.user.email ?? ""} />
       )}
     </SafeAreaProvider>
   );

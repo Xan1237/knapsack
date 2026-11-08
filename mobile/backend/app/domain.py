@@ -163,11 +163,11 @@ class PackingInput(ApiModel):
 SUITCASE_IDS = {"cabin", "personal", "checked"}
 TEMPLATES: dict[str, tuple[str, tuple[float, float, float], str]] = {
     "clothing": ("Folded shirt", (220, 270, 45), "#b9c9a4"),
-    "shoes": ("Sneaker", (110, 280, 105), "#e3cba7"),
-    "bottle": ("Travel bottle", (65, 65, 160), "#9db5c7"),
-    "pouch": ("Toiletry pouch", (180, 110, 85), "#d9a180"),
-    "camera": ("Little film camera", (140, 110, 90), "#4d6056"),
-    "headphones": ("Over-ear headphones", (180, 160, 80), "#b3a0b5"),
+    "shoes": ("Sneaker", (110, 280, 70), "#e3cba7"),
+    "bottle": ("Travel bottle", (50, 50, 70), "#9db5c7"),
+    "pouch": ("Toiletry pouch", (180, 110, 70), "#d9a180"),
+    "camera": ("Little film camera", (140, 110, 70), "#4d6056"),
+    "headphones": ("Over-ear headphones", (180, 160, 70), "#b3a0b5"),
     "book": ("A good paperback", (140, 210, 30), "#d3a250"),
     "other": ("Travel essential", (120, 90, 40), "#b8abc5"),
 }

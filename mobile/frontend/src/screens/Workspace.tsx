@@ -30,6 +30,7 @@ import BelongingsTab from "./BelongingsTab";
 import ItemEditor from "./ItemEditor";
 import Settings from "./Settings";
 import SuitcaseTab from "./SuitcaseTab";
+import TripsTab, { type TripActions } from "./TripsTab";
 
 const maxPhotos = 12;
 
@@ -64,14 +65,29 @@ function BarButton({
   );
 }
 
-export default function Workspace({ userId, email }: { userId: string; email: string }) {
+export default function Workspace({
+  userId,
+  email,
+  tripId,
+  trips,
+  tripActions,
+  onTripsChanged,
+}: {
+  userId: string;
+  email: string;
+  tripId: string;
+  trips: api.TripSummary[];
+  tripActions: TripActions;
+  onTripsChanged: () => void;
+}) {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
-  const [tab, setTab] = useState<"suitcase" | "belongings">("suitcase");
+  const [tab, setTab] = useState<"suitcase" | "belongings" | "trips">("suitcase");
   const [loaded, setLoaded] = useState(false);
   const [canPersist, setCanPersist] = useState(true);
   const [storageStatus, setStorageStatus] = useState("Restoring");
   const [syncStatus, setSyncStatus] = useState("");
   const [remoteReady, setRemoteReady] = useState(false);
+  const pendingSave = useRef<{ state: InventoryState; updatedAt: number } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tool, setTool] = useState<"steps" | null>(null);
   const [notice, setNotice] = useState("");
@@ -136,26 +152,32 @@ export default function Workspace({ userId, email }: { userId: string; email: st
       } catch {
         localBroken = true;
       }
-      // A trip saved on this phone by a different account is never shown or uploaded.
-      const mine = local && (!local.meta.userId || local.meta.userId === userId) ? local : null;
-      let remote: Awaited<ReturnType<typeof api.loadTrip>> = null;
+      // Older saves predate trips; remember their photo files so any trip can find them.
+      if (local && (!local.meta.userId || local.meta.userId === userId))
+        await storage.rememberPhotos(local.state.photos).catch(() => {});
+      // This phone's copy only counts if it's this account's copy of this same trip.
+      const mine = local && local.meta.userId === userId && local.meta.tripId === tripId ? local : null;
+      let remote: api.RemoteTrip | null = null;
       let remoteOk = true;
       try {
-        remote = await api.loadTrip();
+        remote = await api.loadTrip(tripId);
       } catch {
         remoteOk = false;
       }
       if (!mounted) return;
       if (remote && (!mine || remote.updatedAt >= (mine.meta.updatedAt ?? 0))) {
         // Photo files exist only on the phone that took them; reattach any this phone has.
-        const files = new Map(mine?.state.photos.map((p) => [p.id, p.url]) ?? []);
+        const files = await storage.photoUris(remote.state.photos.map((p) => p.id)).catch(() => new Map<string, string>());
+        if (!mounted) return;
         dispatch({
           type: "restore",
           state: { ...remote.state, photos: remote.state.photos.map((p) => ({ ...p, url: files.get(p.id) ?? p.url })) },
         });
       } else if (mine) dispatch({ type: "restore", state: mine.state });
-      else if (localBroken) {
-        setNotice("Saved data on this phone could not be read, so a fresh demo is ready.");
+      else {
+        // Nothing saved for this trip yet (or it couldn't be read): start it empty.
+        dispatch({ type: "reset" });
+        if (localBroken) setNotice("Saved data on this phone could not be read.");
       }
       if (!remoteOk) {
         setNotice("Couldn't reach your account, so changes are only saved on this phone for now.");
@@ -167,7 +189,7 @@ export default function Workspace({ userId, email }: { userId: string; email: st
     return () => {
       mounted = false;
     };
-  }, [userId]);
+  }, [userId, tripId]);
 
   useEffect(() => {
     if (!loaded || !canPersist) return;
@@ -175,7 +197,7 @@ export default function Workspace({ userId, email }: { userId: string; email: st
     const timer = setTimeout(() => {
       setStorageStatus("Saving");
       storage
-        .saveSession(state, { userId, updatedAt })
+        .saveSession(state, { userId, tripId, updatedAt })
         .then(() => setStorageStatus("Saved on this phone"))
         .catch(() => {
           setStorageStatus("Not saving");
@@ -183,10 +205,16 @@ export default function Workspace({ userId, email }: { userId: string; email: st
         });
     }, 350);
     // Only write to the account once its copy was read, so a newer trip there is never overwritten.
+    if (remoteReady) pendingSave.current = { state, updatedAt };
     const remoteTimer = remoteReady
       ? setTimeout(() => {
-          api.saveTrip(state, updatedAt)
-            .then(() => setSyncStatus("Synced to your account"))
+          pendingSave.current = null;
+          api
+            .saveTrip(tripId, state, updatedAt)
+            .then(() => {
+              setSyncStatus("Synced to your account");
+              onTripsChanged();
+            })
             .catch(() => setSyncStatus("Not synced yet. Retrying on your next change"));
         }, 1500)
       : undefined;
@@ -194,7 +222,16 @@ export default function Workspace({ userId, email }: { userId: string; email: st
       clearTimeout(timer);
       clearTimeout(remoteTimer);
     };
-  }, [state, loaded, canPersist, remoteReady, userId]);
+  }, [state, loaded, canPersist, remoteReady, userId, tripId]);
+
+  // Switching trips closes this workspace; send any change still waiting to be saved.
+  useEffect(
+    () => () => {
+      const pending = pendingSave.current;
+      if (pending) api.saveTrip(tripId, pending.state, pending.updatedAt).catch(() => {});
+    },
+    [tripId],
+  );
 
   // Notices float over the content, so they clear themselves rather than keep covering it.
   useEffect(() => {
@@ -295,13 +332,12 @@ export default function Workspace({ userId, email }: { userId: string; email: st
   function resetTo(mode: "reset" | "demo") {
     stopRequests();
     setCanPersist(true);
+    const photoIds = state.photos.map((p) => p.id);
     dispatch({ type: mode });
     setSelected(null);
     clearScene();
     setNotice("");
-    try {
-      storage.clearPhotos();
-    } catch {}
+    storage.forgetPhotos(photoIds).catch(() => {});
   }
 
   async function queuePhotos(assets: { uri: string; width: number; height: number; name: string }[]) {
@@ -449,6 +485,7 @@ export default function Workspace({ userId, email }: { userId: string; email: st
           stopRequests();
           setCanPersist(false);
           setRemoteReady(false);
+          pendingSave.current = null;
           try {
             storage.clearSession();
             storage.clearPhotos();
@@ -482,6 +519,7 @@ export default function Workspace({ userId, email }: { userId: string; email: st
   };
   const bags = state.customBag ? [...suitcases, state.customBag] : suitcases;
   const includedCount = state.items.filter((i) => i.included).length;
+  const tripName = trips.find((t) => t.id === tripId)?.name ?? "";
   const storageProblem = storageStatus === "Not saving" || storageStatus === "Needs reset";
 
   return (
@@ -501,9 +539,16 @@ export default function Workspace({ userId, email }: { userId: string; email: st
               <Icon name="chevron-down" size={18} color={colors.muted} />
             </View>
             <Text style={type.secondary} numberOfLines={1}>
-              {bag.subtitle}
+              {tripName ? `${tripName} · ${bag.subtitle}` : bag.subtitle}
             </Text>
           </Pressable>
+        ) : tab === "trips" ? (
+          <View style={styles.headerMain}>
+            <Text style={type.title}>Trips</Text>
+            <Text style={type.secondary} numberOfLines={1}>
+              {tripName ? `Open: ${tripName}` : "Your trips"}
+            </Text>
+          </View>
         ) : (
           <View style={styles.headerMain}>
             <Text style={type.title}>Your items</Text>
@@ -550,6 +595,8 @@ export default function Workspace({ userId, email }: { userId: string; email: st
               setSheet("add");
             }}
           />
+        ) : tab === "trips" ? (
+          <TripsTab trips={trips} activeId={tripId} activeItemCount={state.items.length} actions={tripActions} />
         ) : (
           <BelongingsTab
             state={state}
@@ -583,6 +630,7 @@ export default function Workspace({ userId, email }: { userId: string; email: st
           [
             ["suitcase", "Suitcase", "briefcase", "briefcase-outline"],
             ["belongings", "Items", "list", "list-outline"],
+            ["trips", "Trips", "airplane", "airplane-outline"],
           ] as const
         ).map(([key, label, activeIcon, icon]) => {
           const selectedTab = tab === key && !tool;
