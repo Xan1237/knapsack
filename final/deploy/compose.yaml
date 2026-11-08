@@ -5,7 +5,13 @@ services:
       context: ..
     init: true
     restart: unless-stopped
-    env_file:
-      - ${KNAPSACK_ENV_FILE:-../.env.production}
+    environment:
+      WAITLIST_ONLY: "true"
+      WAITLIST_DATA_DIR: /var/lib/knapsack
+    volumes:
+      - knapsack_waitlist:/var/lib/knapsack
     ports:
       - "${KNAPSACK_BIND_ADDRESS:-127.0.0.1}:3100:3000"
+
+volumes:
+  knapsack_waitlist:
