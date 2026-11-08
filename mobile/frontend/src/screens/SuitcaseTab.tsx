@@ -1,5 +1,5 @@
 import { type Dispatch, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { afterSheet, Sheet } from "../components/Sheet";
 import SuitcaseView from "../components/SuitcaseView";
 import { Banner, Button, Group, Icon, Section, Slider } from "../components/ui";
@@ -14,7 +14,6 @@ type Props = {
   revision: string;
   plan: Plan | null;
   current: Plan | null;
-  busy: boolean;
   packingError: string;
   reservedSpace: Placement | null;
   selected: string | null;
@@ -32,7 +31,9 @@ type Props = {
   openEditor: (id: string) => void;
   retryPacking: () => void;
   dropItem: (item: Item, point: Vec3, orientation: number) => boolean;
-  askAstra: () => void;
+  /** The packing details sheet, opened from the workspace menu. */
+  fitOpen: boolean;
+  setFitOpen: (open: boolean) => void;
   makeRoom: (id: string) => void;
   addItems: () => void;
 };
@@ -41,9 +42,9 @@ type Props = {
 let hintDismissed = false;
 
 export default function SuitcaseTab(p: Props) {
-  const { state, bag, plan, current, busy, revision, step, maxStep, playing, dispatch } = p;
+  const { state, bag, plan, current, revision, step, maxStep, playing, dispatch } = p;
   const { tool } = p;
-  const [fitOpen, setFitOpen] = useState(false);
+  const { fitOpen, setFitOpen } = p;
   const [hintVisible, setHintVisible] = useState(!hintDismissed);
   const included = state.items.filter((i) => i.included);
   const packedSteps = plan?.placements.length ?? 0;
@@ -70,14 +71,6 @@ export default function SuitcaseTab(p: Props) {
           : current.outcome === "constraint-conflict"
             ? "Too much for this bag"
             : `${noun(overflowCount)} ${overflowCount === 1 ? "doesn't" : "don't"} fit`;
-  const subtitle = p.packingError
-    ? "Check your connection, then retry"
-    : empty
-      ? "Add a few items to get started"
-      : !current
-        ? `${noun(included.length)} to pack`
-        : `${current.placements.length} of ${included.length} packed${aside.length ? ` · ${aside.length} set aside` : ""} · ${fill}% full`;
-  const tone = p.packingError ? colors.error : !current || empty ? colors.faint : overflowCount ? colors.warn : colors.green;
   const stepText = !stepsReady
     ? "Waiting for a layout"
     : step === maxStep
@@ -212,35 +205,6 @@ export default function SuitcaseTab(p: Props) {
         </View>
       </View>
 
-      <View style={styles.panel}>
-        <View style={styles.summary}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${title}. ${subtitle}. Show details`}
-            disabled={empty}
-            onPress={() => setFitOpen(true)}
-            style={({ pressed }) => [styles.summaryText, pressed && { opacity: 0.6 }]}
-          >
-            <View style={styles.titleRow}>
-              {busy ? (
-                <ActivityIndicator size="small" color={colors.green} style={styles.spinner} />
-              ) : (
-                <View style={[styles.dot, { backgroundColor: tone }]} />
-              )}
-              <Text style={styles.summaryTitle} numberOfLines={1}>
-                {title}
-              </Text>
-              {!empty && <Icon name="chevron-forward" size={16} color={colors.faint} />}
-            </View>
-            <Text style={type.secondary} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          </Pressable>
-          <Button label="Ask Astra" icon="sparkles" kind="primary" size="small" onPress={p.askAstra} />
-        </View>
-
-      </View>
-
       <Sheet visible={fitOpen} title={title} onClose={() => setFitOpen(false)}>
         {current && (
           <View style={styles.stats}>
@@ -372,13 +336,11 @@ export default function SuitcaseTab(p: Props) {
   );
 }
 
-const panelOverlap = 16;
-
 const styles = StyleSheet.create({
   root: { flex: 1 },
   canvas: { flex: 1, backgroundColor: colors.canvas, overflow: "hidden" },
   emptyCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12 },
-  floating: { position: "absolute", left: 12, right: 12, bottom: panelOverlap + 10, gap: 8 },
+  floating: { position: "absolute", left: 12, right: 12, bottom: 12, gap: 8 },
   hint: { color: colors.muted, fontSize: 13, textAlign: "center" },
   floatCard: { backgroundColor: colors.white, borderRadius: radius.md, ...shadow },
   selection: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 12 },
@@ -393,22 +355,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.green,
   },
-  panel: {
-    marginTop: -panelOverlap,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 6,
-    gap: 8,
-    backgroundColor: colors.white,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-  },
-  summary: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44 },
-  summaryText: { flex: 1, gap: 1 },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  dot: { width: 9, height: 9, borderRadius: 5 },
-  spinner: { width: 14, height: 14, transform: [{ scale: 0.7 }] },
-  summaryTitle: { ...type.heading, flexShrink: 1 },
   grow: { flex: 1 },
   row: { flexDirection: "row", gap: 8 },
   stats: { flexDirection: "row", gap: 8 },

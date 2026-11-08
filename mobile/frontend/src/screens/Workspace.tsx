@@ -85,6 +85,7 @@ export default function Workspace({ userId, email }: { userId: string; email: st
   const [layer, setLayer] = useState(100);
   const [playback, setPlayback] = useState({ revision: "", step: 0, playing: false });
   const [astraOpen, setAstraOpen] = useState(false);
+  const [fitOpen, setFitOpen] = useState(false);
   const [wantedId, setWantedId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<"bags" | "more" | "add" | null>(null);
   const inFlight = useRef(new Map<string, AbortController>());
@@ -527,7 +528,6 @@ export default function Workspace({ userId, email }: { userId: string; email: st
             revision={revision}
             plan={plan}
             current={current}
-            busy={busy}
             packingError={packingError}
             reservedSpace={reservedSpace}
             selected={selected}
@@ -544,10 +544,8 @@ export default function Workspace({ userId, email }: { userId: string; email: st
             openEditor={openEditor}
             retryPacking={() => setPackAttempt((n) => n + 1)}
             dropItem={dropItem}
-            askAstra={() => {
-              setWantedId(null);
-              setAstraOpen(true);
-            }}
+            fitOpen={fitOpen}
+            setFitOpen={setFitOpen}
             makeRoom={(id) => {
               setSelected(id);
               setAstraOpen(false);
@@ -644,6 +642,29 @@ export default function Workspace({ userId, email }: { userId: string; email: st
       </Sheet>
       <Sheet visible={sheet === "more"} onClose={() => setSheet(null)}>
         <Group>
+          <ActionRow
+            icon="clipboard-outline"
+            label="Packing details"
+            hint={current ? "What fits, what doesn't, and make room" : "Available once the layout is ready"}
+            disabled={!current || !includedCount}
+            onPress={() =>
+              fromMenu(() => {
+                setTab("suitcase");
+                setFitOpen(true);
+              })
+            }
+          />
+          <ActionRow
+            icon="sparkles-outline"
+            label="Ask Astra"
+            hint="Suggestions for what to bring"
+            onPress={() =>
+              fromMenu(() => {
+                setWantedId(null);
+                setAstraOpen(true);
+              })
+            }
+          />
           <ActionRow
             icon="share-outline"
             label="Save packing plan"
