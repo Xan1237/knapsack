@@ -7,17 +7,18 @@ export const metadata: Metadata = { title: "FAQ — Knapsack" };
 
 const questions = [
   {
-    question: "How do I add my things?",
-    answer: "Upload photos, add items by hand, or start with the sample list.",
+    question: "How will I add my things?",
+    answer: "You’ll be able to upload photos or add items by hand.",
   },
   {
     question: "Do I need to measure everything?",
-    answer: "No. Start with estimated sizes and adjust them as needed.",
+    answer:
+      "No. You’ll be able to start with estimated sizes and adjust them as needed.",
   },
   {
     question: "Can I choose my suitcase?",
     answer:
-      "Yes. Pick a personal bag, cabin suitcase, or checked suitcase preset.",
+      "You’ll be able to choose a personal bag, cabin suitcase, or checked suitcase preset.",
   },
   {
     question: "Will everything definitely fit?",
@@ -34,8 +35,8 @@ export default function FaqPage() {
         <div>
           <p className="landing-eyebrow">GOOD TO KNOW</p>
           <h1>A few quick answers.</h1>
-          <Link href="/pack" className="landing-text-link">
-            Start packing <ArrowRight size={17} aria-hidden="true" />
+          <Link href="/#waitlist" className="landing-text-link">
+            Join the waitlist <ArrowRight size={17} aria-hidden="true" />
           </Link>
         </div>
         <div className="landing-faq-list">

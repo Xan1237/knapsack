@@ -3,25 +3,26 @@ import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import SiteHeader from "./SiteHeader";
 import BackpackDiagram from "./BackpackDiagram";
+import WaitlistForm from "./WaitlistForm";
 
 const steps = [
   {
     number: "01",
     image: "/guide/travel-pack.png",
     title: "Add your things",
-    description: "Use photos, add items by hand, or try the sample list.",
+    description: "Add photos or build your list by hand.",
   },
   {
     number: "02",
     image: "/guide/suitcase.png",
     title: "Choose your suitcase",
-    description: "Pick a bag and adjust your item sizes.",
+    description: "Choose a bag and adjust your item sizes.",
   },
   {
     number: "03",
     image: "/guide/planner.png",
     title: "See your plan",
-    description: "Explore your layout in 3D and start packing.",
+    description: "Explore your layout in 3D before you pack.",
   },
 ];
 
@@ -42,8 +43,8 @@ export default function LandingPage() {
             <p className="landing-intro">
               Turn your belongings into a 3D packing plan.
             </p>
-            <Link href="/pack" className="landing-button">
-              Start packing <ArrowRight size={18} aria-hidden="true" />
+            <Link href="/#waitlist" className="landing-button">
+              Join the waitlist <ArrowRight size={18} aria-hidden="true" />
             </Link>
           </div>
 
@@ -61,8 +62,8 @@ export default function LandingPage() {
                 Knapsack helps you see how your things could fit before you
                 start packing.
               </p>
-              <Link href="/pack" className="landing-button">
-                Start packing <ArrowRight size={18} aria-hidden="true" />
+              <Link href="/#waitlist" className="landing-button">
+                Join the waitlist <ArrowRight size={18} aria-hidden="true" />
               </Link>
               <div className="landing-about-art" aria-hidden="true">
                 <span className="landing-about-art-label">
@@ -106,12 +107,13 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+        <WaitlistForm />
       </main>
 
       <footer className="landing-footer landing-container">
         <span>knapsack</span>
-        <Link href="/pack">
-          Start packing <ArrowRight size={14} aria-hidden="true" />
+        <Link href="/#waitlist">
+          Join the waitlist <ArrowRight size={14} aria-hidden="true" />
         </Link>
       </footer>
     </div>

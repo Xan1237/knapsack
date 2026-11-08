@@ -25,8 +25,8 @@ export default function SiteHeader() {
           <Link href="/#about">About</Link>
           <Link href="/faq">FAQ</Link>
         </div>
-        <Link href="/pack" className="landing-header-link">
-          Start packing <ArrowUpRight size={15} aria-hidden="true" />
+        <Link href="/#waitlist" className="landing-header-link">
+          Join the waitlist <ArrowUpRight size={15} aria-hidden="true" />
         </Link>
       </nav>
     </header>
