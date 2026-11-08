@@ -10,6 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Project layout
 
+- `mobile/`: Expo Go frontend and Python FastAPI backend; see `mobile/README.md`.
 - `src/app/`: Next.js routes, layouts, API handlers, and application-wide styles.
 - `src/components/landing/`: landing-page UI, styles, and scroll-driven 3D scene.
 - `src/components/packing/`: packing workspace and its interactive 3D suitcase.
