@@ -7,6 +7,7 @@ import {
   Suspense,
   type ReactNode,
   type CSSProperties,
+  type RefObject,
   useMemo,
   useRef,
   useState,
@@ -15,12 +16,14 @@ import Image from "next/image";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { RoundedBox, useGLTF } from "@react-three/drei";
 import {
+  CatmullRomCurve3,
   DataTexture,
   MathUtils,
   Mesh,
   RepeatWrapping,
   SRGBColorSpace,
   Plane,
+  Shape,
   Vector3,
   type Group,
   type OrthographicCamera,
@@ -45,6 +48,13 @@ const items: { id: ItemId; label: string; image: string }[] = [
 ];
 
 const ClosedContext = createContext(false);
+type ConnectorRefs = {
+  container: RefObject<HTMLDivElement | null>;
+  line: RefObject<SVGPathElement | null>;
+  glow: RefObject<SVGPathElement | null>;
+  dot: RefObject<SVGCircleElement | null>;
+};
+const ConnectorContext = createContext<ConnectorRefs | null>(null);
 
 type BoxProps = {
   size: [number, number, number];
@@ -73,6 +83,8 @@ function Box({ size, position, color, radius = 0.08, rotation }: BoxProps) {
 function Backpack({ closed }: { closed: boolean }) {
   const hinge = useRef<Group>(null);
   const cover = useRef<Group>(null);
+  const zipper = useRef<Group>(null);
+  const openHandle = useRef<Group>(null);
   const progress = useRef(0);
   const { scene } = useGLTF("/models/backpack-city.glb");
   const parts = useMemo(() => {
@@ -94,7 +106,7 @@ function Backpack({ closed }: { closed: boolean }) {
             copy.clippingPlanes = [
               cut === "upper"
                 ? worldCoverPlane
-                : new Plane(new Vector3(0, -1, 0), 0.026),
+                : new Plane(new Vector3(0, -1, 0), -0.021),
             ];
             copy.clipShadows = true;
             return copy;
@@ -106,12 +118,37 @@ function Backpack({ closed }: { closed: boolean }) {
       });
       return part;
     };
+    const accessories = copyPart("Zips, handle and pulls");
+    const handle = accessories.children[1]?.clone(true) ?? null;
+    const handleOnly = handle?.clone(true) ?? null;
+    handleOnly?.traverse((object) => {
+      if (!(object instanceof Mesh)) return;
+      const geometry = object.geometry.clone();
+      const positions = geometry.getAttribute("position");
+      const index = geometry.getIndex();
+      const count = index ? index.count : positions.count;
+      const triangles: number[] = [];
+      for (let i = 0; i + 2 < count; i += 3) {
+        const a = index ? index.getX(i) : i;
+        const b = index ? index.getX(i + 1) : i + 1;
+        const c = index ? index.getX(i + 2) : i + 2;
+        if (
+          Math.min(positions.getY(a), positions.getY(b), positions.getY(c)) >=
+          0.38
+        )
+          triangles.push(a, b, c);
+      }
+      geometry.setIndex(triangles);
+      object.geometry = geometry;
+    });
     return {
       straps: copyPart("Back panel and shoulder straps"),
       body: copyPart("Backpack body", "lower"),
       cover: copyPart("Backpack body", "upper"),
       pocket: copyPart("Front zip pocket"),
-      zips: copyPart("Zips, handle and pulls"),
+      zipper: accessories.children[0]?.clone(true) ?? accessories,
+      handle,
+      handleOnly,
       coverPlane,
       worldCoverPlane,
     };
@@ -126,6 +163,9 @@ function Backpack({ closed }: { closed: boolean }) {
       ? target
       : MathUtils.damp(progress.current, target, 3.5, delta);
     const open = 1 - progress.current;
+    if (zipper.current) zipper.current.visible = progress.current > 0.98;
+    if (openHandle.current)
+      openHandle.current.visible = progress.current <= 0.98;
     hinge.current.rotation.x = 2.35 * open;
     cover.current.updateWorldMatrix(true, false);
     parts.worldCoverPlane
@@ -134,13 +174,19 @@ function Backpack({ closed }: { closed: boolean }) {
   });
   return (
     <group
-      position={[0, -0.35, 1.76]}
+      position={[0, -0.35, 1.54]}
       rotation={[-Math.PI / 2, 0, 0]}
-      scale={8}
+      scale={7}
     >
       <primitive object={parts.straps} />
       <primitive object={parts.body} />
-      <primitive object={parts.zips} />
+      <group ref={openHandle}>
+        {parts.handleOnly && <primitive object={parts.handleOnly} />}
+      </group>
+      <group ref={zipper} visible={false}>
+        <primitive object={parts.zipper} />
+        {parts.handle && <primitive object={parts.handle} />}
+      </group>
       <group ref={hinge} position={[0, 0.02, 0.047]} rotation={[2.35, 0, 0]}>
         <group ref={cover} position={[0, -0.02, -0.047]}>
           <primitive object={parts.cover} />
@@ -171,58 +217,114 @@ function Sweatshirt() {
     texture.needsUpdate = true;
     return texture;
   }, []);
+  const folds = useMemo(() => {
+    const base = new Shape();
+    base.moveTo(-0.79, -0.56);
+    base.quadraticCurveTo(-0.86, -0.78, -0.58, -0.78);
+    base.lineTo(0.58, -0.77);
+    base.quadraticCurveTo(0.83, -0.75, 0.83, -0.51);
+    base.lineTo(0.78, 0.53);
+    base.quadraticCurveTo(0.75, 0.78, 0.52, 0.75);
+    base.lineTo(-0.6, 0.66);
+    base.quadraticCurveTo(-0.82, 0.64, -0.8, 0.42);
+    base.closePath();
+
+    const top = new Shape();
+    top.moveTo(-0.77, -0.5);
+    top.quadraticCurveTo(-0.7, -0.71, -0.46, -0.68);
+    top.quadraticCurveTo(0.15, -0.64, 0.67, -0.66);
+    top.quadraticCurveTo(0.79, -0.65, 0.74, -0.45);
+    top.lineTo(0.68, 0.59);
+    top.quadraticCurveTo(0.65, 0.71, 0.5, 0.67);
+    top.quadraticCurveTo(-0.01, 0.52, -0.57, 0.52);
+    top.quadraticCurveTo(-0.77, 0.5, -0.77, 0.3);
+    top.closePath();
+
+    const drape = new Shape();
+    drape.moveTo(-0.72, -0.45);
+    drape.quadraticCurveTo(-0.53, -0.56, -0.25, -0.48);
+    drape.quadraticCurveTo(0.18, -0.24, 0.64, 0.48);
+    drape.quadraticCurveTo(0.73, 0.6, 0.56, 0.58);
+    drape.quadraticCurveTo(0.04, 0.42, -0.55, 0.42);
+    drape.quadraticCurveTo(-0.76, 0.42, -0.72, 0.2);
+    drape.closePath();
+    const crease = new CatmullRomCurve3([
+      new Vector3(-0.58, 0.169, 0.42),
+      new Vector3(-0.25, 0.174, 0.28),
+      new Vector3(0.1, 0.174, 0.02),
+      new Vector3(0.46, 0.165, -0.36),
+    ]);
+    const edge = new CatmullRomCurve3([
+      new Vector3(-0.58, 0.075, 0.69),
+      new Vector3(-0.05, 0.085, 0.7),
+      new Vector3(0.48, 0.075, 0.69),
+      new Vector3(0.69, 0.065, 0.58),
+    ]);
+    return { base, top, drape, crease, edge };
+  }, []);
   return (
     <group>
-      <RoundedBox
-        args={[1.7, 0.24, 1.6]}
-        radius={0.12}
-        smoothness={5}
+      <mesh
+        position={[0, -0.1, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
         castShadow
         receiveShadow
       >
-        <meshStandardMaterial color="#5c5958" map={fabric} roughness={1} />
-      </RoundedBox>
-      <RoundedBox
-        args={[1.48, 0.07, 1.42]}
-        position={[0, 0.14, -0.03]}
-        radius={0.06}
-        smoothness={5}
-        castShadow
-      >
-        <meshStandardMaterial color="#706b69" map={fabric} roughness={1} />
-      </RoundedBox>
-      <RoundedBox
-        args={[0.72, 0.07, 1.12]}
-        position={[-0.37, 0.2, 0.08]}
-        rotation={[0, -0.16, 0]}
-        radius={0.06}
-        smoothness={5}
-        castShadow
-      >
-        <meshStandardMaterial color="#676260" map={fabric} roughness={1} />
-      </RoundedBox>
-      <RoundedBox
-        args={[0.72, 0.06, 1.12]}
-        position={[0.37, 0.19, 0.08]}
-        rotation={[0, 0.16, 0]}
-        radius={0.06}
-        smoothness={5}
-        castShadow
-      >
-        <meshStandardMaterial color="#5f5b59" map={fabric} roughness={1} />
-      </RoundedBox>
-      <Box
-        size={[0.52, 0.025, 0.09]}
-        position={[0, 0.2, -0.54]}
-        color="#504c4b"
-        radius={0.015}
-      />
-      <Box
-        size={[1.32, 0.012, 0.025]}
-        position={[0, 0.24, 0.62]}
-        color="#827b78"
-        radius={0.004}
-      />
+        <extrudeGeometry
+          args={[
+            folds.base,
+            {
+              depth: 0.15,
+              bevelEnabled: true,
+              bevelSize: 0.045,
+              bevelThickness: 0.02,
+              bevelSegments: 4,
+              curveSegments: 16,
+            },
+          ]}
+        />
+        <meshStandardMaterial color="#565150" map={fabric} roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.075, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
+        <extrudeGeometry
+          args={[
+            folds.top,
+            {
+              depth: 0.045,
+              bevelEnabled: true,
+              bevelSize: 0.025,
+              bevelThickness: 0.012,
+              bevelSegments: 3,
+              curveSegments: 16,
+            },
+          ]}
+        />
+        <meshStandardMaterial color="#68615e" map={fabric} roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.133, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
+        <extrudeGeometry
+          args={[
+            folds.drape,
+            {
+              depth: 0.025,
+              bevelEnabled: true,
+              bevelSize: 0.018,
+              bevelThickness: 0.008,
+              bevelSegments: 3,
+              curveSegments: 16,
+            },
+          ]}
+        />
+        <meshStandardMaterial color="#5c5654" map={fabric} roughness={1} />
+      </mesh>
+      <mesh>
+        <tubeGeometry args={[folds.crease, 32, 0.012, 8, false]} />
+        <meshStandardMaterial color="#77706d" roughness={1} />
+      </mesh>
+      <mesh>
+        <tubeGeometry args={[folds.edge, 32, 0.014, 8, false]} />
+        <meshStandardMaterial color="#6c6662" roughness={1} />
+      </mesh>
     </group>
   );
 }
@@ -230,28 +332,28 @@ function Sweatshirt() {
 function Toiletries() {
   return (
     <group>
-      <Box size={[1.15, 0.32, 1.32]} color="#344558" radius={0.14} />
+      <Box size={[1.15, 0.26, 1.32]} color="#344558" radius={0.12} />
       <Box
         size={[0.98, 0.06, 1.12]}
-        position={[0, 0.18, 0]}
+        position={[0, 0.15, 0]}
         color="#51647a"
         radius={0.11}
       />
       <Box
         size={[0.92, 0.035, 0.035]}
-        position={[0, 0.22, -0.49]}
+        position={[0, 0.19, -0.49]}
         color="#b8ad8e"
         radius={0.01}
       />
       <Box
         size={[0.2, 0.1, 0.2]}
-        position={[-0.25, 0.23, 0.2]}
+        position={[-0.25, 0.2, 0.2]}
         color="#e0d9c7"
         radius={0.04}
       />
       <Box
         size={[0.22, 0.1, 0.26]}
-        position={[0.1, 0.23, 0.2]}
+        position={[0.1, 0.2, 0.2]}
         color="#a3c5d0"
         radius={0.04}
       />
@@ -353,43 +455,137 @@ function Earbuds() {
   );
 }
 
+function PackingFillers() {
+  return (
+    <group>
+      {/* Layers support the visible items; the narrow pieces fill the gaps. */}
+      <Box
+        size={[0.84, 0.1, 0.65]}
+        position={[-0.43, -0.33, 0.15]}
+        color="#c5b7a0"
+        radius={0.045}
+      />
+      <Box
+        size={[0.75, 0.08, 0.86]}
+        position={[0.45, -0.34, 0.15]}
+        color="#b9a996"
+        radius={0.035}
+      />
+      <Box
+        size={[1.03, 0.05, 0.31]}
+        position={[-0.36, -0.355, 1.0]}
+        color="#beb39d"
+        radius={0.022}
+      />
+      <Box
+        size={[1.65, 0.15, 0.2]}
+        position={[0, -0.305, 0.71]}
+        color="#9b6a54"
+        radius={0.055}
+      />
+      <Box
+        size={[1.45, 0.09, 0.14]}
+        position={[0, -0.185, 0.71]}
+        color="#d3c5ac"
+        radius={0.035}
+      />
+      <mesh
+        position={[0, -0.305, 1.26]}
+        rotation={[0, 0, Math.PI / 2]}
+        castShadow
+        receiveShadow
+      >
+        <cylinderGeometry args={[0.075, 0.075, 1.55, 28]} />
+        <meshStandardMaterial color="#b49d80" roughness={1} />
+      </mesh>
+      <Box
+        size={[0.54, 0.09, 0.11]}
+        position={[0.58, -0.335, -0.36]}
+        color="#c2ad99"
+        radius={0.035}
+      />
+      <Box
+        size={[0.48, 0.08, 0.08]}
+        position={[0.58, -0.34, -0.84]}
+        color="#d7cbb8"
+        radius={0.03}
+      />
+    </group>
+  );
+}
+
 function PackedItem({
   id,
   selected,
   position,
-  onSelect,
   children,
 }: {
   id: ItemId;
   selected: boolean;
   position: [number, number, number];
-  onSelect: (id: ItemId) => void;
   children: ReactNode;
 }) {
   const group = useRef<Group>(null);
   const closed = useContext(ClosedContext);
-  useFrame((_, delta) => {
-    if (group.current)
-      group.current.position.y = MathUtils.damp(
-        group.current.position.y,
-        position[1] + (selected && !closed ? 1.05 : 0),
-        7,
-        delta,
-      );
+  const connector = useContext(ConnectorContext);
+  const projected = useMemo(() => new Vector3(), []);
+  useFrame(({ camera, gl }, delta) => {
+    if (!group.current) return;
+    group.current.position.y = MathUtils.damp(
+      group.current.position.y,
+      position[1] + (selected && !closed ? 1.05 : 0),
+      7,
+      delta,
+    );
+    if (!selected || closed || !connector?.container.current) return;
+    const photo = connector.container.current.querySelector<HTMLButtonElement>(
+      `[data-item="${id}"]`,
+    );
+    if (!photo) return;
+    const area = connector.container.current.getBoundingClientRect();
+    const photoBounds = photo.getBoundingClientRect();
+    const canvasBounds = gl.domElement.getBoundingClientRect();
+    group.current.getWorldPosition(projected).project(camera);
+    const endX =
+      canvasBounds.left -
+      area.left +
+      ((projected.x + 1) * canvasBounds.width) / 2;
+    const endY =
+      canvasBounds.top -
+      area.top +
+      ((1 - projected.y) * canvasBounds.height) / 2;
+    const photoX = photoBounds.left - area.left + photoBounds.width / 2;
+    const photoY = photoBounds.top - area.top + photoBounds.height / 2;
+    const dx = endX - photoX;
+    const dy = endY - photoY;
+    const distance = Math.max(Math.hypot(dx, dy), 1);
+    const offset = Math.min(photoBounds.width, photoBounds.height) * 0.27;
+    const startX = photoX + (dx / distance) * offset;
+    const startY = photoY + (dy / distance) * offset;
+    const bend = Math.max(25, Math.abs(endX - startX) * 0.42);
+    const path = `M ${startX} ${startY} C ${startX + bend} ${startY}, ${endX - bend} ${endY}, ${endX} ${endY}`;
+    connector.line.current?.setAttribute("d", path);
+    connector.glow.current?.setAttribute("d", path);
+    connector.dot.current?.setAttribute("cx", String(endX));
+    connector.dot.current?.setAttribute("cy", String(endY));
   });
   return (
     <group
       ref={group}
       position={position}
-      rotation={id === "passport" ? [0, Math.PI / 2, 0] : undefined}
-      onClick={(event) => {
-        event.stopPropagation();
-        onSelect(id);
-      }}
+      rotation={
+        id === "passport" || id === "bottle" ? [0, Math.PI / 2, 0] : undefined
+      }
     >
       <group
         scale={
-          id === "sweatshirt" ? [0.65, 0.45, 0.65] : id === "socks" ? 0.5 : 0.65
+          id === "sweatshirt"
+            ? [0.65, 0.45, 0.65]
+            : id === "socks"
+              ? 0.55
+              : id === "earbuds"
+                ? 0.8
+                : 0.65
         }
       >
         {children}
@@ -400,17 +596,17 @@ function PackedItem({
 
 function Scene({
   selected,
-  onSelect,
   closed,
+  connector,
 }: {
   selected: ItemId | null;
-  onSelect: (id: ItemId) => void;
   closed: boolean;
+  connector: ConnectorRefs;
 }) {
   useFrame(({ camera, size }) => {
     const orthographic = camera as OrthographicCamera;
-    const zoom = Math.min(size.width / 7.3, size.height / 7.2, 55);
-    camera.lookAt(0, 0.25, 0.35);
+    const zoom = Math.min(size.width / 5.2, size.height / 5.8, 72);
+    camera.lookAt(0, -0.1, 0.2);
     if (orthographic.zoom !== zoom) {
       orthographic.zoom = zoom;
       orthographic.updateProjectionMatrix();
@@ -422,73 +618,69 @@ function Scene({
       <hemisphereLight args={["#fff9e9", "#a3af9c", 1]} />
       <directionalLight position={[-4, 8, 5]} intensity={2.3} castShadow />
       <ClosedContext.Provider value={closed}>
-        <group rotation={[0, -0.15, 0]}>
-          <Suspense fallback={null}>
-            <Backpack closed={closed} />
-          </Suspense>
-          <Box
-            size={[2, 0.04, 3.1]}
-            position={[0, -0.4, 0]}
-            color="#a7a397"
-            radius={0.018}
-          />
-          <PackedItem
-            id="sweatshirt"
-            selected={selected === "sweatshirt"}
-            position={[-0.45, -0.326, 0.9]}
-            onSelect={onSelect}
-          >
-            <Sweatshirt />
-          </PackedItem>
-          <PackedItem
-            id="toiletries"
-            selected={selected === "toiletries"}
-            position={[0.54, -0.276, 0.9]}
-            onSelect={onSelect}
-          >
-            <Toiletries />
-          </PackedItem>
-          <PackedItem
-            id="passport"
-            selected={selected === "passport"}
-            position={[-0.54, -0.341, -1.05]}
-            onSelect={onSelect}
-          >
-            <Passport />
-          </PackedItem>
-          <PackedItem
-            id="bottle"
-            selected={selected === "bottle"}
-            position={[0.61, -0.23, -1.03]}
-            onSelect={onSelect}
-          >
-            <Bottle />
-          </PackedItem>
-          <PackedItem
-            id="socks"
-            selected={selected === "socks"}
-            position={[-0.71, -0.335, -0.15]}
-            onSelect={onSelect}
-          >
-            <Socks />
-          </PackedItem>
-          <PackedItem
-            id="sunglasses"
-            selected={selected === "sunglasses"}
-            position={[-0.04, -0.357, -0.15]}
-            onSelect={onSelect}
-          >
-            <Sunglasses />
-          </PackedItem>
-          <PackedItem
-            id="earbuds"
-            selected={selected === "earbuds"}
-            position={[0.68, -0.3215, -0.15]}
-            onSelect={onSelect}
-          >
-            <Earbuds />
-          </PackedItem>
-        </group>
+        <ConnectorContext.Provider value={connector}>
+          <group rotation={[0, -0.15, 0]}>
+            <Suspense fallback={null}>
+              <Backpack closed={closed} />
+            </Suspense>
+            <Box
+              size={[1.75, 0.04, 2.7]}
+              position={[0, -0.4, 0]}
+              color="#8b8b7e"
+              radius={0.018}
+            />
+            <PackingFillers />
+            <PackedItem
+              id="sweatshirt"
+              selected={selected === "sweatshirt"}
+              position={[-0.3, -0.326, -0.8]}
+            >
+              <Sweatshirt />
+            </PackedItem>
+            <PackedItem
+              id="toiletries"
+              selected={selected === "toiletries"}
+              position={[0.45, -0.2155, 0.15]}
+            >
+              <Toiletries />
+            </PackedItem>
+            <PackedItem
+              id="passport"
+              selected={selected === "passport"}
+              position={[-0.43, -0.239, 0.15]}
+            >
+              <Passport />
+            </PackedItem>
+            <PackedItem
+              id="bottle"
+              selected={selected === "bottle"}
+              position={[-0.36, -0.18, 1.0]}
+            >
+              <Bottle />
+            </PackedItem>
+            <PackedItem
+              id="socks"
+              selected={selected === "socks"}
+              position={[0.58, -0.3305, -1.08]}
+            >
+              <Socks />
+            </PackedItem>
+            <PackedItem
+              id="sunglasses"
+              selected={selected === "sunglasses"}
+              position={[0.48, -0.357, 1.0]}
+            >
+              <Sunglasses />
+            </PackedItem>
+            <PackedItem
+              id="earbuds"
+              selected={selected === "earbuds"}
+              position={[0.58, -0.308, -0.65]}
+            >
+              <Earbuds />
+            </PackedItem>
+          </group>
+        </ConnectorContext.Provider>
       </ClosedContext.Provider>
     </>
   );
@@ -515,14 +707,32 @@ export default function BackpackDiagram() {
   const [hovered, setHovered] = useState<ItemId | null>(null);
   const [pinned, setPinned] = useState<ItemId | null>(null);
   const [closed, setClosed] = useState(false);
+  const diagramBody = useRef<HTMLDivElement>(null);
+  const connectorLine = useRef<SVGPathElement>(null);
+  const connectorGlow = useRef<SVGPathElement>(null);
+  const connectorDot = useRef<SVGCircleElement>(null);
+  const connector = useMemo(
+    () => ({
+      container: diagramBody,
+      line: connectorLine,
+      glow: connectorGlow,
+      dot: connectorDot,
+    }),
+    [],
+  );
   const selected = hovered ?? pinned;
+  const toggleBackpack = () => {
+    setHovered(null);
+    setPinned(null);
+    setClosed((value) => !value);
+  };
   return (
     <div className="backpack-diagram">
       <div className="backpack-diagram-heading">
         <span>01 / THE OBJECTS</span>
         <span>02 / THE PACKING PLAN</span>
       </div>
-      <div className="backpack-diagram-body">
+      <div className="backpack-diagram-body" ref={diagramBody}>
         <div
           className={hovered ? "backpack-items is-paused" : "backpack-items"}
           aria-label="Choose an item to see it in the backpack"
@@ -548,6 +758,7 @@ export default function BackpackDiagram() {
                           : "backpack-item"
                       }
                       aria-label={item.label}
+                      data-item={item.id}
                       aria-pressed={pinned === item.id}
                       onMouseEnter={() => {
                         setHovered(item.id);
@@ -580,14 +791,22 @@ export default function BackpackDiagram() {
         </div>
         <div
           className="backpack-scene"
-          role="img"
-          aria-label="A 3D carry-on backpack containing seven travel essentials"
+          role="button"
+          tabIndex={0}
+          aria-label={closed ? "Open backpack" : "Close backpack"}
+          onClick={toggleBackpack}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              toggleBackpack();
+            }
+          }}
         >
           <SceneBoundary>
             <Canvas
               shadows
               orthographic
-              camera={{ position: [6, 8, 9], zoom: 45, near: 0.1, far: 100 }}
+              camera={{ position: [4, 13, 9], zoom: 55, near: 0.1, far: 100 }}
               gl={{ antialias: true, alpha: true, localClippingEnabled: true }}
               fallback={
                 <div className="backpack-fallback">
@@ -598,27 +817,20 @@ export default function BackpackDiagram() {
               <Scene
                 selected={selected}
                 closed={closed}
-                onSelect={(id) => {
-                  setPinned(id);
-                  setClosed(false);
-                }}
+                connector={connector}
               />
             </Canvas>
           </SceneBoundary>
         </div>
-      </div>
-      <div className="backpack-action">
-        <button
-          type="button"
-          onClick={() => {
-            setHovered(null);
-            setPinned(null);
-            setClosed((value) => !value);
-          }}
+        <svg
+          className="backpack-connector"
+          data-visible={Boolean(selected) && !closed}
+          aria-hidden="true"
         >
-          {closed ? "Open backpack" : "Close backpack"}{" "}
-          <span aria-hidden="true">↗</span>
-        </button>
+          <path ref={connectorGlow} className="backpack-connector-glow" />
+          <path ref={connectorLine} className="backpack-connector-line" />
+          <circle ref={connectorDot} className="backpack-connector-dot" r="3" />
+        </svg>
       </div>
     </div>
   );

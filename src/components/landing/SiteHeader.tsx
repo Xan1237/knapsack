@@ -22,7 +22,7 @@ export default function SiteHeader() {
       </div>
       <nav aria-label="Main navigation">
         <div>
-          <Link href="/about">About</Link>
+          <Link href="/#about">About</Link>
           <Link href="/faq">FAQ</Link>
         </div>
         <Link href="/pack" className="landing-header-link">

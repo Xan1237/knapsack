@@ -170,6 +170,12 @@
   padding-left: 0;
   border-left: 0;
 }
+.landing-step-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
 .landing-step-number {
   color: var(--landing-accent);
   font-family: Georgia, serif;
@@ -296,72 +302,6 @@
   letter-spacing: -0.055em;
   line-height: 1.08;
 }
-.landing-inner-intro {
-  max-width: 430px;
-  color: var(--landing-muted);
-  font-size: 18px;
-}
-.landing-about .landing-button {
-  margin-top: 30px;
-}
-.landing-about-art {
-  min-height: 460px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: #e1d8c8;
-  border-radius: 0;
-}
-.landing-about-tag,
-.landing-about-coordinate {
-  position: absolute;
-  color: #756756;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-}
-.landing-about-tag {
-  top: 25px;
-  left: 28px;
-}
-.landing-about-coordinate {
-  right: 28px;
-  bottom: 25px;
-}
-.landing-about-case {
-  width: 210px;
-  height: 275px;
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 24px;
-  border: 5px solid #60745d;
-  border-radius: 24px;
-  background: repeating-linear-gradient(
-    90deg,
-    #a5b49b 0 22px,
-    #97a990 23px 25px,
-    #a5b49b 26px 38px
-  );
-  box-shadow: 10px 14px 0 #bdcbb5;
-  transform: rotate(8deg);
-  color: #536a52;
-  font-family: Manrope, sans-serif;
-  font-size: 12px;
-  font-weight: 800;
-}
-.landing-about-case div {
-  position: absolute;
-  top: -24px;
-  width: 72px;
-  height: 20px;
-  border: 5px solid #60745d;
-  border-bottom: 0;
-  border-radius: 10px 10px 0 0;
-}
 .landing-faq {
   align-items: start;
 }
@@ -397,9 +337,6 @@
     padding-top: 65px;
     padding-bottom: 70px;
   }
-  .landing-about-art {
-    min-height: 380px;
-  }
 }
 
 .backpack-diagram {
@@ -410,7 +347,7 @@
 }
 .backpack-diagram-heading {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 0.9fr 1.1fr;
   gap: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--landing-line);
@@ -423,8 +360,9 @@
   text-align: center;
 }
 .backpack-diagram-body {
+  position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 0.9fr 1.1fr;
   align-items: center;
   gap: 12px;
   margin-top: 8px;
@@ -515,12 +453,16 @@
   }
 }
 .backpack-scene {
-  height: 340px;
+  height: 410px;
   min-width: 0;
   cursor: pointer;
 }
 .backpack-scene canvas {
   display: block;
+}
+.backpack-scene:focus-visible {
+  outline: 2px solid var(--landing-accent);
+  outline-offset: 4px;
 }
 .backpack-fallback {
   display: grid;
@@ -540,27 +482,157 @@
     gap: 6px;
   }
   .backpack-scene {
-    height: 255px;
+    height: 285px;
   }
 }
 
-.backpack-action {
+.backpack-connector {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.backpack-connector[data-visible="true"] {
+  opacity: 1;
+}
+.backpack-connector path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 1 8;
+  animation: connector-drift 18s linear infinite;
+}
+.backpack-connector-glow {
+  stroke: #e9a574;
+  stroke-width: 5;
+  opacity: 0.55;
+  filter: blur(3px);
+}
+.backpack-connector-line {
+  stroke: #b55d40;
+  stroke-width: 2.2;
+  opacity: 0.9;
+}
+.backpack-connector-dot {
+  fill: #b55d40;
+  filter: drop-shadow(0 0 4px #e9a574);
+}
+@keyframes connector-drift {
+  to {
+    stroke-dashoffset: -36;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .backpack-connector path {
+    animation: none;
+  }
+}
+
+.landing-about-section {
+  border-top: 1px solid var(--landing-ink);
+  scroll-margin-top: 24px;
+}
+.landing-about-inner {
+  display: grid;
+  grid-template-columns: 1fr 0.7fr;
+  align-items: end;
+  gap: 10%;
+  padding-top: 70px;
+  padding-bottom: 75px;
+}
+.landing-about-inner h2 {
+  max-width: 650px;
+  margin-top: 16px;
+}
+.landing-about-content > p {
+  max-width: 350px;
+  color: var(--landing-muted);
+  font-family: Georgia, serif;
+  font-size: 19px;
+  line-height: 1.55;
+}
+.landing-about-content .landing-button {
+  margin-top: 22px;
+}
+.landing-about-art {
+  position: relative;
   display: flex;
-  justify-content: flex-end;
-  border-top: 1px solid var(--landing-line);
-  padding-top: 12px;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  margin-top: 30px;
+  background: #e1d8c8;
 }
-.backpack-action button {
-  padding: 6px 0;
-  color: var(--landing-accent);
-  font-size: 11px;
+.landing-about-art-label,
+.landing-about-art-caption {
+  position: absolute;
+  color: #756756;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
-.backpack-action button:hover {
-  text-decoration: underline;
+.landing-about-art-label {
+  top: 18px;
+  left: 20px;
 }
-.backpack-action span {
-  margin-left: 8px;
+.landing-about-art-caption {
+  right: 20px;
+  bottom: 18px;
+}
+.landing-about-case {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 125px;
+  height: 165px;
+  padding-bottom: 15px;
+  border: 4px solid #60745d;
+  border-radius: 18px;
+  background: repeating-linear-gradient(
+    90deg,
+    #a5b49b 0 14px,
+    #97a990 15px 17px,
+    #a5b49b 18px 24px
+  );
+  box-shadow: 7px 9px 0 #bdcbb5;
+  transform: rotate(8deg);
+  color: #536a52;
+  font-family: Manrope, sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+}
+.landing-about-case div {
+  position: absolute;
+  top: -19px;
+  width: 48px;
+  height: 16px;
+  border: 4px solid #60745d;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+}
+@media (max-width: 800px) {
+  .landing-about-inner {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    padding-top: 55px;
+    padding-bottom: 60px;
+  }
+}
+
+.landing-step-image {
+  width: min(55%, 180px);
+  height: 150px;
+  object-fit: contain;
+  object-position: center;
+}
+@media (max-width: 800px) {
+  .landing-step-image {
+    width: min(42%, 160px);
+    height: 130px;
+  }
 }
