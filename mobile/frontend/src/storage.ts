@@ -15,14 +15,23 @@ function localPhotoUri(url: string) {
   return new File(photosDir(), url.split("/").pop() as string).uri;
 }
 
-export async function saveSession(state: InventoryState) {
+/** Which account a saved trip belongs to, and when it last changed (ms since epoch). */
+export type SessionMeta = { userId?: string; updatedAt?: number };
+
+export async function saveSession(state: InventoryState, meta: SessionMeta = {}) {
   if (Platform.OS === "web") return;
   const file = sessionFile();
   if (!file.exists) file.create();
-  file.write(JSON.stringify({ version: 1, ...state }));
+  file.write(JSON.stringify({ version: 1, ...state, meta }));
 }
 
-export async function loadSession(): Promise<InventoryState | null> {
+export function clearSession() {
+  if (Platform.OS === "web") return;
+  const file = sessionFile();
+  if (file.exists) file.delete();
+}
+
+export async function loadSession(): Promise<{ state: InventoryState; meta: SessionMeta } | null> {
   if (Platform.OS === "web") return null;
   const file = sessionFile();
   if (!file.exists) return null;
@@ -35,7 +44,8 @@ export async function loadSession(): Promise<InventoryState | null> {
     typeof data.bagId !== "string"
   )
     throw new Error("Invalid saved inventory");
-  return {
+  const meta: SessionMeta = data.meta && typeof data.meta === "object" ? data.meta : {};
+  return { meta, state: {
     items: data.items,
     bagId: data.bagId,
     dismissed: data.dismissed,
@@ -48,7 +58,7 @@ export async function loadSession(): Promise<InventoryState | null> {
         ? { status: "error", error: "Analysis interrupted when the app closed. Retry when ready." }
         : {}),
     })),
-  };
+  } };
 }
 
 /**

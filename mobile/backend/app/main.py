@@ -10,6 +10,7 @@ from fastapi import Body, FastAPI, File, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from pydantic import Field, ValidationError
 
 from .choices import find_packing_choices
@@ -21,7 +22,7 @@ from .validate import validate_plan
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from . import astra  # noqa: E402  (reads its settings after .env loads)
+from . import astra, auth, trips  # noqa: E402  (they read their settings after .env loads)
 
 MAX_PHOTO_BYTES = 6 * 1024 * 1024
 MAX_ACTIVE_ANALYSES = 2
@@ -44,6 +45,21 @@ async def reject_foreign_browsers(request: Request, call_next):
     origin = request.headers.get("origin")
     if origin and origin not in _allowed_origins:
         return JSONResponse({"error": "This API accepts requests from the Knapsack app."}, 403)
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def require_signed_in_user(request: Request, call_next):
+    # Everything under /api spends server resources or the OpenAI key, so it needs a user.
+    if request.url.path.startswith("/api/") and request.method != "OPTIONS":
+        if not auth.is_configured():
+            return JSONResponse({"error": "Sign-in isn't configured on the server (SUPABASE_URL)."}, 503)
+        header = request.headers.get("authorization")
+        user_id = await run_in_threadpool(auth.user_id, header)
+        if not user_id:
+            return JSONResponse({"error": "Please sign in again."}, 401)
+        # Routes read the verified user from here, never from the request body.
+        request.state.user_id = user_id
     return await call_next(request)
 
 
@@ -70,6 +86,29 @@ async def on_invalid_request(request: Request, _: RequestValidationError):
 
 @app.get("/health")
 def health():
+    return {"ok": True}
+
+
+@app.exception_handler(trips.TripError)
+async def on_trip_error(_: Request, error: trips.TripError):
+    return JSONResponse({"error": error.message}, error.status)
+
+
+def _require_trips():
+    if not trips.is_configured():
+        raise ApiError(503, "Trip saving isn't configured on the server (SUPABASE_SECRET_KEY).")
+
+
+@app.get("/api/trip")
+def get_trip(request: Request):
+    _require_trips()
+    return {"trip": trips.load(request.state.user_id)}
+
+
+@app.post("/api/trip")
+def save_trip(request: Request, body: dict = Body(...)):
+    _require_trips()
+    trips.save(request.state.user_id, body.get("state"), body.get("updatedAt"))
     return {"ok": True}
 
 

@@ -1,6 +1,6 @@
 # Knapsack mobile
 
-Knapsack rebuilt as an MVP mobile app: an **Expo Go** frontend (`frontend/`) and a **Python FastAPI** backend (`backend/`). No accounts or login yet. A trip is saved on the phone; the backend keeps no data.
+Knapsack rebuilt as an MVP mobile app: an **Expo Go** frontend (`frontend/`) and a **Python FastAPI** backend (`backend/`). People sign in with an email and password through **Supabase**. Each user's trip is saved on the phone and synced to their account; photo files stay on the phone that took them. The backend keeps no data and only serves signed-in users.
 
 ## Run it
 
@@ -13,21 +13,32 @@ cd mobile\backend
 py -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env   # then set OPENAI_API_KEY in .env
+copy .env.example .env   # then set OPENAI_API_KEY, SUPABASE_URL and SUPABASE_SECRET_KEY in .env
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Allow Python through the firewall if Windows asks. The demo, manual items, packing and make-room swaps all work without an API key; photo analysis and Ask Astra need one.
+Allow Python through the firewall if Windows asks. The demo, manual items, packing and make-room swaps all work without an OpenAI key; photo analysis and Ask Astra need one. Every `/api` route needs a signed-in user, so `SUPABASE_URL` is required.
 
 **2. Frontend**, in a second terminal:
 
 ```powershell
 cd mobile\frontend
 npm install
+copy .env.example .env.local   # then set the Supabase URL and publishable key
 npx expo start
 ```
 
 Scan the QR code with Expo Go (Android) or the Camera app (iOS).
+
+### Accounts (Supabase)
+
+The app uses Supabase only for sign-in, with the publishable key. All trip data goes through the backend (`GET` and `POST /api/trip`).
+
+The `trips` table holds one row per user, with the app's trip as JSON. The app's database roles (`anon`, `authenticated`) have no access to it. Row-level security is on with no policies, so the publishable key can't read or write any row. Only the backend reaches the table, with the **secret key** (`SUPABASE_SECRET_KEY` in `backend/.env`). The secret key bypasses row-level security, so `backend/app/trips.py` filters every query by the user id from a verified access token, and checks the trip's shape and size before saving it.
+
+The backend verifies access tokens against the project's published signing keys (`/auth/v1/.well-known/jwks.json`). When the app opens, it uses whichever copy changed last, this phone's or the account's. Signing out removes the trip and photos from the phone; the account keeps the trip.
+
+New accounts must confirm their email by default. For quick testing you can turn that off in the Supabase dashboard under Authentication > Sign In / Providers > Email. Supabase's built-in email sender is heavily rate-limited, so add your own SMTP before real use.
 
 ### If the phone can't connect
 
@@ -37,7 +48,7 @@ The app looks for the backend on the same address Expo uses, at port 8000. The e
 - **Tunnel mode or a deployed backend:** set `EXPO_PUBLIC_API_URL=http://host:port`.
 - **Check the backend:** open `http://<your Wi-Fi IP>:8000/health` in the phone's browser.
 
-The backend has no authentication yet, so anyone on your network who can reach it could use your API key. Only run it on a network you trust, and don't expose it to the internet as is.
+The backend only answers signed-in users, but anyone can create an account and spend your OpenAI key, so don't expose it to the internet as is.
 
 ## How it fits together
 
@@ -46,10 +57,13 @@ The backend has no authentication yet, so anyone on your network who can reach i
 | `backend/app/packing.py`, `validate.py` | Packing search and its independent validator |
 | `backend/app/choices.py`, `demo.py` | Make-room swaps and the demo's reserved bottle space |
 | `backend/app/astra.py` | Photo-to-mesh and packing advice through OpenAI (`OPENAI_MODEL`, default `gpt-6-astra`) |
+| `backend/app/auth.py` | Supabase access-token check for every `/api` route |
+| `backend/app/trips.py` | Each user's saved trip, the only code that touches the database |
 | `backend/app/collection.py` | Collection import, including web-app exports and the older cm / Y-up format |
+| `frontend/src/supabase.ts`, `screens/Auth.tsx` | Supabase sign-in client and the sign-in screen |
 | `frontend/src/state.ts`, `domain.ts` | Inventory reducer and shared types |
 | `frontend/src/scene/` | 3D suitcase: Three.js on `expo-gl` (touch orbit, pinch, tap, drag) |
-| `frontend/src/screens/` | Landing, Suitcase and Items tabs, item editor, assistant |
+| `frontend/src/screens/` | Sign-in, Suitcase and Items tabs, item editor, assistant, settings |
 | `frontend/src/components/` | Shared controls (`ui.tsx`), bottom sheets (`Sheet.tsx`), 3D views |
 
 The app sends its inventory, without mesh data, to `POST /api/pack` whenever it changes. Each plan echoes the app's revision so stale responses are dropped.
@@ -60,7 +74,7 @@ Ported: photo and camera capture, Astra meshes, the item editor (size, shape, co
 
 Changed or left out for this MVP:
 
-- **Landing page:** a simple welcome screen instead of the scroll-driven 3D animation.
+- **Landing page:** none. The app opens straight to sign-in, or to your trip if you're signed in.
 - **glTF model assets:** items and bags with a `modelUrl` keep it but display as category shapes, and "Try a 3D model collection" is gone.
 - **Shadows:** off in the 3D scene, for phone performance.
 - **Photos:** resized to at most 1600 px and converted to JPEG on the phone. Exports keep photo records but not the images.

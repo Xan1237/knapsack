@@ -11,6 +11,7 @@ import type {
 } from "./domain";
 import { packingItems } from "./domain";
 import type { InventoryState } from "./state";
+import { accessToken } from "./supabase";
 
 /**
  * Expo Go loads the bundle from the computer running Metro, so by default the Python
@@ -35,9 +36,11 @@ function send<T>(
   body?: object | FormData,
   options: { timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<T> {
-  return new Promise((resolve, reject) => {
+  // The backend only serves signed-in users, so each request carries the Supabase session token.
+  return accessToken().then((token) => new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(body ? "POST" : "GET", `${apiBase}${path}`);
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     xhr.timeout = options.timeoutMs ?? 30000;
     const isForm = typeof FormData !== "undefined" && body instanceof FormData;
     if (body && !isForm) xhr.setRequestHeader("Content-Type", "application/json");
@@ -65,7 +68,7 @@ function send<T>(
     if (options.signal?.aborted) return reject(new AbortedError());
     options.signal?.addEventListener("abort", () => xhr.abort());
     xhr.send(isForm ? (body as FormData) : body ? JSON.stringify(body) : null);
-  });
+  }));
 }
 
 export function packPlan(
@@ -135,4 +138,17 @@ export function importCollection(raw: object) {
   return send<InventoryState & { customBag: Suitcase | null }>("/api/collection/import", raw, {
     timeoutMs: 60000,
   });
+}
+
+export type RemoteTrip = { state: InventoryState; updatedAt: number };
+
+/** The signed-in user's trip, through the backend (the app can't reach the database itself). */
+export async function loadTrip(): Promise<RemoteTrip | null> {
+  return (await send<{ trip: RemoteTrip | null }>("/api/trip")).trip;
+}
+
+/** Photo files stay on the phone, so only their records go to the account. */
+export function saveTrip(state: InventoryState, updatedAt: number) {
+  const synced: InventoryState = { ...state, photos: state.photos.map((p) => ({ ...p, url: "" })) };
+  return send<{ ok: true }>("/api/trip", { state: synced, updatedAt });
 }
