@@ -151,11 +151,11 @@ export const suitcases: Suitcase[] = [
 ];
 const templates: Record<Category, { label: string; dimensions: Vec3; color: string }> = {
   clothing: { label: "Folded shirt", dimensions: [220, 270, 45], color: "#b9c9a4" },
-  shoes: { label: "Sneaker", dimensions: [110, 280, 105], color: "#e3cba7" },
-  bottle: { label: "Travel bottle", dimensions: [65, 65, 160], color: "#9db5c7" },
-  pouch: { label: "Toiletry pouch", dimensions: [180, 110, 85], color: "#d9a180" },
-  camera: { label: "Little film camera", dimensions: [140, 110, 90], color: "#4d6056" },
-  headphones: { label: "Over-ear headphones", dimensions: [180, 160, 80], color: "#b3a0b5" },
+  shoes: { label: "Sneaker", dimensions: [110, 280, 70], color: "#e3cba7" },
+  bottle: { label: "Travel bottle", dimensions: [50, 50, 70], color: "#9db5c7" },
+  pouch: { label: "Toiletry pouch", dimensions: [180, 110, 70], color: "#d9a180" },
+  camera: { label: "Little film camera", dimensions: [140, 110, 70], color: "#4d6056" },
+  headphones: { label: "Over-ear headphones", dimensions: [180, 160, 70], color: "#b3a0b5" },
   book: { label: "A good paperback", dimensions: [140, 210, 30], color: "#d3a250" },
   other: { label: "Travel essential", dimensions: [120, 90, 40], color: "#b8abc5" },
 };
