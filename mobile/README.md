@@ -13,7 +13,7 @@ cd mobile\backend
 py -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env   # then set OPENAI_API_KEY and SUPABASE_URL in .env
+copy .env.example .env   # then set OPENAI_API_KEY, SUPABASE_URL and SUPABASE_SECRET_KEY in .env
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -32,9 +32,11 @@ Scan the QR code with Expo Go (Android) or the Camera app (iOS).
 
 ### Accounts (Supabase)
 
-The `trips` table holds one row per user, with the app's trip as JSON. Row-level security lets each user read and write only their own row. When the app opens, it uses whichever copy changed last, this phone's or the account's. Signing out removes the trip and photos from the phone; the account keeps the trip.
+The app uses Supabase only for sign-in, with the publishable key. All trip data goes through the backend (`GET` and `POST /api/trip`).
 
-The backend checks each request's Supabase access token against the project's published signing keys (`/auth/v1/.well-known/jwks.json`), so the server needs no Supabase secret.
+The `trips` table holds one row per user, with the app's trip as JSON. The app's database roles (`anon`, `authenticated`) have no access to it. Row-level security is on with no policies, so the publishable key can't read or write any row. Only the backend reaches the table, with the **secret key** (`SUPABASE_SECRET_KEY` in `backend/.env`). The secret key bypasses row-level security, so `backend/app/trips.py` filters every query by the user id from a verified access token, and checks the trip's shape and size before saving it.
+
+The backend verifies access tokens against the project's published signing keys (`/auth/v1/.well-known/jwks.json`). When the app opens, it uses whichever copy changed last, this phone's or the account's. Signing out removes the trip and photos from the phone; the account keeps the trip.
 
 New accounts must confirm their email by default. For quick testing you can turn that off in the Supabase dashboard under Authentication > Sign In / Providers > Email. Supabase's built-in email sender is heavily rate-limited, so add your own SMTP before real use.
 
@@ -56,8 +58,9 @@ The backend only answers signed-in users, but anyone can create an account and s
 | `backend/app/choices.py`, `demo.py` | Make-room swaps and the demo's reserved bottle space |
 | `backend/app/astra.py` | Photo-to-mesh and packing advice through OpenAI (`OPENAI_MODEL`, default `gpt-6-astra`) |
 | `backend/app/auth.py` | Supabase access-token check for every `/api` route |
+| `backend/app/trips.py` | Each user's saved trip, the only code that touches the database |
 | `backend/app/collection.py` | Collection import, including web-app exports and the older cm / Y-up format |
-| `frontend/src/supabase.ts`, `screens/Auth.tsx` | Supabase client, trip sync, and the sign-in screen |
+| `frontend/src/supabase.ts`, `screens/Auth.tsx` | Supabase sign-in client and the sign-in screen |
 | `frontend/src/state.ts`, `domain.ts` | Inventory reducer and shared types |
 | `frontend/src/scene/` | 3D suitcase: Three.js on `expo-gl` (touch orbit, pinch, tap, drag) |
 | `frontend/src/screens/` | Landing, Suitcase and Items tabs, item editor, assistant |

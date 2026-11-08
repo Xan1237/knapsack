@@ -23,7 +23,7 @@ import {
 } from "../domain";
 import { bagForState, initialState, type InventoryState, reducer } from "../state";
 import * as storage from "../storage";
-import { loadTrip, saveTrip, supabase } from "../supabase";
+import { supabase } from "../supabase";
 import { colors, radius, type } from "../theme";
 import Assistant from "./Assistant";
 import BelongingsTab from "./BelongingsTab";
@@ -87,10 +87,10 @@ export default function Workspace({ userId, email, onHome }: { userId: string; e
       }
       // A trip saved on this phone by a different account is never shown or uploaded.
       const mine = local && (!local.meta.userId || local.meta.userId === userId) ? local : null;
-      let remote: Awaited<ReturnType<typeof loadTrip>> = null;
+      let remote: Awaited<ReturnType<typeof api.loadTrip>> = null;
       let remoteOk = true;
       try {
-        remote = await loadTrip(userId);
+        remote = await api.loadTrip();
       } catch {
         remoteOk = false;
       }
@@ -134,7 +134,7 @@ export default function Workspace({ userId, email, onHome }: { userId: string; e
     // Only write to the account once its copy was read, so a newer trip there is never overwritten.
     const remoteTimer = remoteReady
       ? setTimeout(() => {
-          saveTrip(userId, state, updatedAt)
+          api.saveTrip(state, updatedAt)
             .then(() => setSyncStatus("Synced to your account"))
             .catch(() => setSyncStatus("Not synced yet. Retrying on your next change"));
         }, 1500)

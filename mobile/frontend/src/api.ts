@@ -139,3 +139,16 @@ export function importCollection(raw: object) {
     timeoutMs: 60000,
   });
 }
+
+export type RemoteTrip = { state: InventoryState; updatedAt: number };
+
+/** The signed-in user's trip, through the backend (the app can't reach the database itself). */
+export async function loadTrip(): Promise<RemoteTrip | null> {
+  return (await send<{ trip: RemoteTrip | null }>("/api/trip")).trip;
+}
+
+/** Photo files stay on the phone, so only their records go to the account. */
+export function saveTrip(state: InventoryState, updatedAt: number) {
+  const synced: InventoryState = { ...state, photos: state.photos.map((p) => ({ ...p, url: "" })) };
+  return send<{ ok: true }>("/api/trip", { state: synced, updatedAt });
+}
