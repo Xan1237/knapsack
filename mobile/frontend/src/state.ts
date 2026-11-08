@@ -42,6 +42,7 @@ export type Action =
   | { type: "bag"; id: string }
   | { type: "move"; id: string; anchor: ItemAnchor }
   | { type: "auto-layout" }
+  | { type: "aside"; id: string; aside: boolean }
   | { type: "add"; category: Category; id?: string }
   | { type: "edit"; id: string; patch: ItemPatch }
   | { type: "delete"; id: string }
@@ -66,10 +67,19 @@ export function reducer(state: InventoryState, action: Action): InventoryState {
       return {
         ...state,
         bagId: action.id,
-        items: state.items.map((i) => ({ ...i, anchor: undefined })),
+        items: state.items.map((i) => ({ ...i, anchor: undefined, aside: undefined })),
       };
     case "auto-layout":
-      return { ...state, items: state.items.map((i) => ({ ...i, anchor: undefined })) };
+      return { ...state, items: state.items.map((i) => ({ ...i, anchor: undefined, aside: undefined })) };
+    case "aside":
+      return {
+        ...state,
+        items: state.items.map((i) =>
+          i.id === action.id
+            ? { ...i, aside: action.aside || undefined, anchor: undefined, edited: true }
+            : i,
+        ),
+      };
     case "move":
       if (!state.items.some((i) => i.id === action.id && i.included)) return state;
       return {
@@ -77,6 +87,7 @@ export function reducer(state: InventoryState, action: Action): InventoryState {
         items: state.items.map((i) => ({
           ...i,
           anchor: i.id === action.id ? action.anchor : undefined,
+          aside: i.id === action.id ? undefined : i.aside,
           edited: i.id === action.id || i.edited,
         })),
       };
@@ -87,6 +98,7 @@ export function reducer(state: InventoryState, action: Action): InventoryState {
         items: state.items.map((item) => ({
           ...item,
           included: !!item.required || selectedIds.has(item.id),
+          aside: undefined,
           priority: item.id === action.priorityId ? 5 : item.priority,
           edited: true,
         })),

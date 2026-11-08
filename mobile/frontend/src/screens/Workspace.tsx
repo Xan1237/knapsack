@@ -15,6 +15,7 @@ import {
   type Plan,
   type Vec3,
   anchorAtPoint,
+  outsideCase,
   formatSize,
   revisionOf,
   suitcases,
@@ -332,6 +333,13 @@ export default function Workspace({ onHome }: { onHome: () => void }) {
   }
 
   function dropItem(item: Item, point: Vec3, orientation: number) {
+    if (outsideCase(bag, point)) {
+      if (item.aside) return false;
+      dispatch({ type: "aside", id: item.id, aside: true });
+      setSelected(item.id);
+      setNotice(`${item.label} is beside the suitcase. Drag it back in to pack it.`);
+      return true;
+    }
     const anchor = anchorAtPoint(item, bag, point, orientation);
     if (!anchor) {
       setNotice("This item cannot fit there in its current orientation. Resize it or allow another rotation.");

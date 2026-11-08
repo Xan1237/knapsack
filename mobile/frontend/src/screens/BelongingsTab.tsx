@@ -36,7 +36,9 @@ function ItemRow({
   const unplaced = item.included && !!current && !current.placements.some((p) => p.id === item.id);
   const detail = !item.included
     ? "Staying home"
-    : unplaced
+    : item.aside
+      ? "Beside the suitcase"
+      : unplaced
       ? "Doesn't fit yet"
       : `${item.mesh ? "Astra 3D · " : ""}${formatSize(sizeOf(item))}`;
   return (

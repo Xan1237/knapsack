@@ -207,7 +207,7 @@ export class SuitcaseEngine {
       plan ? plan.unplaced.map((u) => u.id) : items.filter((i) => i.included).map((i) => i.id),
     );
     const { overflow, bounds } = explorerLayout(
-      items.filter((i) => i.included && unplacedIds.has(i.id)),
+      items.filter((i) => i.included && (i.aside || unplacedIds.has(i.id))),
       bag,
     );
     for (const u of overflow) {

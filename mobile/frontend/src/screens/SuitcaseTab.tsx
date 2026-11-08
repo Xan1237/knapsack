@@ -109,10 +109,11 @@ export default function SuitcaseTab(p: Props) {
     : 0;
   const fill = Math.round((usedVolume / bag.dimensions.reduce((v, n) => v * n, 1)) * 100);
   const overflowCount = current?.unplaced.length ?? 0;
+  const aside = included.filter((i) => i.aside);
   const empty = included.length === 0;
   const closed = !!bag.clamshell && maxStep > 0 && step === maxStep;
   const stepsReady = !!current && !!maxStep;
-  const anchored = state.items.some((i) => i.anchor);
+  const anchored = state.items.some((i) => i.anchor || i.aside);
 
   const noun = (n: number) => `${n} item${n === 1 ? "" : "s"}`;
   const title = p.packingError
@@ -132,7 +133,7 @@ export default function SuitcaseTab(p: Props) {
       ? "Add a few items to get started"
       : !current
         ? `${noun(included.length)} to pack`
-        : `${current.placements.length} of ${included.length} packed · ${fill}% full`;
+        : `${current.placements.length} of ${included.length} packed${aside.length ? ` · ${aside.length} set aside` : ""} · ${fill}% full`;
   const tone = p.packingError ? colors.error : !current || empty ? colors.faint : overflowCount ? colors.warn : colors.green;
   const stepText = !stepsReady
     ? "Waiting for a layout"
@@ -210,9 +211,9 @@ export default function SuitcaseTab(p: Props) {
               }}
             />
           </View>
-          {overflowCount > 0 && (
+          {overflowCount + aside.length > 0 && (
             <Text style={styles.overflowTag} pointerEvents="none">
-              Beside the suitcase: {noun(overflowCount)}
+              Beside the suitcase: {noun(overflowCount + aside.length)}
             </Text>
           )}
         </View>
@@ -457,6 +458,34 @@ export default function SuitcaseTab(p: Props) {
                 ? "These can't all fit by size alone. Try a larger bag or smaller items."
                 : "The search couldn't find space for everything, but that doesn't prove it's impossible."}
             </Text>
+          </Section>
+        )}
+
+        {aside.length > 0 && (
+          <Section title="Set aside">
+            <Group>
+              {aside.map((item) => (
+                <View key={item.id} style={[styles.unplaced, styles.row]}>
+                  <Pressable
+                    style={styles.grow}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Select ${item.label}`}
+                    onPress={() => {
+                      p.setSelected(item.id);
+                      setFitOpen(false);
+                    }}
+                  >
+                    <Text style={type.bodyStrong}>{item.label}</Text>
+                    <Text style={type.secondary}>You moved this out of the case</Text>
+                  </Pressable>
+                  <Button
+                    label="Pack it"
+                    size="small"
+                    onPress={() => dispatch({ type: "aside", id: item.id, aside: false })}
+                  />
+                </View>
+              ))}
+            </Group>
           </Section>
         )}
 

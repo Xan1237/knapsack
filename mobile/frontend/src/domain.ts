@@ -55,6 +55,8 @@ export type Item = Proposal & {
   priority?: number;
   compression?: number;
   anchor?: ItemAnchor;
+  /** Coming on the trip, but deliberately left beside the case instead of packed. */
+  aside?: boolean;
   modelUrl?: string;
 };
 export type Photo = {
@@ -216,7 +218,8 @@ export function formatSize(size: Vec3): string {
 }
 /** Keep generated topology out of packing and advice request payloads. */
 export function packingItems(items: Item[]): Item[] {
-  return items.map((item) => ({ ...item, mesh: undefined }));
+  // Items set aside stay out of the search, like ones left at home.
+  return items.map((item) => ({ ...item, mesh: undefined, included: item.included && !item.aside, aside: undefined }));
 }
 export function revisionOf(items: Item[], bag: Suitcase): string {
   return JSON.stringify([
@@ -227,6 +230,7 @@ export function revisionOf(items: Item[], bag: Suitcase): string {
     items.map((i) => [
       i.id,
       i.included,
+      !!i.aside,
       sizeOf(i),
       i.orientations,
       !!i.required,
@@ -234,6 +238,14 @@ export function revisionOf(items: Item[], bag: Suitcase): string {
       i.anchor ?? null,
     ]),
   ]);
+}
+
+/** Whether a drop point (open-case Three coordinates, 1 unit = 10 cm) lands clear of the case's footprint. */
+export function outsideCase(bag: Suitcase, point: Vec3): boolean {
+  const halfWidth = bag.dimensions[0] / (bag.clamshell ? 100 : 200);
+  const halfLength = bag.dimensions[1] / 200;
+  const margin = 0.3;
+  return Math.abs(point[0]) > halfWidth + margin || Math.abs(point[2]) > halfLength + margin;
 }
 
 /** A touch drop in the open case's Three coordinates, before scene translation. */
