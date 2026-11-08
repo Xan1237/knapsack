@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Banner, Button } from "../components/ui";
 import { supabase, supabaseConfigured } from "../supabase";
 import { colors, radius, serif, type } from "../theme";
 
 /** Email and password sign-in. A new account may need its email confirmed first. */
-export default function Auth({ onBack }: { onBack: () => void }) {
+export default function Auth() {
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -45,9 +45,7 @@ export default function Auth({ onBack }: { onBack: () => void }) {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView style={styles.safe} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Pressable accessibilityRole="button" onPress={onBack} hitSlop={10}>
-            <Text style={styles.wordmark}>✳ knapsack</Text>
-          </Pressable>
+          <Text style={styles.wordmark}>✳ knapsack</Text>
           <View style={styles.hero}>
             <Text style={styles.title}>{signUp ? "Create your account" : "Welcome back"}</Text>
             <Text style={styles.lead}>Your trip is saved to your account, so it's there on any phone you sign in on.</Text>

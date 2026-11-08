@@ -63,7 +63,7 @@ The backend only answers signed-in users, but anyone can create an account and s
 | `frontend/src/supabase.ts`, `screens/Auth.tsx` | Supabase sign-in client and the sign-in screen |
 | `frontend/src/state.ts`, `domain.ts` | Inventory reducer and shared types |
 | `frontend/src/scene/` | 3D suitcase: Three.js on `expo-gl` (touch orbit, pinch, tap, drag) |
-| `frontend/src/screens/` | Landing, Suitcase and Items tabs, item editor, assistant |
+| `frontend/src/screens/` | Sign-in, Suitcase and Items tabs, item editor, assistant, settings |
 | `frontend/src/components/` | Shared controls (`ui.tsx`), bottom sheets (`Sheet.tsx`), 3D views |
 
 The app sends its inventory, without mesh data, to `POST /api/pack` whenever it changes. Each plan echoes the app's revision so stale responses are dropped.
@@ -74,7 +74,7 @@ Ported: photo and camera capture, Astra meshes, the item editor (size, shape, co
 
 Changed or left out for this MVP:
 
-- **Landing page:** a simple welcome screen instead of the scroll-driven 3D animation.
+- **Landing page:** none. The app opens straight to sign-in, or to your trip if you're signed in.
 - **glTF model assets:** items and bags with a `modelUrl` keep it but display as category shapes, and "Try a 3D model collection" is gone.
 - **Shadows:** off in the 3D scene, for phone performance.
 - **Photos:** resized to at most 1600 px and converted to JPEG on the phone. Exports keep photo records but not the images.

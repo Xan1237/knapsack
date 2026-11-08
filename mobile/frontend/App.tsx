@@ -4,13 +4,11 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Auth from "./src/screens/Auth";
-import Landing from "./src/screens/Landing";
 import Workspace from "./src/screens/Workspace";
 import { supabase } from "./src/supabase";
 import { colors } from "./src/theme";
 
 export default function App() {
-  const [screen, setScreen] = useState<"landing" | "workspace">("landing");
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
   useEffect(() => {
@@ -26,21 +24,18 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      {screen === "landing" ? (
-        <Landing onStart={() => setScreen("workspace")} />
-      ) : session === undefined ? (
+      {session === undefined ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper }}>
           <ActivityIndicator color={colors.green} />
         </View>
       ) : !session || !userId ? (
-        <Auth onBack={() => setScreen("landing")} />
+        <Auth />
       ) : (
         // Keyed by user so switching accounts starts a fresh workspace.
         <Workspace
           key={userId}
           userId={userId}
           email={session.user.email ?? ""}
-          onHome={() => setScreen("landing")}
         />
       )}
     </SafeAreaProvider>

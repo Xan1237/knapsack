@@ -33,7 +33,7 @@ import SuitcaseTab from "./SuitcaseTab";
 
 const maxPhotos = 12;
 
-export default function Workspace({ userId, email, onHome }: { userId: string; email: string; onHome: () => void }) {
+export default function Workspace({ userId, email }: { userId: string; email: string }) {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const [tab, setTab] = useState<"suitcase" | "belongings">("suitcase");
   const [loaded, setLoaded] = useState(false);
@@ -598,7 +598,6 @@ export default function Workspace({ userId, email, onHome }: { userId: string; e
             onPress={() => fromMenu(importFile)}
           />
           <ActionRow icon="sparkles-outline" label="Load the demo trip" onPress={() => fromMenu(confirmDemo)} />
-          <ActionRow icon="home-outline" label="Back to welcome screen" onPress={() => fromMenu(onHome)} />
         </Group>
         <Group>
           <ActionRow icon="trash-outline" label="Clear trip" destructive onPress={() => fromMenu(confirmReset)} />
