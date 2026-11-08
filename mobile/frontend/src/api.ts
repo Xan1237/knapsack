@@ -9,7 +9,7 @@ import type {
   Proposal,
   Suitcase,
 } from "./domain";
-import { packingItems } from "./domain";
+import { packingItem, packingItems } from "./domain";
 import type { InventoryState } from "./state";
 import { accessToken } from "./supabase";
 
@@ -128,7 +128,7 @@ export function exportPlan(state: InventoryState, bag: Suitcase) {
   return send<object>("/api/packing/export", {
     bag,
     // Items set aside are exported as not packed, matching the plan on screen.
-    items: state.items.map(({ aside, ...item }) => ({ ...item, included: item.included && !aside })),
+    items: state.items.map((item) => (item.aside ? { ...packingItem(item), mesh: item.mesh } : item)),
     // Photos stay on the device; an export keeps their records so items stay linked.
     photos: state.photos.map((p) => ({ ...p, url: "" })),
   });

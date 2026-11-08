@@ -1,8 +1,8 @@
-import { type Dispatch, type SetStateAction, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { type Dispatch, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { afterSheet, Sheet } from "../components/Sheet";
 import SuitcaseView from "../components/SuitcaseView";
-import { Banner, Button, Group, Icon, type IconName, Section, Slider } from "../components/ui";
+import { Banner, Button, Group, Icon, Section, Slider } from "../components/ui";
 import { type Item, type Placement, type Plan, type Suitcase, type Vec3, formatSize, sizeOf } from "../domain";
 import type { Action, InventoryState } from "../state";
 import { colors, radius, shadow, type } from "../theme";
@@ -14,31 +14,24 @@ type Props = {
   revision: string;
   plan: Plan | null;
   current: Plan | null;
-  busy: boolean;
   packingError: string;
   reservedSpace: Placement | null;
   selected: string | null;
   active: Item | null;
-  layer: number;
-  exploded: boolean;
-  resetKey: number;
-  view: "perspective" | "top";
-  moveMode: boolean;
   step: number;
   maxStep: number;
   playing: boolean;
   dispatch: Dispatch<Action>;
-  setLayer: (n: number) => void;
-  setExploded: Dispatch<SetStateAction<boolean>>;
+  /** The open tool panel, controlled by the bottom bar. */
+  tool: "steps" | null;
   setPlayback: (p: Playback) => void;
-  setMoveMode: Dispatch<SetStateAction<boolean>>;
-  setView: (v: "perspective" | "top") => void;
-  bumpReset: () => void;
   setSelected: (id: string | null) => void;
   openEditor: (id: string) => void;
   retryPacking: () => void;
   dropItem: (item: Item, point: Vec3, orientation: number) => boolean;
-  askAstra: () => void;
+  /** The packing details sheet, opened from the workspace menu. */
+  fitOpen: boolean;
+  setFitOpen: (open: boolean) => void;
   makeRoom: (id: string) => void;
   addItems: () => void;
 };
@@ -46,60 +39,10 @@ type Props = {
 // The gesture hint only needs to be seen once per launch, not on every return to this tab.
 let hintDismissed = false;
 
-function ToolButton({
-  icon,
-  label,
-  active,
-  disabled,
-  onPress,
-}: {
-  icon: IconName;
-  label: string;
-  active?: boolean;
-  disabled?: boolean;
-  onPress: () => void;
-}) {
-  const color = active ? colors.green : colors.ink;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected: !!active, disabled: !!disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.tool,
-        active && styles.toolActive,
-        pressed && { opacity: 0.6 },
-        disabled && { opacity: 0.35 },
-      ]}
-    >
-      <Icon name={icon} size={22} color={color} />
-      <Text style={[styles.toolLabel, active && styles.toolLabelActive]}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function SceneChip({ label, icon, active, onPress }: { label?: string; icon?: IconName; active?: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label ?? "Reset view"}
-      accessibilityState={{ selected: !!active }}
-      onPress={onPress}
-      hitSlop={6}
-      style={({ pressed }) => [styles.chip, !label && styles.chipSquare, active && styles.chipActive, pressed && { opacity: 0.7 }]}
-    >
-      {icon && <Icon name={icon} size={18} color={active ? colors.white : colors.ink} />}
-      {label && <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>}
-    </Pressable>
-  );
-}
-
 export default function SuitcaseTab(p: Props) {
-  const { state, bag, plan, current, busy, revision, step, maxStep, playing, dispatch } = p;
-  const [tool, setTool] = useState<"steps" | "layers" | null>(null);
-  const [fitOpen, setFitOpen] = useState(false);
+  const { state, bag, plan, current, revision, step, maxStep, playing, dispatch } = p;
+  const { tool } = p;
+  const { fitOpen, setFitOpen } = p;
   const [hintVisible, setHintVisible] = useState(!hintDismissed);
   const included = state.items.filter((i) => i.included);
   const packedSteps = plan?.placements.length ?? 0;
@@ -111,7 +54,6 @@ export default function SuitcaseTab(p: Props) {
   const overflowCount = current?.unplaced.length ?? 0;
   const aside = included.filter((i) => i.aside);
   const empty = included.length === 0;
-  const closed = !!bag.clamshell && maxStep > 0 && step === maxStep;
   const stepsReady = !!current && !!maxStep;
   const anchored = state.items.some((i) => i.anchor || i.aside);
 
@@ -127,14 +69,6 @@ export default function SuitcaseTab(p: Props) {
           : current.outcome === "constraint-conflict"
             ? "Too much for this bag"
             : `${noun(overflowCount)} ${overflowCount === 1 ? "doesn't" : "don't"} fit`;
-  const subtitle = p.packingError
-    ? "Check your connection, then retry"
-    : empty
-      ? "Add a few items to get started"
-      : !current
-        ? `${noun(included.length)} to pack`
-        : `${current.placements.length} of ${included.length} packed${aside.length ? ` · ${aside.length} set aside` : ""} · ${fill}% full`;
-  const tone = p.packingError ? colors.error : !current || empty ? colors.faint : overflowCount ? colors.warn : colors.green;
   const stepText = !stepsReady
     ? "Waiting for a layout"
     : step === maxStep
@@ -147,18 +81,6 @@ export default function SuitcaseTab(p: Props) {
           ? "Empty suitcase"
           : `Step ${step} of ${maxStep}`;
 
-  function toggleTool(next: "steps" | "layers") {
-    if (tool === "layers") p.setLayer(100);
-    if (tool === "steps" && (playing || step < packedSteps)) showAll();
-    setTool(tool === next ? null : next);
-  }
-  function toggleMove() {
-    setTool(null);
-    p.setMoveMode((v) => !v);
-    p.setExploded(false);
-    p.setLayer(100);
-    showAll();
-  }
 
   return (
     <View style={styles.root}>
@@ -174,54 +96,22 @@ export default function SuitcaseTab(p: Props) {
           bag={bag}
           plan={plan}
           selected={p.selected}
-          layer={p.layer}
+          layer={100}
           step={step}
-          exploded={p.exploded}
-          view={p.view}
-          resetKey={p.resetKey}
+          exploded={false}
+          view="perspective"
+          resetKey={0}
           reservedSpace={p.reservedSpace}
-          moveMode={p.moveMode && !!current && !playing && !p.exploded && step <= packedSteps}
+          canDrag={!!current && !playing && step <= packedSteps}
           onSelect={p.setSelected}
           onDrop={p.dropItem}
         />
 
-        <View style={styles.sceneTop} pointerEvents="box-none">
-          <View style={styles.sceneControls} pointerEvents="box-none">
-            <SceneChip
-              label="Top view"
-              active={p.view === "top"}
-              onPress={() => {
-                p.setView(p.view === "top" ? "perspective" : "top");
-                p.bumpReset();
-              }}
-            />
-            <SceneChip
-              label="Explode"
-              active={p.exploded}
-              onPress={() => {
-                p.setExploded((v) => !v);
-                showAll();
-              }}
-            />
-            <SceneChip
-              icon="refresh"
-              onPress={() => {
-                p.setView("perspective");
-                p.bumpReset();
-              }}
-            />
-          </View>
-          {overflowCount + aside.length > 0 && (
-            <Text style={styles.overflowTag} pointerEvents="none">
-              Beside the suitcase: {noun(overflowCount + aside.length)}
-            </Text>
-          )}
-        </View>
 
         <View style={styles.floating} pointerEvents="box-none">
-          {hintVisible && !p.moveMode && !tool && !p.active && !empty && !p.packingError && (
+          {hintVisible && !tool && !p.active && !empty && !p.packingError && (
             <Text style={styles.hint} pointerEvents="none">
-              Drag to rotate · Pinch to zoom · Tap an item
+              Drag an item to move it · Drag elsewhere to rotate · Pinch to zoom
             </Text>
           )}
 
@@ -241,7 +131,7 @@ export default function SuitcaseTab(p: Props) {
             </Banner>
           )}
 
-          {p.active && !p.moveMode && (
+          {p.active && (
             <View style={[styles.floatCard, styles.selection]}>
               <View style={[styles.swatch, { backgroundColor: p.active.color }]} />
               <View style={styles.grow}>
@@ -271,8 +161,6 @@ export default function SuitcaseTab(p: Props) {
                 accessibilityLabel={playing ? "Pause packing playback" : "Play packing order"}
                 disabled={!stepsReady}
                 onPress={() => {
-                  p.setLayer(100);
-                  p.setExploded(false);
                   p.setPlayback({ revision, step: playing ? step : 0, playing: !playing });
                 }}
                 style={[styles.play, !stepsReady && { opacity: 0.4 }]}
@@ -288,100 +176,14 @@ export default function SuitcaseTab(p: Props) {
                   max={Math.max(1, maxStep)}
                   disabled={!stepsReady}
                   onChange={(value) => {
-                    p.setLayer(100);
-                    p.setPlayback({ revision, step: value, playing: false });
+                      p.setPlayback({ revision, step: value, playing: false });
                   }}
                 />
               </View>
             </View>
           )}
 
-          {tool === "layers" && (
-            <View style={[styles.floatCard, styles.layerPanel]}>
-              <Text style={type.bodyStrong}>{p.layer === 100 ? "All layers showing" : "Hiding the top layers"}</Text>
-              <Slider
-                label="Visible layers"
-                value={p.layer}
-                min={0}
-                max={100}
-                onChange={(value) => {
-                  p.setLayer(value);
-                  showAll();
-                }}
-              />
-            </View>
-          )}
         </View>
-      </View>
-
-      <View style={styles.panel}>
-        <View style={styles.summary}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${title}. ${subtitle}. Show details`}
-            disabled={empty}
-            onPress={() => setFitOpen(true)}
-            style={({ pressed }) => [styles.summaryText, pressed && { opacity: 0.6 }]}
-          >
-            <View style={styles.titleRow}>
-              {busy ? (
-                <ActivityIndicator size="small" color={colors.green} style={styles.spinner} />
-              ) : (
-                <View style={[styles.dot, { backgroundColor: tone }]} />
-              )}
-              <Text style={styles.summaryTitle} numberOfLines={1}>
-                {title}
-              </Text>
-              {!empty && <Icon name="chevron-forward" size={16} color={colors.faint} />}
-            </View>
-            <Text style={type.secondary} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          </Pressable>
-          <Button label="Ask Astra" icon="sparkles" kind="primary" size="small" onPress={p.askAstra} />
-        </View>
-
-        {p.moveMode ? (
-          <View style={styles.moveBar}>
-            <Text style={[type.body, styles.grow]} numberOfLines={2}>
-              Drag an item to move it
-            </Text>
-            {anchored && <Button label="Auto arrange" size="small" onPress={() => dispatch({ type: "auto-layout" })} />}
-            <Button label="Done" kind="primary" size="small" onPress={toggleMove} />
-          </View>
-        ) : (
-          <View style={styles.tools}>
-            <ToolButton icon="move-outline" label="Move" disabled={empty} onPress={toggleMove} />
-            <ToolButton
-              icon="footsteps-outline"
-              label="Steps"
-              active={tool === "steps"}
-              disabled={empty}
-              onPress={() => toggleTool("steps")}
-            />
-            <ToolButton
-              icon="layers-outline"
-              label="Layers"
-              active={tool === "layers"}
-              disabled={empty}
-              onPress={() => toggleTool("layers")}
-            />
-            {bag.clamshell && (
-              <ToolButton
-                icon={closed ? "briefcase" : "briefcase-outline"}
-                label={closed ? "Open" : "Close"}
-                active={closed}
-                disabled={!current}
-                onPress={() => {
-                  setTool(null);
-                  p.setExploded(false);
-                  p.setLayer(100);
-                  p.setPlayback({ revision, step: closed ? packedSteps : maxStep, playing: false });
-                }}
-              />
-            )}
-          </View>
-        )}
       </View>
 
       <Sheet visible={fitOpen} title={title} onClose={() => setFitOpen(false)}>
@@ -515,35 +317,16 @@ export default function SuitcaseTab(p: Props) {
   );
 }
 
-const panelOverlap = 16;
-
 const styles = StyleSheet.create({
   root: { flex: 1 },
   canvas: { flex: 1, backgroundColor: colors.canvas, overflow: "hidden" },
-  sceneTop: { position: "absolute", top: 10, left: 12, right: 12, gap: 8 },
-  sceneControls: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
-  chip: {
-    height: 36,
-    paddingHorizontal: 12,
-    borderRadius: radius.pill,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.white,
-    ...shadow,
-  },
-  chipSquare: { width: 36, paddingHorizontal: 0 },
-  chipActive: { backgroundColor: colors.green },
-  chipText: { color: colors.ink, fontSize: 13, fontWeight: "600" },
-  chipTextActive: { color: colors.white },
-  overflowTag: { alignSelf: "flex-start", color: colors.warn, fontSize: 13, fontWeight: "600" },
   emptyCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12 },
-  floating: { position: "absolute", left: 12, right: 12, bottom: panelOverlap + 10, gap: 8 },
+  floating: { position: "absolute", left: 12, right: 12, bottom: 12, gap: 8 },
   hint: { color: colors.muted, fontSize: 13, textAlign: "center" },
   floatCard: { backgroundColor: colors.white, borderRadius: radius.md, ...shadow },
   selection: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 12 },
   swatch: { width: 32, height: 32, borderRadius: 8 },
   toolPanel: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, paddingBottom: 6 },
-  layerPanel: { padding: 12, paddingBottom: 6 },
   play: {
     width: 44,
     height: 44,
@@ -552,28 +335,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.green,
   },
-  panel: {
-    marginTop: -panelOverlap,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 6,
-    gap: 8,
-    backgroundColor: colors.white,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-  },
-  summary: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44 },
-  summaryText: { flex: 1, gap: 1 },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  dot: { width: 9, height: 9, borderRadius: 5 },
-  spinner: { width: 14, height: 14, transform: [{ scale: 0.7 }] },
-  summaryTitle: { ...type.heading, flexShrink: 1 },
-  tools: { flexDirection: "row", gap: 6, height: 60 },
-  tool: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, borderRadius: radius.md },
-  toolActive: { backgroundColor: colors.soft },
-  toolLabel: { color: colors.ink, fontSize: 12, fontWeight: "500" },
-  toolLabelActive: { color: colors.green, fontWeight: "700" },
-  moveBar: { flexDirection: "row", alignItems: "center", gap: 8, height: 60 },
   grow: { flex: 1 },
   row: { flexDirection: "row", gap: 8 },
   stats: { flexDirection: "row", gap: 8 },
