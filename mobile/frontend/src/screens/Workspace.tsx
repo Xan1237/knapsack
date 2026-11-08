@@ -397,7 +397,7 @@ export default function Workspace({ userId, email }: { userId: string; email: st
       setCanPersist(true);
       setSelected(next.items[0]?.id ?? null);
       clearScene();
-      setNotice(`Imported ${next.items.length} items. Your collection is ready to pack.`);
+      setNotice("");
     } catch (error) {
       setNotice(
         error instanceof SyntaxError
@@ -425,17 +425,13 @@ export default function Workspace({ userId, email }: { userId: string; email: st
       if (item.aside) return false;
       dispatch({ type: "aside", id: item.id, aside: true });
       setSelected(item.id);
-      setNotice(`${item.label} is beside the suitcase. Drag it back in to pack it.`);
       return true;
     }
     const anchor = anchorAtPoint(item, bag, point, orientation);
-    if (!anchor) {
-      setNotice("This item cannot fit there in its current orientation. Resize it or allow another rotation.");
-      return false;
-    }
+    // Dropped where it can't fit: it slides back to where it was.
+    if (!anchor) return false;
     dispatch({ type: "move", id: item.id, anchor });
     setSelected(item.id);
-    setNotice("Position saved. Your other belongings are adjusting around it.");
     return true;
   }
 
@@ -705,11 +701,6 @@ export default function Workspace({ userId, email }: { userId: string; email: st
           setAstraOpen(false);
           setWantedId(null);
           setLayer(100);
-                setNotice(
-            priorityId
-              ? "Your swap is applied. Finding a place for your choice."
-              : "Astra's selection is applied. Fit is being checked against your latest list.",
-          );
         }}
         onLargerBag={() => {
           dispatch({ type: "bag", id: "checked" });
