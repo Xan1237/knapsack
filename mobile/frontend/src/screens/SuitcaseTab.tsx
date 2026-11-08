@@ -116,13 +116,6 @@ export default function SuitcaseTab(p: Props) {
           onDrop={p.dropItem}
         />
 
-        <View style={styles.sceneTop} pointerEvents="box-none">
-          {overflowCount + aside.length > 0 && (
-            <Text style={styles.overflowTag} pointerEvents="none">
-              Beside the suitcase: {noun(overflowCount + aside.length)}
-            </Text>
-          )}
-        </View>
 
         <View style={styles.floating} pointerEvents="box-none">
           {hintVisible && !tool && !p.active && !empty && !p.packingError && (
@@ -384,8 +377,6 @@ const panelOverlap = 16;
 const styles = StyleSheet.create({
   root: { flex: 1 },
   canvas: { flex: 1, backgroundColor: colors.canvas, overflow: "hidden" },
-  sceneTop: { position: "absolute", top: 10, left: 12, right: 12, gap: 8 },
-  overflowTag: { alignSelf: "flex-start", color: colors.warn, fontSize: 13, fontWeight: "600" },
   emptyCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12 },
   floating: { position: "absolute", left: 12, right: 12, bottom: panelOverlap + 10, gap: 8 },
   hint: { color: colors.muted, fontSize: 13, textAlign: "center" },
