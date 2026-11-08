@@ -543,3 +543,24 @@
     height: 255px;
   }
 }
+
+.backpack-action {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--landing-line);
+  padding-top: 12px;
+}
+.backpack-action button {
+  padding: 6px 0;
+  color: var(--landing-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.backpack-action button:hover {
+  text-decoration: underline;
+}
+.backpack-action span {
+  margin-left: 8px;
+}

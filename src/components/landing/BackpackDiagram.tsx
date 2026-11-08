@@ -2,6 +2,9 @@
 
 import {
   Component,
+  createContext,
+  useContext,
+  Suspense,
   type ReactNode,
   type CSSProperties,
   useMemo,
@@ -10,12 +13,14 @@ import {
 } from "react";
 import Image from "next/image";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { RoundedBox } from "@react-three/drei";
+import { RoundedBox, useGLTF } from "@react-three/drei";
 import {
-  CatmullRomCurve3,
+  DataTexture,
   MathUtils,
-  Path,
-  Shape,
+  Mesh,
+  RepeatWrapping,
+  SRGBColorSpace,
+  Plane,
   Vector3,
   type Group,
   type OrthographicCamera,
@@ -38,6 +43,8 @@ const items: { id: ItemId; label: string; image: string }[] = [
   { id: "sunglasses", label: "Sunglasses", image: "sunglasses.png" },
   { id: "earbuds", label: "Earbuds", image: "wireless_earbuds.png" },
 ];
+
+const ClosedContext = createContext(false);
 
 type BoxProps = {
   size: [number, number, number];
@@ -63,225 +70,158 @@ function Box({ size, position, color, radius = 0.08, rotation }: BoxProps) {
   );
 }
 
-function Backpack() {
-  const { shell, lining, straps } = useMemo(() => {
-    const outline = () => {
-      const shape = new Shape();
-      shape.moveTo(-1.65, -1.85);
-      shape.quadraticCurveTo(-1.65, -2.4, -1.1, -2.4);
-      shape.lineTo(1.1, -2.4);
-      shape.quadraticCurveTo(1.65, -2.4, 1.65, -1.85);
-      shape.lineTo(1.65, 1.35);
-      shape.quadraticCurveTo(1.65, 2.4, 0.65, 2.4);
-      shape.lineTo(-0.65, 2.4);
-      shape.quadraticCurveTo(-1.65, 2.4, -1.65, 1.35);
-      shape.closePath();
-      return shape;
+function Backpack({ closed }: { closed: boolean }) {
+  const hinge = useRef<Group>(null);
+  const cover = useRef<Group>(null);
+  const progress = useRef(0);
+  const { scene } = useGLTF("/models/backpack-city.glb");
+  const parts = useMemo(() => {
+    const coverPlane = new Plane(new Vector3(0, 0, 1), -0.047);
+    const worldCoverPlane = coverPlane.clone();
+    const copyPart = (name: string, cut: "lower" | "upper" | null = null) => {
+      const part = scene.getObjectByName(name.replace(/\s/g, "_"))?.clone(true);
+      if (!part) throw new Error(`Backpack model is missing ${name}`);
+      part.traverse((object) => {
+        if (!(object instanceof Mesh)) return;
+        object.castShadow = true;
+        object.receiveShadow = true;
+        if (cut) {
+          const materials = Array.isArray(object.material)
+            ? object.material
+            : [object.material];
+          const clipped = materials.map((material) => {
+            const copy = material.clone();
+            copy.clippingPlanes = [
+              cut === "upper"
+                ? worldCoverPlane
+                : new Plane(new Vector3(0, -1, 0), 0.026),
+            ];
+            copy.clipShadows = true;
+            return copy;
+          });
+          object.material = Array.isArray(object.material)
+            ? clipped
+            : clipped[0];
+        }
+      });
+      return part;
     };
-    const shell = outline();
-    const hole = new Path();
-    hole.moveTo(-1.36, -1.72);
-    hole.lineTo(-1.36, 1.3);
-    hole.quadraticCurveTo(-1.36, 2.1, -0.58, 2.1);
-    hole.lineTo(0.58, 2.1);
-    hole.quadraticCurveTo(1.36, 2.1, 1.36, 1.3);
-    hole.lineTo(1.36, -1.72);
-    hole.quadraticCurveTo(1.36, -2.1, 0.98, -2.1);
-    hole.lineTo(-0.98, -2.1);
-    hole.quadraticCurveTo(-1.36, -2.1, -1.36, -1.72);
-    shell.holes.push(hole);
-    const straps = [-1, 1].map(
-      (side) =>
-        new CatmullRomCurve3([
-          new Vector3(side * 0.55, -0.25, 1.5),
-          new Vector3(side * 0.75, -0.38, 2.25),
-          new Vector3(side * 0.8, -0.38, 3.02),
-          new Vector3(side * 1.1, -0.36, 3.15),
-          new Vector3(side * 1.3, -0.34, 2.8),
-          new Vector3(side * 1.25, -0.25, 1.6),
-        ]),
-    );
-    return { shell, lining: outline(), straps };
-  }, []);
+    return {
+      straps: copyPart("Back panel and shoulder straps"),
+      body: copyPart("Backpack body", "lower"),
+      cover: copyPart("Backpack body", "upper"),
+      pocket: copyPart("Front zip pocket"),
+      zips: copyPart("Zips, handle and pulls"),
+      coverPlane,
+      worldCoverPlane,
+    };
+  }, [scene]);
+  useFrame((_, delta) => {
+    if (!cover.current || !hinge.current) return;
+    const target = closed ? 1 : 0;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    progress.current = reduceMotion
+      ? target
+      : MathUtils.damp(progress.current, target, 3.5, delta);
+    const open = 1 - progress.current;
+    hinge.current.rotation.x = 2.35 * open;
+    cover.current.updateWorldMatrix(true, false);
+    parts.worldCoverPlane
+      .copy(parts.coverPlane)
+      .applyMatrix4(cover.current.matrixWorld);
+  });
   return (
-    <group>
-      {straps.map((strap, index) => (
-        <mesh key={index} castShadow>
-          <tubeGeometry args={[strap, 40, 0.16, 12, false]} />
-          <meshStandardMaterial color="#44594d" roughness={1} />
-        </mesh>
-      ))}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -0.32, 0]}
-        castShadow
-        receiveShadow
-      >
-        <extrudeGeometry
-          args={[
-            lining,
-            {
-              depth: 0.22,
-              bevelEnabled: true,
-              bevelSize: 0.1,
-              bevelThickness: 0.08,
-              bevelSegments: 4,
-            },
-          ]}
-        />
-        <meshStandardMaterial color="#52675a" roughness={1} />
-      </mesh>
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -0.04, 0]}
-        receiveShadow
-      >
-        <shapeGeometry args={[lining]} />
-        <meshStandardMaterial color="#c0c4b1" roughness={1} />
-      </mesh>
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -0.08, 0]}
-        castShadow
-        receiveShadow
-      >
-        <extrudeGeometry
-          args={[
-            shell,
-            {
-              depth: 0.7,
-              bevelEnabled: true,
-              bevelSize: 0.12,
-              bevelThickness: 0.08,
-              bevelSegments: 4,
-              curveSegments: 16,
-            },
-          ]}
-        />
-        <meshStandardMaterial color="#667d6d" roughness={0.95} />
-      </mesh>
-      {/* The unzipped front panel opens behind the main compartment. */}
-      <group position={[0, 0.69, -2.18]} rotation={[0.82, 0, 0]}>
-        <group position={[0, 0, -2.35]} rotation={[Math.PI / 2, 0, 0]}>
-          <mesh castShadow receiveShadow>
-            <extrudeGeometry
-              args={[
-                lining,
-                {
-                  depth: 0.22,
-                  bevelEnabled: true,
-                  bevelSize: 0.12,
-                  bevelThickness: 0.08,
-                  bevelSegments: 5,
-                  curveSegments: 20,
-                },
-              ]}
-            />
-            <meshStandardMaterial color="#52685a" roughness={1} />
-          </mesh>
-          <RoundedBox
-            args={[2.52, 1.55, 0.16]}
-            radius={0.24}
-            smoothness={6}
-            position={[0, -0.85, 0.28]}
-            castShadow
-          >
-            <meshStandardMaterial color="#425b4d" roughness={1} />
-          </RoundedBox>
-          <RoundedBox
-            args={[2.14, 0.035, 0.04]}
-            radius={0.01}
-            position={[0, -0.25, 0.38]}
-          >
-            <meshStandardMaterial color="#c3c1ad" roughness={0.6} />
-          </RoundedBox>
-          <RoundedBox
-            args={[0.09, 0.22, 0.05]}
-            radius={0.02}
-            position={[0.74, -0.34, 0.4]}
-          >
-            <meshStandardMaterial
-              color="#d4cab7"
-              metalness={0.2}
-              roughness={0.5}
-            />
-          </RoundedBox>
-          <RoundedBox
-            args={[0.75, 0.3, 0.035]}
-            radius={0.04}
-            position={[0, 1.1, 0.25]}
-          >
-            <meshStandardMaterial color="#354c3f" roughness={1} />
-          </RoundedBox>
-          {[-0.82, 0.82].map((side) => (
-            <RoundedBox
-              key={side}
-              args={[0.08, 0.92, 0.04]}
-              radius={0.02}
-              position={[side, 0.75, 0.24]}
-            >
-              <meshStandardMaterial color="#6e8274" roughness={1} />
-            </RoundedBox>
-          ))}
+    <group
+      position={[0, -0.35, 1.76]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      scale={8}
+    >
+      <primitive object={parts.straps} />
+      <primitive object={parts.body} />
+      <primitive object={parts.zips} />
+      <group ref={hinge} position={[0, 0.02, 0.047]} rotation={[2.35, 0, 0]}>
+        <group ref={cover} position={[0, -0.02, -0.047]}>
+          <primitive object={parts.cover} />
+          <primitive object={parts.pocket} />
         </group>
       </group>
-      {/* A front pocket, zipper and handle give the open bag its backpack silhouette. */}
-      <Box
-        size={[2.1, 0.48, 0.18]}
-        position={[0, 0.1, 2.43]}
-        color="#526a5b"
-        radius={0.09}
-      />
-      <Box
-        size={[1.85, 0.035, 0.035]}
-        position={[0, 0.32, 2.54]}
-        color="#b3baa4"
-        radius={0.01}
-      />
-      <Box
-        size={[0.12, 0.16, 0.06]}
-        position={[0.72, 0.24, 2.57]}
-        color="#ded9c8"
-        radius={0.02}
-      />
-      <Box
-        size={[0.85, 0.12, 0.18]}
-        position={[0, 0.08, -2.63]}
-        color="#3f5548"
-        radius={0.05}
-      />
-      <Box
-        size={[0.12, 0.12, 0.3]}
-        position={[-0.4, 0.08, -2.5]}
-        color="#3f5548"
-        radius={0.04}
-      />
-      <Box
-        size={[0.12, 0.12, 0.3]}
-        position={[0.4, 0.08, -2.5]}
-        color="#3f5548"
-        radius={0.04}
-      />
     </group>
   );
 }
 
 function Sweatshirt() {
+  const fabric = useMemo(() => {
+    const size = 64;
+    const pixels = new Uint8Array(size * size * 4);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const i = (y * size + x) * 4;
+        const grain =
+          205 + ((x * 17 + y * 29 + x * y * 3) % 31) + (x % 4 === 0 ? 8 : 0);
+        pixels[i] = pixels[i + 1] = pixels[i + 2] = grain;
+        pixels[i + 3] = 255;
+      }
+    }
+    const texture = new DataTexture(pixels, size, size);
+    texture.wrapS = texture.wrapT = RepeatWrapping;
+    texture.repeat.set(4, 4);
+    texture.colorSpace = SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  }, []);
   return (
     <group>
-      <Box size={[1.7, 0.42, 1.7]} color="#65615e" radius={0.17} />
+      <RoundedBox
+        args={[1.7, 0.24, 1.6]}
+        radius={0.12}
+        smoothness={5}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial color="#5c5958" map={fabric} roughness={1} />
+      </RoundedBox>
+      <RoundedBox
+        args={[1.48, 0.07, 1.42]}
+        position={[0, 0.14, -0.03]}
+        radius={0.06}
+        smoothness={5}
+        castShadow
+      >
+        <meshStandardMaterial color="#706b69" map={fabric} roughness={1} />
+      </RoundedBox>
+      <RoundedBox
+        args={[0.72, 0.07, 1.12]}
+        position={[-0.37, 0.2, 0.08]}
+        rotation={[0, -0.16, 0]}
+        radius={0.06}
+        smoothness={5}
+        castShadow
+      >
+        <meshStandardMaterial color="#676260" map={fabric} roughness={1} />
+      </RoundedBox>
+      <RoundedBox
+        args={[0.72, 0.06, 1.12]}
+        position={[0.37, 0.19, 0.08]}
+        rotation={[0, 0.16, 0]}
+        radius={0.06}
+        smoothness={5}
+        castShadow
+      >
+        <meshStandardMaterial color="#5f5b59" map={fabric} roughness={1} />
+      </RoundedBox>
       <Box
-        size={[1.53, 0.08, 1.45]}
-        position={[0, 0.24, 0]}
-        color="#716b67"
-        radius={0.08}
+        size={[0.52, 0.025, 0.09]}
+        position={[0, 0.2, -0.54]}
+        color="#504c4b"
+        radius={0.015}
       />
       <Box
-        size={[0.8, 0.04, 0.7]}
-        position={[0.25, 0.3, -0.22]}
-        rotation={[0, -0.12, 0]}
-        color="#5c5856"
-        radius={0.04}
+        size={[1.32, 0.012, 0.025]}
+        position={[0, 0.24, 0.62]}
+        color="#827b78"
+        radius={0.004}
       />
     </group>
   );
@@ -290,28 +230,28 @@ function Sweatshirt() {
 function Toiletries() {
   return (
     <group>
-      <Box size={[1.15, 0.5, 1.32]} color="#344558" radius={0.17} />
+      <Box size={[1.15, 0.32, 1.32]} color="#344558" radius={0.14} />
       <Box
         size={[0.98, 0.06, 1.12]}
-        position={[0, 0.28, 0]}
+        position={[0, 0.18, 0]}
         color="#51647a"
         radius={0.11}
       />
       <Box
         size={[0.92, 0.035, 0.035]}
-        position={[0, 0.32, -0.49]}
+        position={[0, 0.22, -0.49]}
         color="#b8ad8e"
         radius={0.01}
       />
       <Box
         size={[0.2, 0.1, 0.2]}
-        position={[-0.25, 0.34, 0.2]}
+        position={[-0.25, 0.23, 0.2]}
         color="#e0d9c7"
         radius={0.04}
       />
       <Box
         size={[0.22, 0.1, 0.26]}
-        position={[0.1, 0.34, 0.2]}
+        position={[0.1, 0.23, 0.2]}
         color="#a3c5d0"
         radius={0.04}
       />
@@ -427,11 +367,12 @@ function PackedItem({
   children: ReactNode;
 }) {
   const group = useRef<Group>(null);
+  const closed = useContext(ClosedContext);
   useFrame((_, delta) => {
     if (group.current)
       group.current.position.y = MathUtils.damp(
         group.current.position.y,
-        position[1] + (selected ? 1.05 : 0),
+        position[1] + (selected && !closed ? 1.05 : 0),
         7,
         delta,
       );
@@ -440,12 +381,19 @@ function PackedItem({
     <group
       ref={group}
       position={position}
+      rotation={id === "passport" ? [0, Math.PI / 2, 0] : undefined}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(id);
       }}
     >
-      {children}
+      <group
+        scale={
+          id === "sweatshirt" ? [0.65, 0.45, 0.65] : id === "socks" ? 0.5 : 0.65
+        }
+      >
+        {children}
+      </group>
     </group>
   );
 }
@@ -453,14 +401,16 @@ function PackedItem({
 function Scene({
   selected,
   onSelect,
+  closed,
 }: {
   selected: ItemId | null;
   onSelect: (id: ItemId) => void;
+  closed: boolean;
 }) {
   useFrame(({ camera, size }) => {
     const orthographic = camera as OrthographicCamera;
-    const zoom = Math.min(size.width / 8.2, size.height / 8.5, 55);
-    camera.lookAt(0, 0.8, -0.65);
+    const zoom = Math.min(size.width / 7.3, size.height / 7.2, 55);
+    camera.lookAt(0, 0.25, 0.35);
     if (orthographic.zoom !== zoom) {
       orthographic.zoom = zoom;
       orthographic.updateProjectionMatrix();
@@ -471,65 +421,75 @@ function Scene({
       <ambientLight intensity={1.5} />
       <hemisphereLight args={["#fff9e9", "#a3af9c", 1]} />
       <directionalLight position={[-4, 8, 5]} intensity={2.3} castShadow />
-      <group rotation={[0, -0.15, 0]}>
-        <Backpack />
-        <PackedItem
-          id="sweatshirt"
-          selected={selected === "sweatshirt"}
-          position={[-0.62, 0.27, 1.05]}
-          onSelect={onSelect}
-        >
-          <Sweatshirt />
-        </PackedItem>
-        <PackedItem
-          id="toiletries"
-          selected={selected === "toiletries"}
-          position={[0.93, 0.31, 1.06]}
-          onSelect={onSelect}
-        >
-          <Toiletries />
-        </PackedItem>
-        <PackedItem
-          id="passport"
-          selected={selected === "passport"}
-          position={[-0.6, 0.15, -1.1]}
-          onSelect={onSelect}
-        >
-          <Passport />
-        </PackedItem>
-        <PackedItem
-          id="bottle"
-          selected={selected === "bottle"}
-          position={[0.83, 0.29, -0.95]}
-          onSelect={onSelect}
-        >
-          <Bottle />
-        </PackedItem>
-        <PackedItem
-          id="socks"
-          selected={selected === "socks"}
-          position={[-0.7, 0.68, 1.2]}
-          onSelect={onSelect}
-        >
-          <Socks />
-        </PackedItem>
-        <PackedItem
-          id="sunglasses"
-          selected={selected === "sunglasses"}
-          position={[0.9, 0.67, 1.0]}
-          onSelect={onSelect}
-        >
-          <Sunglasses />
-        </PackedItem>
-        <PackedItem
-          id="earbuds"
-          selected={selected === "earbuds"}
-          position={[-0.6, 0.33, -1.1]}
-          onSelect={onSelect}
-        >
-          <Earbuds />
-        </PackedItem>
-      </group>
+      <ClosedContext.Provider value={closed}>
+        <group rotation={[0, -0.15, 0]}>
+          <Suspense fallback={null}>
+            <Backpack closed={closed} />
+          </Suspense>
+          <Box
+            size={[2, 0.04, 3.1]}
+            position={[0, -0.4, 0]}
+            color="#a7a397"
+            radius={0.018}
+          />
+          <PackedItem
+            id="sweatshirt"
+            selected={selected === "sweatshirt"}
+            position={[-0.45, -0.326, 0.9]}
+            onSelect={onSelect}
+          >
+            <Sweatshirt />
+          </PackedItem>
+          <PackedItem
+            id="toiletries"
+            selected={selected === "toiletries"}
+            position={[0.54, -0.276, 0.9]}
+            onSelect={onSelect}
+          >
+            <Toiletries />
+          </PackedItem>
+          <PackedItem
+            id="passport"
+            selected={selected === "passport"}
+            position={[-0.54, -0.341, -1.05]}
+            onSelect={onSelect}
+          >
+            <Passport />
+          </PackedItem>
+          <PackedItem
+            id="bottle"
+            selected={selected === "bottle"}
+            position={[0.61, -0.23, -1.03]}
+            onSelect={onSelect}
+          >
+            <Bottle />
+          </PackedItem>
+          <PackedItem
+            id="socks"
+            selected={selected === "socks"}
+            position={[-0.71, -0.335, -0.15]}
+            onSelect={onSelect}
+          >
+            <Socks />
+          </PackedItem>
+          <PackedItem
+            id="sunglasses"
+            selected={selected === "sunglasses"}
+            position={[-0.04, -0.357, -0.15]}
+            onSelect={onSelect}
+          >
+            <Sunglasses />
+          </PackedItem>
+          <PackedItem
+            id="earbuds"
+            selected={selected === "earbuds"}
+            position={[0.68, -0.3215, -0.15]}
+            onSelect={onSelect}
+          >
+            <Earbuds />
+          </PackedItem>
+        </group>
+      </ClosedContext.Provider>
     </>
   );
 }
@@ -554,6 +514,7 @@ class SceneBoundary extends Component<
 export default function BackpackDiagram() {
   const [hovered, setHovered] = useState<ItemId | null>(null);
   const [pinned, setPinned] = useState<ItemId | null>(null);
+  const [closed, setClosed] = useState(false);
   const selected = hovered ?? pinned;
   return (
     <div className="backpack-diagram">
@@ -588,9 +549,15 @@ export default function BackpackDiagram() {
                       }
                       aria-label={item.label}
                       aria-pressed={pinned === item.id}
-                      onMouseEnter={() => setHovered(item.id)}
+                      onMouseEnter={() => {
+                        setHovered(item.id);
+                        setClosed(false);
+                      }}
                       onMouseLeave={() => setHovered(null)}
-                      onFocus={() => setHovered(item.id)}
+                      onFocus={() => {
+                        setHovered(item.id);
+                        setClosed(false);
+                      }}
                       onBlur={() => setHovered(null)}
                       onClick={() =>
                         setPinned((current) =>
@@ -621,17 +588,37 @@ export default function BackpackDiagram() {
               shadows
               orthographic
               camera={{ position: [6, 8, 9], zoom: 45, near: 0.1, far: 100 }}
-              gl={{ antialias: true, alpha: true }}
+              gl={{ antialias: true, alpha: true, localClippingEnabled: true }}
               fallback={
                 <div className="backpack-fallback">
                   Your essentials, ready to pack.
                 </div>
               }
             >
-              <Scene selected={selected} onSelect={setPinned} />
+              <Scene
+                selected={selected}
+                closed={closed}
+                onSelect={(id) => {
+                  setPinned(id);
+                  setClosed(false);
+                }}
+              />
             </Canvas>
           </SceneBoundary>
         </div>
+      </div>
+      <div className="backpack-action">
+        <button
+          type="button"
+          onClick={() => {
+            setHovered(null);
+            setPinned(null);
+            setClosed((value) => !value);
+          }}
+        >
+          {closed ? "Open backpack" : "Close backpack"}{" "}
+          <span aria-hidden="true">↗</span>
+        </button>
       </div>
     </div>
   );
