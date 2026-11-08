@@ -83,9 +83,6 @@ export default function Workspace({ userId, email }: { userId: string; email: st
   const [packingError, setPackingError] = useState("");
   const [packAttempt, setPackAttempt] = useState(0);
   const [layer, setLayer] = useState(100);
-  const [exploded, setExploded] = useState(false);
-  const [resetKey, setResetKey] = useState(0);
-  const [view, setView] = useState<"perspective" | "top">("perspective");
   const [playback, setPlayback] = useState({ revision: "", step: 0, playing: false });
   const [astraOpen, setAstraOpen] = useState(false);
   const [wantedId, setWantedId] = useState<string | null>(null);
@@ -126,7 +123,6 @@ export default function Workspace({ userId, email }: { userId: string; email: st
   function toggleClosed() {
     setTool(null);
     setTab("suitcase");
-    setExploded(false);
     setLayer(100);
     setPlayback({ revision, step: closed ? packedSteps : maxStep, playing: false });
   }
@@ -294,7 +290,6 @@ export default function Workspace({ userId, email }: { userId: string; email: st
     setPlan(null);
     setReservedSpace(null);
     setLayer(100);
-    setExploded(false);
     setPlayback({ revision: "", step: 0, playing: false });
     setAstraOpen(false);
     setWantedId(null);
@@ -542,19 +537,13 @@ export default function Workspace({ userId, email }: { userId: string; email: st
             selected={selected}
             active={active}
             layer={layer}
-            exploded={exploded}
-            resetKey={resetKey}
-            view={view}
             step={step}
             maxStep={maxStep}
             playing={effectivePlayback.playing}
             dispatch={dispatch}
             setLayer={setLayer}
             tool={tool}
-            setExploded={setExploded}
             setPlayback={setPlayback}
-            setView={setView}
-            bumpReset={() => setResetKey((k) => k + 1)}
             setSelected={setSelected}
             openEditor={openEditor}
             retryPacking={() => setPackAttempt((n) => n + 1)}
@@ -716,8 +705,7 @@ export default function Workspace({ userId, email }: { userId: string; email: st
           setAstraOpen(false);
           setWantedId(null);
           setLayer(100);
-          setExploded(false);
-          setNotice(
+                setNotice(
             priorityId
               ? "Your swap is applied. Finding a place for your choice."
               : "Astra's selection is applied. Fit is being checked against your latest list.",

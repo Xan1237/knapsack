@@ -1,8 +1,8 @@
-import { type Dispatch, type SetStateAction, useState } from "react";
+import { type Dispatch, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { afterSheet, Sheet } from "../components/Sheet";
 import SuitcaseView from "../components/SuitcaseView";
-import { Banner, Button, Group, Icon, type IconName, Section, Slider } from "../components/ui";
+import { Banner, Button, Group, Icon, Section, Slider } from "../components/ui";
 import { type Item, type Placement, type Plan, type Suitcase, type Vec3, formatSize, sizeOf } from "../domain";
 import type { Action, InventoryState } from "../state";
 import { colors, radius, shadow, type } from "../theme";
@@ -20,9 +20,6 @@ type Props = {
   selected: string | null;
   active: Item | null;
   layer: number;
-  exploded: boolean;
-  resetKey: number;
-  view: "perspective" | "top";
   step: number;
   maxStep: number;
   playing: boolean;
@@ -30,10 +27,7 @@ type Props = {
   setLayer: (n: number) => void;
   /** The open tool panel, controlled by the bottom bar. */
   tool: "steps" | "layers" | null;
-  setExploded: Dispatch<SetStateAction<boolean>>;
   setPlayback: (p: Playback) => void;
-  setView: (v: "perspective" | "top") => void;
-  bumpReset: () => void;
   setSelected: (id: string | null) => void;
   openEditor: (id: string) => void;
   retryPacking: () => void;
@@ -45,22 +39,6 @@ type Props = {
 
 // The gesture hint only needs to be seen once per launch, not on every return to this tab.
 let hintDismissed = false;
-
-function SceneChip({ label, icon, active, onPress }: { label?: string; icon?: IconName; active?: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label ?? "Reset view"}
-      accessibilityState={{ selected: !!active }}
-      onPress={onPress}
-      hitSlop={6}
-      style={({ pressed }) => [styles.chip, !label && styles.chipSquare, active && styles.chipActive, pressed && { opacity: 0.7 }]}
-    >
-      {icon && <Icon name={icon} size={18} color={active ? colors.white : colors.ink} />}
-      {label && <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>}
-    </Pressable>
-  );
-}
 
 export default function SuitcaseTab(p: Props) {
   const { state, bag, plan, current, busy, revision, step, maxStep, playing, dispatch } = p;
@@ -129,41 +107,16 @@ export default function SuitcaseTab(p: Props) {
           selected={p.selected}
           layer={p.layer}
           step={step}
-          exploded={p.exploded}
-          view={p.view}
-          resetKey={p.resetKey}
+          exploded={false}
+          view="perspective"
+          resetKey={0}
           reservedSpace={p.reservedSpace}
-          canDrag={!!current && !playing && !p.exploded && step <= packedSteps}
+          canDrag={!!current && !playing && step <= packedSteps}
           onSelect={p.setSelected}
           onDrop={p.dropItem}
         />
 
         <View style={styles.sceneTop} pointerEvents="box-none">
-          <View style={styles.sceneControls} pointerEvents="box-none">
-            <SceneChip
-              label="Top view"
-              active={p.view === "top"}
-              onPress={() => {
-                p.setView(p.view === "top" ? "perspective" : "top");
-                p.bumpReset();
-              }}
-            />
-            <SceneChip
-              label="Explode"
-              active={p.exploded}
-              onPress={() => {
-                p.setExploded((v) => !v);
-                showAll();
-              }}
-            />
-            <SceneChip
-              icon="refresh"
-              onPress={() => {
-                p.setView("perspective");
-                p.bumpReset();
-              }}
-            />
-          </View>
           {overflowCount + aside.length > 0 && (
             <Text style={styles.overflowTag} pointerEvents="none">
               Beside the suitcase: {noun(overflowCount + aside.length)}
@@ -225,7 +178,6 @@ export default function SuitcaseTab(p: Props) {
                 disabled={!stepsReady}
                 onPress={() => {
                   p.setLayer(100);
-                  p.setExploded(false);
                   p.setPlayback({ revision, step: playing ? step : 0, playing: !playing });
                 }}
                 style={[styles.play, !stepsReady && { opacity: 0.4 }]}
@@ -433,20 +385,6 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   canvas: { flex: 1, backgroundColor: colors.canvas, overflow: "hidden" },
   sceneTop: { position: "absolute", top: 10, left: 12, right: 12, gap: 8 },
-  sceneControls: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
-  chip: {
-    height: 36,
-    paddingHorizontal: 12,
-    borderRadius: radius.pill,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.white,
-    ...shadow,
-  },
-  chipSquare: { width: 36, paddingHorizontal: 0 },
-  chipActive: { backgroundColor: colors.green },
-  chipText: { color: colors.ink, fontSize: 13, fontWeight: "600" },
-  chipTextActive: { color: colors.white },
   overflowTag: { alignSelf: "flex-start", color: colors.warn, fontSize: 13, fontWeight: "600" },
   emptyCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12 },
   floating: { position: "absolute", left: 12, right: 12, bottom: panelOverlap + 10, gap: 8 },
