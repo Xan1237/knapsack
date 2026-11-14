@@ -46,6 +46,17 @@ Besides the three built-in suitcases, you can add up to 8 bags of your own: tap 
 
 A suitcase that opens flat packs like the built-in ones, in a base and a lid. Every other bag packs into one open compartment. The bags are saved with the trip and stay when you clear it, load the demo or import a collection; the pencil beside a bag edits or deletes it. Bag photos are only uploaded for the reconstruction and aren't kept.
 
+### Packing physics
+
+Belongings behave like what they are. Each category has a density and a softness (`SOFTNESS` in `backend/app/domain.py`, mirrored by `softness` in `frontend/src/domain.ts`): folded clothes can squash up to 40% of their height, pouches 25%, shoes 10% and headphones 5%; books, bottles, cameras and other things don't give.
+
+- **Squeeze to fit.** The packer tries every item at its natural size first. A soft item that doesn't fit is pressed flatter, halfway and then fully; if things are still left out, it tries again with every soft item squeezed evenly. Each placement records its `squish`, and the validator independently checks it never passes the item's limit. Packing details list what was squeezed and an estimated total weight.
+- **Heavy things low.** One of the packer's orders places the heaviest items (density x volume) first.
+- **Gravity drops.** Drag a belonging and it lifts above the bag, with a ghost showing where it will land: on top of whatever is beneath it, or down a gap to the floor. Let go and it falls there. Drops on the floor are reserved before everything else, as before; drops onto other belongings settle by gravity after they're packed, squeezing a soft item under the lid if needed.
+- **Landing.** Items fall in packing order with real acceleration and land with squash and stretch: soft things flatten and settle slowly, rigid ones barely give, springy ones hop. Soft things beneath a landing give under the load. All of it is a few springs per item, so it's cheap on a phone, and it switches off with Reduce Motion.
+
+Every belonging is drawn as a detailed model of its category (`frontend/src/scene/items.ts`): folded shirts with a collar, denim, knits, sneakers, bottles with a cap or pump, pouches, cameras, headphones and hardbacks, in textured materials. Each fills exactly the space it is packed in, and Astra's generated meshes are stretched to fill theirs, so what you see is what collides.
+
 ### Backend tests
 
 ```powershell
@@ -53,7 +64,7 @@ cd mobile\backend
 .venv\Scripts\python -m unittest discover tests   # macOS/Linux: .venv/bin/python -m unittest discover tests
 ```
 
-The tests fake sign-in and OpenAI, so they need no keys or network.
+The tests fake sign-in and OpenAI, so they need no keys or network. `tests/test_physics.py` covers squeezing, its limits in the validator, weight and gravity drops.
 
 ### If the phone can't connect
 

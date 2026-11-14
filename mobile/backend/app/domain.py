@@ -230,6 +230,42 @@ def create_item_fields(category: str, item_id: str) -> dict:
     }
 
 
+# How each kind of belonging behaves when packed: density in kg per litre of its envelope, and
+# how far its height can be squeezed. Folded clothes squash a lot; books and bottles don't.
+# Mirrors the app's `softness` table.
+SOFTNESS: dict[str, tuple[float, float]] = {
+    "clothing": (0.25, 0.4),
+    "pouch": (0.45, 0.25),
+    "shoes": (0.35, 0.1),
+    "headphones": (0.3, 0.05),
+    "bottle": (1.0, 0.0),
+    "camera": (0.8, 0.0),
+    "book": (0.75, 0.0),
+    "other": (0.5, 0.0),
+}
+
+
+def max_squish(item: Item) -> float:
+    """How much more the packer may squeeze an item's height, after any compression the traveler set."""
+    limit = SOFTNESS[item.category][1]
+    if limit <= 0:
+        return 0.0
+    # Clothing compression already shrinks size_of; together they never pass the item's limit.
+    already = (item.compression or 0) if item.category == "clothing" else 0
+    return max(0.0, 1 - (1 - limit) / (1 - already))
+
+
+def weight_of(item: Item) -> float:
+    """Estimated kilograms, from the envelope's volume and the category's density."""
+    d = size_of(item)
+    return SOFTNESS[item.category][0] * d[0] * d[1] * d[2] / 1e6
+
+
+def squeezed(size: tuple[float, float, float], squish: float) -> tuple[float, float, float]:
+    """An item's own size with its height squeezed by `squish`, rounded like size_of."""
+    return (size[0], size[1], math.floor(size[2] * (1 - squish) * 100 + 0.5) / 100)
+
+
 def size_of(item: Item) -> tuple[float, float, float]:
     compression = (item.compression or 0) if item.category == "clothing" else 0
     return tuple(  # type: ignore[return-value]
@@ -247,6 +283,8 @@ class Placement:
     orientation: int
     order: int
     compartment: str | None = None
+    # How much of its height a soft item gave up to fit here (0 = its natural size).
+    squish: float = 0.0
 
     def to_json(self) -> dict:
         data = {
@@ -258,6 +296,8 @@ class Placement:
         }
         if self.compartment:
             data["compartment"] = self.compartment
+        if self.squish:
+            data["squish"] = self.squish
         return data
 
 

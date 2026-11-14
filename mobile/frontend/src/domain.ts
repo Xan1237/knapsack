@@ -171,6 +171,8 @@ export type Placement = {
   orientation: number;
   order: number;
   compartment?: "base" | "lid";
+  /** How much of its height a soft item gave up to fit (0 or absent: natural size). */
+  squish?: number;
 };
 export type Plan = {
   revision: string;
@@ -299,6 +301,32 @@ export function demoItems(): Item[] {
     color,
   }));
 }
+/**
+ * How each kind of belonging behaves: density (kg per litre of its envelope), how far its
+ * height can squeeze when packed, and how springy it is when it lands (0 dead, 1 bouncy).
+ * Squeeze limits mirror the server's SOFTNESS table, which decides real fits.
+ */
+export const softness: Record<Category, { density: number; squish: number; bounce: number }> = {
+  clothing: { density: 0.25, squish: 0.4, bounce: 0.05 },
+  pouch: { density: 0.45, squish: 0.25, bounce: 0.15 },
+  shoes: { density: 0.35, squish: 0.1, bounce: 0.3 },
+  headphones: { density: 0.3, squish: 0.05, bounce: 0.35 },
+  bottle: { density: 1, squish: 0, bounce: 0.25 },
+  camera: { density: 0.8, squish: 0, bounce: 0.2 },
+  book: { density: 0.75, squish: 0, bounce: 0.1 },
+  other: { density: 0.5, squish: 0, bounce: 0.2 },
+};
+/** Estimated kilograms. */
+export function weightOf(item: Item) {
+  const d = sizeOf(item);
+  return (softness[item.category].density * d[0] * d[1] * d[2]) / 1e6;
+}
+/** An item's size as packed: its own height shrinks by the placement's squeeze. */
+export function packedSize(item: Item, squish = 0): Vec3 {
+  const d = sizeOf(item);
+  return squish ? [d[0], d[1], Math.floor(d[2] * (1 - squish) * 100 + 0.5) / 100] : d;
+}
+
 export function sizeOf(item: Item): Vec3 {
   const compression = item.category === "clothing" ? (item.compression ?? 0) : 0;
   return item.estimate.map(
@@ -371,12 +399,40 @@ export function outsideCase(bag: Suitcase, point: Vec3): boolean {
   return Math.abs(point[0]) > halfWidth + margin || Math.abs(point[2]) > halfLength + margin;
 }
 
+/**
+ * Where a dropped item comes to rest at (x, y) under gravity: on top of whatever is beneath its
+ * footprint, or down a gap to the floor. Mirrors the server's drop settling. `fits` is false
+ * when it would stick out past the lid at its natural size.
+ */
+export function restingHeight(
+  x: number,
+  y: number,
+  dims: Vec3,
+  others: Placement[],
+  bag: Suitcase,
+  cavityHeight: number,
+): { z: number; fits: boolean } {
+  const gap = bag.clearance;
+  let z = gap;
+  for (const p of others) {
+    const overlaps =
+      p.position[0] < x + dims[0] + gap &&
+      x < p.position[0] + p.dimensions[0] + gap &&
+      p.position[1] < y + dims[1] + gap &&
+      y < p.position[1] + p.dimensions[1] + gap;
+    if (overlaps) z = Math.max(z, p.position[2] + p.dimensions[2] + gap);
+  }
+  return { z, fits: z + dims[2] <= cavityHeight - gap + 1e-6 };
+}
+
 /** A touch drop in the open case's Three coordinates, before scene translation. */
 export function anchorAtPoint(
   item: Item,
   bag: Suitcase,
   point: Vec3,
   orientation: number,
+  /** Everything else packed now: the drop rests on it. Without it the drop goes to the floor. */
+  placed: Placement[] = [],
 ): ItemAnchor | null {
   if (
     !point.every(Number.isFinite) ||
@@ -393,6 +449,7 @@ export function anchorAtPoint(
   ];
   if (dimensions.some((n, k) => n + bag.clearance * 2 > cavity[k])) return null;
   const compartment = bag.clamshell ? (point[0] < 0 ? "lid" : "base") : undefined;
+  const others = placed.filter((p) => p.id !== item.id && p.compartment === compartment);
   const centerX = bag.clamshell
     ? ((compartment === "base" ? 1 : -1) * bag.dimensions[0]) / 200
     : 0;
@@ -407,5 +464,10 @@ export function anchorAtPoint(
       Math.min(cavity[k] - bag.clearance - dimensions[k], Math.round(n * 100) / 100),
     ),
   ) as Vec3;
+  // Gravity: it falls onto what's beneath it. A soft item may still squeeze in on the server,
+  // so only a rigid one that can't clear the lid is refused here.
+  const rest = restingHeight(position[0], position[1], dimensions as Vec3, others, bag, cavity[2]);
+  if (!rest.fits && softness[item.category].squish === 0) return null;
+  position[2] = Math.round(rest.z * 100) / 100;
   return { position, orientation, ...(compartment ? { compartment } : {}) };
 }
