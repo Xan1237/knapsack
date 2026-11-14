@@ -47,7 +47,12 @@ def live_bag(**overrides):
         "assumptions": "The back panel was not visible.",
         "exterior": {"width": 320, "length": 480, "height": 200},
         "interior": {"width": 290, "length": 440, "height": 160},
-        "mesh": box_mesh(),
+        "shape": "daypack",
+        "material": "nylon",
+        "accent": "#c8553d",
+        "frontPocket": True,
+        "sidePockets": True,
+        "wheels": False,
     }
     fields.update(overrides)
     return astra._LiveBag.model_validate(fields)
@@ -64,7 +69,12 @@ class BagFromAnalysis(unittest.TestCase):
         self.assertEqual(bag["clearance"], 5)
         self.assertEqual(bag["photoCount"], 3)
         self.assertEqual(bag["meshModel"], "test-model")
-        self.assertEqual(len(bag["mesh"]["triangles"]), 12)
+        self.assertNotIn("mesh", bag)
+        self.assertEqual(
+            bag["style"],
+            {"shape": "daypack", "material": "nylon", "accent": "#c8553d",
+             "frontPocket": True, "sidePockets": True, "wheels": False},
+        )
         self.assertEqual(result["assumptions"], "The back panel was not visible.")
 
     def test_interior_never_exceeds_exterior(self):
@@ -88,11 +98,23 @@ class BagFromAnalysis(unittest.TestCase):
                 live_bag(interior={"width": 60, "length": 200, "height": 100}), "m", 1
             )
 
-    def test_broken_mesh_is_rejected(self):
-        mesh = box_mesh()
-        mesh["triangles"][0] = {"a": 0, "b": 0, "c": 1, "material": 0}
+    def test_shape_follows_the_kind(self):
+        # A duffel read with a backpack's shape gets the duffel's usual barrel.
+        bag = astra.bag_from_analysis(live_bag(kind="duffel", shape="rolltop"), "m", 1)["bag"]
+        self.assertEqual(bag["style"]["shape"], "barrel")
+        case = astra.bag_from_analysis(live_bag(kind="suitcase", shape="soft"), "m", 1)["bag"]
+        self.assertEqual(case["style"]["shape"], "soft")
+
+    def test_unknown_material_is_rejected(self):
         with self.assertRaises(ValueError):
-            astra.bag_from_analysis(live_bag(mesh=mesh), "m", 1)
+            live_bag(material="velvet")
+
+    def test_older_bags_with_a_mesh_still_validate(self):
+        from app.domain import Suitcase
+        Suitcase.model_validate({
+            "id": "bag-old", "name": "Old", "subtitle": "", "dimensions": [300, 400, 150],
+            "clearance": 5, "mesh": box_mesh(), "kind": "backpack",
+        })
 
 
 class FakeResponses:
@@ -135,6 +157,7 @@ class AnalyzeBagRoute(unittest.TestCase):
         self.assertEqual(len(images), 3)
         self.assertTrue(all(i["image_url"].startswith("data:image/jpeg;base64,") for i in images))
         self.assertIn("these 3 photos of the same bag", content[0]["text"])
+        self.assertIn("how it looks", content[0]["text"])
 
     def test_one_photo_is_enough(self):
         self.assertEqual(self.post(1).status_code, 200)
@@ -253,9 +276,9 @@ class PackingIntoPhotographedBags(unittest.TestCase):
         self.assertEqual(len(plan["placements"]), 2)
         self.assertTrue(all("compartment" not in p for p in plan["placements"]))
 
-    def test_mesh_is_optional_for_packing(self):
+    def test_style_is_optional_for_packing(self):
         bag = self.bag()
-        bag.pop("mesh")
+        bag.pop("style")
         self.assertEqual(self.pack(bag, [self.item("a", [100, 100, 50])]).status_code, 200)
 
     def test_too_large_item_is_reported_unplaced(self):
@@ -286,7 +309,7 @@ class PackingIntoPhotographedBags(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         bag = response.json()["bag"]
         self.assertEqual(bag["kind"], "backpack")
-        self.assertIn("mesh", bag)
+        self.assertEqual(bag["style"]["shape"], "daypack")
 
     def test_validated_as_packing_input(self):
         PackingInput.model_validate({"items": [], "bag": self.bag()})
