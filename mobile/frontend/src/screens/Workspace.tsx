@@ -17,6 +17,8 @@ import {
   type Vec3,
   anchorAtPoint,
   outsideCase,
+  permutations,
+  sizeOf,
   formatSize,
   customBagPrefix,
   maxCustomBags,
@@ -464,7 +466,9 @@ export default function Workspace({
   }
 
   function dropItem(item: Item, point: Vec3, orientation: number) {
-    if (outsideCase(bag, point)) {
+    const size = sizeOf(item);
+    const footprint = permutations[orientation].map((k) => size[k] / 100);
+    if (outsideCase(bag, point, [footprint[0] / 2, footprint[1] / 2])) {
       if (item.aside) return false;
       dispatch({ type: "aside", id: item.id, aside: true });
       setSelected(item.id);

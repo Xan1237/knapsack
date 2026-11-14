@@ -391,12 +391,17 @@ export function revisionOf(items: Item[], bag: Suitcase): string {
   ]);
 }
 
-/** Whether a drop point (open-case Three coordinates, 1 unit = 10 cm) lands clear of the case's footprint. */
-export function outsideCase(bag: Suitcase, point: Vec3): boolean {
+/**
+ * Whether a drop point (open-case Three coordinates, 1 unit = 10 cm) lands clear of the case's
+ * footprint. `half` is the dragged item's half size on the floor (x, z): it only counts as taken
+ * out once it is essentially clear of the walls, so pushing something hard against a side or
+ * into a corner packs it flush there instead of setting it aside.
+ */
+export function outsideCase(bag: Suitcase, point: Vec3, half: [number, number] = [0, 0]): boolean {
   const halfWidth = bag.dimensions[0] / (bag.clamshell ? 100 : 200);
   const halfLength = bag.dimensions[1] / 200;
   const margin = 0.3;
-  return Math.abs(point[0]) > halfWidth + margin || Math.abs(point[2]) > halfLength + margin;
+  return Math.abs(point[0]) > halfWidth + half[0] * 0.8 + margin || Math.abs(point[2]) > halfLength + half[1] * 0.8 + margin;
 }
 
 /**

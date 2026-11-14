@@ -487,7 +487,13 @@ export class SuitcaseEngine {
     const plane = new Plane(new Vector3(0, 1, 0), -lifted);
     const hit = this.ray(x, y).ray.intersectPlane(plane, new Vector3());
     if (!hit) return null;
-    const offset = new Vector3(center.x - hit.x, 0, center.z - hit.z);
+    // Measure the grab offset at the lifted height: where the item's center shows on screen,
+    // projected onto the same plane as the finger. Measuring it against the item down on the floor
+    // would add the camera's parallax and leave the item tens of centimetres from the finger.
+    const shown = center.clone().project(this.camera);
+    const centerHit = this.ray(((shown.x + 1) / 2) * this.viewSize.width, ((1 - shown.y) / 2) * this.viewSize.height)
+      .ray.intersectPlane(plane, new Vector3());
+    const offset = centerHit ? new Vector3(centerHit.x - hit.x, 0, centerHit.z - hit.z) : new Vector3();
     this.drag = { id, plane, offset, origin: entity.target.clone(), moved: false };
     return id;
   }
@@ -514,7 +520,7 @@ export class SuitcaseEngine {
     const local = this.frame.worldToLocal(entity.group.getWorldPosition(new Vector3()));
     const point = local.toArray() as Vec3;
     const orientation = Math.max(0, entity.orientation);
-    const anchor = outsideCase(bag, point)
+    const anchor = outsideCase(bag, point, [entity.extent.x / 2, entity.extent.z / 2])
       ? null
       : anchorAtPoint(entity.item, bag, point, orientation, plan?.placements ?? []);
     if (!anchor) {
@@ -656,9 +662,12 @@ export class SuitcaseEngine {
     if (!scale) return;
     // The inner group is in the item's own frame; flatten along the scene's up axis.
     const up = new Vector3(0, 1, 0).applyQuaternion(entity.group.quaternion.clone().invert());
-    const sx = 1 + s * 0.5 * (1 - Math.abs(up.x)) - s * Math.abs(up.x);
-    const sy = 1 + s * 0.5 * (1 - Math.abs(up.y)) - s * Math.abs(up.y);
-    const sz = 1 + s * 0.5 * (1 - Math.abs(up.z)) - s * Math.abs(up.z);
+    // Sideways bulge stays within the packing clearance (about 3 mm at a typical item's size),
+    // so something packed flush against a wall or into a corner never pushes through the lining.
+    const bulge = s > 0 ? Math.min(s * 0.5, 0.02) : s * 0.5;
+    const sx = 1 + bulge * (1 - Math.abs(up.x)) - s * Math.abs(up.x);
+    const sy = 1 + bulge * (1 - Math.abs(up.y)) - s * Math.abs(up.y);
+    const sz = 1 + bulge * (1 - Math.abs(up.z)) - s * Math.abs(up.z);
     entity.inner.scale.set(scale.x * sx, scale.y * sy, scale.z * sz);
     entity.inner.position.set(0, (-s * entity.extent.y) / 2, 0).applyQuaternion(entity.group.quaternion.clone().invert());
   }
