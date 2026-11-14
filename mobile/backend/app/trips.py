@@ -14,6 +14,7 @@ import httpx
 _url = os.environ.get("SUPABASE_URL", "").rstrip("/")
 _secret = os.environ.get("SUPABASE_SECRET_KEY", "")
 MAX_TRIP_BYTES = 4 * 1024 * 1024
+MAX_CUSTOM_BAGS = 8
 MAX_TRIPS = 20
 EMPTY_STATE = {"items": [], "photos": [], "bagId": "cabin", "dismissed": [], "demo": False}
 _client = httpx.Client(timeout=15)
@@ -118,8 +119,11 @@ def _clean(state: object) -> dict:
         raise TripError(400, "That trip could not be read.")
     if len(state["items"]) > 80 or len(state["photos"]) > 12:
         raise TripError(400, "That trip has more items or photos than the app allows.")
+    bags = state.get("customBags")
+    if bags is not None and (not isinstance(bags, list) or len(bags) > MAX_CUSTOM_BAGS):
+        raise TripError(400, "That trip has more of your own bags than the app allows.")
     photos = [{**p, "url": ""} if isinstance(p, dict) else p for p in state["photos"]]
-    allowed = ("items", "photos", "bagId", "dismissed", "demo", "customBag")
+    allowed = ("items", "photos", "bagId", "dismissed", "demo", "customBag", "customBags")
     clean = {k: state[k] for k in allowed if k in state}
     clean["photos"] = photos
     if len(json.dumps(clean)) > MAX_TRIP_BYTES:

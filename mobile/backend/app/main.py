@@ -27,7 +27,7 @@ from . import astra, auth, trips  # noqa: E402  (they read their settings after 
 
 MAX_PHOTO_BYTES = 6 * 1024 * 1024
 MAX_ACTIVE_ANALYSES = 2
-_active = 0
+_active = 0  # analyses running now, across photo and bag requests
 _active_lock = threading.Lock()
 # Native apps send no Origin header. Browsers do, so this keeps other sites from calling a
 # LAN-visible server and spending the API key. Allow a web preview with ALLOWED_ORIGINS.
@@ -82,7 +82,7 @@ async def on_invalid_request(request: Request, error: RequestValidationError):
     logging.getLogger("uvicorn.error").warning("invalid %s: %s", request.url.path, "; ".join(reasons))
     message = (
         "Choose a JPEG, PNG or WebP photo up to 6 MB."
-        if request.url.path == "/api/analyze"
+        if request.url.path in ("/api/analyze", "/api/analyze-bag")
         else "The packing inventory could not be read. Try importing it again."
     )
     return JSONResponse({"error": message}, 400)
@@ -206,49 +206,104 @@ def _matches_type(content_type: str, data: bytes) -> bool:
     return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
 
 
-@app.post("/api/analyze")
-def analyze_route(request: Request, photo: UploadFile = File(...)):
+def _read_photo(photo: UploadFile) -> str:
+    """One uploaded image as a data URL, after checking its type, size and contents."""
+    data = photo.file.read(MAX_PHOTO_BYTES + 1)
+    content_type = photo.content_type or ""
+    if (
+        content_type not in ("image/jpeg", "image/png", "image/webp")
+        or not data
+        or len(data) > MAX_PHOTO_BYTES
+    ):
+        raise ApiError(400, "Choose a JPEG, PNG or WebP photo up to 6 MB.")
+    if not _matches_type(content_type, data):
+        raise ApiError(400, "The photo contents do not match its image type.")
+    return f"data:{content_type};base64,{base64.b64encode(data).decode('ascii')}"
+
+
+def _reserve_analysis():
     global _active
-    if not astra.is_configured():
-        raise ApiError(
-            503,
-            "Photo analysis is not configured. Set OPENAI_API_KEY on the server. "
-            "You can still add items manually or load the demo.",
-        )
-    length = request.headers.get("content-length")
-    if length and length.isdigit() and int(length) > MAX_PHOTO_BYTES + 65536:
-        raise ApiError(413, "Choose a photo smaller than 6 MB.")
     with _active_lock:
         if _active >= MAX_ACTIVE_ANALYSES:
             raise ApiError(429, "Photo analysis is busy. Please retry shortly.")
         _active += 1
+
+
+def _release_analysis():
+    global _active
+    with _active_lock:
+        _active -= 1
+
+
+def _require_astra(fallback: str):
+    if not astra.is_configured():
+        raise ApiError(
+            503, f"Photo analysis is not configured. Set OPENAI_API_KEY on the server. {fallback}"
+        )
+
+
+def _check_length(request: Request, limit: int, message: str):
+    length = request.headers.get("content-length")
+    if length and length.isdigit() and int(length) > limit + 65536:
+        raise ApiError(413, message)
+
+
+def _is_timeout(error: Exception) -> bool:
+    message = str(error).lower()
+    return "timeout" in message or "timed out" in message
+
+
+@app.post("/api/analyze")
+def analyze_route(request: Request, photo: UploadFile = File(...)):
+    _require_astra("You can still add items manually or load the demo.")
+    _check_length(request, MAX_PHOTO_BYTES, "Choose a photo smaller than 6 MB.")
+    _reserve_analysis()
     try:
-        data = photo.file.read(MAX_PHOTO_BYTES + 1)
-        content_type = photo.content_type or ""
-        if (
-            content_type not in ("image/jpeg", "image/png", "image/webp")
-            or not data
-            or len(data) > MAX_PHOTO_BYTES
-        ):
-            raise ApiError(400, "Choose a JPEG, PNG or WebP photo up to 6 MB.")
-        if not _matches_type(content_type, data):
-            raise ApiError(400, "The photo contents do not match its image type.")
-        encoded = base64.b64encode(data).decode("ascii")
-        return astra.analyze_photo(f"data:{content_type};base64,{encoded}")
+        return astra.analyze_photo(_read_photo(photo))
     except ApiError:
         raise
     except Exception as error:
         # Do not log provider payloads, source photos or credentials.
-        message = str(error).lower()
         raise ApiError(
             502,
             "Astra took too long creating the 3D mesh. Retry with a photo of fewer items, or add items manually."
-            if "timeout" in message or "timed out" in message
+            if _is_timeout(error)
             else "Astra could not create a valid 3D mesh from this photo. Retry, or add items manually. Your existing inventory is safe.",
         )
     finally:
-        with _active_lock:
-            _active -= 1
+        _release_analysis()
+
+
+@app.post("/api/analyze-bag")
+def analyze_bag_route(request: Request, photos: list[UploadFile] = File(...)):
+    """Several angles of one bag become its packing space, outside size and 3D model."""
+    _require_astra("You can still enter your bag's size yourself.")
+    if not 1 <= len(photos) <= astra.MAX_BAG_PHOTOS:
+        raise ApiError(400, f"Add 1 to {astra.MAX_BAG_PHOTOS} photos of your bag.")
+    _check_length(
+        request,
+        MAX_PHOTO_BYTES * astra.MAX_BAG_PHOTOS,
+        "Those photos are too large together. Try fewer photos.",
+    )
+    _reserve_analysis()
+    try:
+        return astra.analyze_bag([_read_photo(p) for p in photos])
+    except ApiError:
+        raise
+    except astra.BagUnusable:
+        raise ApiError(
+            422,
+            "Astra couldn't find a bag with room to pack in these photos. Try a clearer photo of the whole bag, or enter its size yourself.",
+        )
+    except Exception as error:
+        raise ApiError(
+            502,
+            "Astra took too long building your bag. Retry with fewer photos, or enter its size yourself."
+            if _is_timeout(error)
+            else "Astra couldn't build a 3D model of this bag. Retry, or enter its size yourself.",
+        )
+    finally:
+        _release_analysis()
 
 
 class ExportRequest(PackingInput):

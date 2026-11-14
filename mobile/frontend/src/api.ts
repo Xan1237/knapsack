@@ -9,7 +9,7 @@ import type {
   Proposal,
   Suitcase,
 } from "./domain";
-import { packingItem, packingItems } from "./domain";
+import { packingBag, packingItem, packingItems } from "./domain";
 import type { InventoryState } from "./state";
 import { accessToken } from "./supabase";
 
@@ -80,7 +80,7 @@ export function packPlan(
 ) {
   return send<{ plan: Plan; reservedSpace: Placement | null }>(
     "/api/pack",
-    { items: packingItems(items), bag, revision, demo },
+    { items: packingItems(items), bag: packingBag(bag), revision, demo },
     { signal },
   );
 }
@@ -92,6 +92,18 @@ export function analyzePhoto(photo: Photo, signal: AbortSignal) {
   return send<{ items: Proposal[] }>("/api/analyze", form, { timeoutMs: 170000, signal });
 }
 
+/** 1-4 angles of one bag; the server answers with a bag to review (its id is set here). */
+export function analyzeBag(photoUris: string[], signal: AbortSignal) {
+  const form = new FormData();
+  photoUris.forEach((uri, index) =>
+    form.append("photos", { uri, name: `bag-${index + 1}.jpg`, type: "image/jpeg" } as unknown as Blob),
+  );
+  return send<{ bag: Suitcase; assumptions: string }>("/api/analyze-bag", form, {
+    timeoutMs: 200000,
+    signal,
+  });
+}
+
 export function packingChoices(
   items: Item[],
   bag: Suitcase,
@@ -101,7 +113,7 @@ export function packingChoices(
 ) {
   return send<{ revision: string; options: PackingChoice[] }>(
     "/api/packing/choices",
-    { items: packingItems(items), bag, wantedId, revision },
+    { items: packingItems(items), bag: packingBag(bag), wantedId, revision },
     { timeoutMs: 60000, signal },
   );
 }
@@ -115,7 +127,7 @@ export function askAstra(
 ) {
   return send<AstraAdvice>(
     "/api/astra/suggest",
-    { items: packingItems(items), bag, preference, revision },
+    { items: packingItems(items), bag: packingBag(bag), preference, revision },
     { timeoutMs: 90000, signal },
   );
 }

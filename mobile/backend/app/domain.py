@@ -127,7 +127,13 @@ class Item(Proposal):
     model_url: str | None = Field(default=None, max_length=2048, pattern=MODEL_URL)
 
 
+BagKind = Literal["suitcase", "backpack", "duffel", "tote", "other"]
+BAG_KINDS = ("suitcase", "backpack", "duffel", "tote", "other")
+
+
 class Suitcase(ApiModel):
+    """`dimensions` is the usable packing space; a photographed bag adds its outside and mesh."""
+
     id: str = Field(min_length=1, max_length=100)
     name: str = Field(min_length=1, max_length=100)
     subtitle: str = Field(max_length=150)
@@ -138,6 +144,12 @@ class Suitcase(ApiModel):
     model_url: str | None = Field(default=None, max_length=2048, pattern=MODEL_URL)
     model_dimensions: Dimensions | None = None
     model_offset: tuple[float, float, float] | None = None
+    kind: BagKind | None = None
+    appearance: str | None = Field(default=None, max_length=240)
+    exterior: Dimensions | None = None
+    mesh: Mesh | None = None
+    mesh_model: str | None = Field(default=None, min_length=1, max_length=100)
+    photo_count: int | None = Field(default=None, ge=0, le=6)
 
 
 class PackingInput(ApiModel):

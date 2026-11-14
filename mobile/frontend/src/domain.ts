@@ -69,6 +69,16 @@ export type Photo = {
   error?: string;
   accepted: boolean;
 };
+export const bagKinds = ["suitcase", "backpack", "duffel", "tote", "other"] as const;
+export type BagKind = (typeof bagKinds)[number];
+export const bagKindNames: Record<BagKind, string> = {
+  suitcase: "Suitcase",
+  backpack: "Backpack",
+  duffel: "Duffel",
+  tote: "Tote",
+  other: "Bag",
+};
+/** `dimensions` is always the usable packing space. Photographed bags add the rest. */
 export type Suitcase = {
   id: string;
   name: string;
@@ -80,7 +90,18 @@ export type Suitcase = {
   modelUrl?: string;
   modelDimensions?: Vec3;
   modelOffset?: Vec3;
+  kind?: BagKind;
+  appearance?: string;
+  /** Outside size, including wheels, handles and pockets. */
+  exterior?: Vec3;
+  mesh?: ItemMesh;
+  meshModel?: string;
+  /** How many photos Astra built it from; 0 for a bag measured by hand. */
+  photoCount?: number;
 };
+export const maxCustomBags = 8;
+/** Ids of bags the traveler made, so they never collide with built-in or imported ones. */
+export const customBagPrefix = "bag-";
 export type Placement = {
   id: string;
   position: Vec3;
@@ -239,6 +260,28 @@ export function packingItem<T extends Item>(item: T): T {
   if (!item.aside) return { ...item, mesh: undefined };
   return { ...item, mesh: undefined, included: false, required: false, aside: undefined };
 }
+/** Litres of packing space, for labels such as "Backpack · 24 L". */
+export function bagLitres(dimensions: Vec3) {
+  return Math.max(1, Math.round(dimensions.reduce((v, n) => v * n, 1) / 1e6));
+}
+export function bagSubtitle(kind: BagKind, dimensions: Vec3) {
+  return `${bagKindNames[kind]} · ${bagLitres(dimensions)} L`;
+}
+/** Packing needs only the space; the 3D model stays on the phone. */
+export function packingBag(bag: Suitcase): Suitcase {
+  return bag.mesh ? { ...bag, mesh: undefined } : bag;
+}
+/**
+ * Whether a bag has room to pack in after its clearance. A clamshell splits its depth into two
+ * halves, so each half has to clear it too. Mirrors the server's PackingInput check.
+ */
+export function bagUsable(bag: Pick<Suitcase, "dimensions" | "clearance" | "clamshell">) {
+  return (
+    bag.dimensions.every((n) => Number.isFinite(n) && n > bag.clearance * 2) &&
+    (!bag.clamshell || bag.dimensions[2] / 2 > bag.clearance * 2)
+  );
+}
+
 export function revisionOf(items: Item[], bag: Suitcase): string {
   return JSON.stringify([
     bag.id,

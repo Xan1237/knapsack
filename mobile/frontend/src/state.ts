@@ -8,6 +8,7 @@ import {
   type Vec3,
   createItem,
   demoItems,
+  maxCustomBags,
   sizeOf,
   suitcases,
 } from "./domain";
@@ -18,7 +19,10 @@ export type InventoryState = {
   bagId: string;
   dismissed: string[];
   demo: boolean;
+  /** An imported collection's bag. */
   customBag?: Suitcase;
+  /** Bags the traveler photographed or measured; they stay through clearing the trip. */
+  customBags?: Suitcase[];
 };
 export const initialState = (): InventoryState => ({
   items: demoItems(),
@@ -28,10 +32,19 @@ export const initialState = (): InventoryState => ({
   demo: true,
 });
 export function bagForState(state: InventoryState): Suitcase {
-  return state.customBag?.id === state.bagId
-    ? state.customBag
-    : suitcases.find((b) => b.id === state.bagId) || suitcases[0];
+  return allBags(state).find((b) => b.id === state.bagId) || suitcases[0];
 }
+/** Built-in bags, then an imported one, then the traveler's own. */
+export function allBags(state: InventoryState): Suitcase[] {
+  return [
+    ...suitcases,
+    ...(state.customBag ? [state.customBag] : []),
+    ...(state.customBags ?? []),
+  ];
+}
+const unplaced = (items: Item[]) => items.map((i) => ({ ...i, anchor: undefined, aside: undefined }));
+const keepBags = (state: InventoryState) =>
+  state.customBags?.length ? { customBags: state.customBags } : {};
 export type ItemPatch = Partial<
   Pick<Item, "label" | "scale" | "included" | "orientations" | "required" | "priority" | "compression">
 >;
@@ -40,6 +53,9 @@ export type Action =
   | { type: "reset" }
   | { type: "demo" }
   | { type: "bag"; id: string }
+  /** Add or replace one of the traveler's bags, and pack into it. */
+  | { type: "save-bag"; bag: Suitcase }
+  | { type: "delete-bag"; id: string }
   | { type: "move"; id: string; anchor: ItemAnchor }
   | { type: "auto-layout" }
   | { type: "aside"; id: string; aside: boolean }
@@ -60,15 +76,30 @@ export function reducer(state: InventoryState, action: Action): InventoryState {
     case "restore":
       return action.state;
     case "reset":
-      return { items: [], photos: [], bagId: "cabin", dismissed: [], demo: false };
+      return { items: [], photos: [], bagId: "cabin", dismissed: [], demo: false, ...keepBags(state) };
     case "demo":
-      return initialState();
+      return { ...initialState(), ...keepBags(state) };
     case "bag":
+      return { ...state, bagId: action.id, items: unplaced(state.items) };
+    case "save-bag": {
+      const bags = state.customBags ?? [];
+      const exists = bags.some((b) => b.id === action.bag.id);
+      if (!exists && bags.length >= maxCustomBags) return state;
       return {
         ...state,
-        bagId: action.id,
-        items: state.items.map((i) => ({ ...i, anchor: undefined, aside: undefined })),
+        customBags: exists
+          ? bags.map((b) => (b.id === action.bag.id ? action.bag : b))
+          : [...bags, action.bag],
+        bagId: action.bag.id,
+        // A new or resized bag invalidates hand placements, as switching bags does.
+        items: unplaced(state.items),
       };
+    }
+    case "delete-bag": {
+      const customBags = (state.customBags ?? []).filter((b) => b.id !== action.id);
+      if (state.bagId !== action.id) return { ...state, customBags };
+      return { ...state, customBags, bagId: "cabin", items: unplaced(state.items) };
+    }
     case "auto-layout":
       return { ...state, items: state.items.map((i) => ({ ...i, anchor: undefined, aside: undefined })) };
     case "aside":
