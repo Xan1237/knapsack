@@ -40,6 +40,21 @@ The backend verifies access tokens against the project's published signing keys 
 
 New accounts must confirm their email by default. For quick testing you can turn that off in the Supabase dashboard under Authentication > Sign In / Providers > Email. Supabase's built-in email sender is heavily rate-limited, so add your own SMTP before real use.
 
+### Your own bags
+
+Besides the three built-in suitcases, you can add up to 8 bags of your own: tap the bag name at the top of the Suitcase tab, then **Add your own bag**. Take or choose 1 to 4 photos of the same bag from different angles (front, side, and open to show the main compartment work best), and Astra combines them into one 3D model with an estimate of the bag's outside size and its usable packing space. You review the result before using it: rename it, pick its type, correct the packing space in centimetres, and, for a suitcase, choose whether it opens flat into two packable halves. **Enter the size myself** skips the photos, which also works without an OpenAI key.
+
+A suitcase that opens flat packs like the built-in ones, in a base and a lid. Every other bag packs into one open compartment. The bags are saved with the trip and stay when you clear it, load the demo or import a collection; the pencil beside a bag edits or deletes it. Bag photos are only uploaded for the reconstruction and aren't kept.
+
+### Backend tests
+
+```powershell
+cd mobile\backend
+.venv\Scripts\python -m unittest discover tests   # macOS/Linux: .venv/bin/python -m unittest discover tests
+```
+
+The tests fake sign-in and OpenAI, so they need no keys or network.
+
 ### If the phone can't connect
 
 The app looks for the backend on the same address Expo uses, at port 8000. The error message shows the address it tried.
@@ -56,14 +71,15 @@ The backend only answers signed-in users, but anyone can create an account and s
 | --- | --- |
 | `backend/app/packing.py`, `validate.py` | Packing search and its independent validator |
 | `backend/app/choices.py`, `demo.py` | Make-room swaps and the demo's reserved bottle space |
-| `backend/app/astra.py` | Photo-to-mesh and packing advice through OpenAI (`OPENAI_MODEL`, default `gpt-6-astra`) |
+| `backend/app/astra.py` | Photo-to-mesh for items and multi-angle bags, and packing advice, through OpenAI (`OPENAI_MODEL`, default `gpt-6-astra`) |
 | `backend/app/auth.py` | Supabase access-token check for every `/api` route |
 | `backend/app/trips.py` | Each user's saved trips, the only code that touches the database |
 | `backend/app/collection.py` | Collection import, including web-app exports and the older cm / Y-up format |
 | `frontend/src/supabase.ts`, `screens/Auth.tsx` | Supabase sign-in client and the sign-in screen |
 | `frontend/src/state.ts`, `domain.ts` | Inventory reducer and shared types |
 | `frontend/src/scene/` | 3D suitcase: Three.js on `expo-gl` (touch orbit, pinch, tap, drag) |
-| `frontend/src/screens/` | Sign-in, Suitcase and Items tabs, item editor, assistant, settings |
+| `frontend/src/screens/` | Sign-in, Suitcase and Items tabs, item editor, bag builder (`BagBuilder.tsx`), assistant, settings |
+| `backend/tests/` | API tests for photographed bags, run with `unittest` |
 | `frontend/src/components/` | Shared controls (`ui.tsx`), bottom sheets (`Sheet.tsx`), 3D views |
 
 The app sends its inventory, without mesh data, to `POST /api/pack` whenever it changes. Each plan echoes the app's revision so stale responses are dropped.

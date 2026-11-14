@@ -116,6 +116,7 @@ export async function loadSession(): Promise<{ state: InventoryState; meta: Sess
     dismissed: data.dismissed,
     demo: !!data.demo,
     customBag: data.customBag,
+    ...(Array.isArray(data.customBags) ? { customBags: data.customBags } : {}),
     photos: data.photos.map((p: InventoryState["photos"][number]) => ({
       ...p,
       url: localPhotoUri(p.url),
@@ -131,13 +132,7 @@ export async function loadSession(): Promise<{ state: InventoryState; meta: Sess
  * then keep it in the app's documents so the source photo survives cache cleanup.
  */
 export async function storePhoto(source: { uri: string; width: number; height: number }) {
-  const context = ImageManipulator.manipulate(source.uri);
-  if (Math.max(source.width, source.height) > maxPhotoEdge)
-    context.resize(
-      source.width >= source.height ? { width: maxPhotoEdge } : { height: maxPhotoEdge },
-    );
-  const image = await context.renderAsync();
-  const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.8 });
+  const saved = await preparePhoto(source);
   if (Platform.OS === "web") return saved.uri;
   const dir = photosDir();
   if (!dir.exists) dir.create({ intermediates: true });
@@ -148,6 +143,20 @@ export async function storePhoto(source: { uri: string; width: number; height: n
     throw new Error("That photo is larger than 6 MB.");
   }
   return target.uri;
+}
+
+/**
+ * A bounded JPEG copy in the cache, for photos that are only uploaded, such as a bag's
+ * angles: the bag keeps its 3D model and size, not the photos.
+ */
+export async function preparePhoto(source: { uri: string; width: number; height: number }) {
+  const context = ImageManipulator.manipulate(source.uri);
+  if (Math.max(source.width, source.height) > maxPhotoEdge)
+    context.resize(
+      source.width >= source.height ? { width: maxPhotoEdge } : { height: maxPhotoEdge },
+    );
+  const image = await context.renderAsync();
+  return image.saveAsync({ format: SaveFormat.JPEG, compress: 0.8 });
 }
 
 /** Every photo file on this phone, for every trip (signing out). */

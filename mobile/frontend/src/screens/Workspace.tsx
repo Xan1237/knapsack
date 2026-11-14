@@ -11,21 +11,24 @@ import { ActionRow, Group, Icon, IconButton, type IconName } from "../components
 import {
   type Item,
   type Photo,
+  type Suitcase,
   type Placement,
   type Plan,
   type Vec3,
   anchorAtPoint,
   outsideCase,
   formatSize,
+  customBagPrefix,
+  maxCustomBags,
   revisionOf,
-  suitcases,
   uid,
 } from "../domain";
-import { bagForState, initialState, type InventoryState, reducer } from "../state";
+import { allBags, bagForState, initialState, type InventoryState, reducer } from "../state";
 import * as storage from "../storage";
 import { supabase } from "../supabase";
 import { colors, radius, type } from "../theme";
 import Assistant from "./Assistant";
+import BagBuilder, { EditBagButton } from "./BagBuilder";
 import BelongingsTab from "./BelongingsTab";
 import ItemEditor from "./ItemEditor";
 import Settings from "./Settings";
@@ -103,6 +106,8 @@ export default function Workspace({
   const [fitOpen, setFitOpen] = useState(false);
   const [wantedId, setWantedId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<"bags" | "more" | "add" | null>(null);
+  // The bag builder: a new bag (null) or one of the traveler's bags to edit.
+  const [builder, setBuilder] = useState<{ bag: Suitcase | null; key: string } | null>(null);
   const inFlight = useRef(new Map<string, AbortController>());
   const generation = useRef(0);
   const latestRevision = useRef("");
@@ -424,7 +429,12 @@ export default function Workspace({
       });
       if (result.canceled) return;
       const imported = await api.importCollection(JSON.parse(await storage.readText(result.assets[0].uri)));
-      const next: InventoryState = { ...imported, customBag: imported.customBag ?? undefined };
+      // A collection replaces the trip, but the traveler's own bags stay available.
+      const next: InventoryState = {
+        ...imported,
+        customBag: imported.customBag ?? undefined,
+        ...(state.customBags?.length ? { customBags: state.customBags } : {}),
+      };
       stopRequests();
       dispatch({ type: "restore", state: next });
       setCanPersist(true);
@@ -517,7 +527,10 @@ export default function Workspace({
     setSheet(null);
     afterSheet(action);
   };
-  const bags = state.customBag ? [...suitcases, state.customBag] : suitcases;
+  const bags = allBags(state);
+  const ownBags = state.customBags?.length ?? 0;
+  const openBuilder = (edit: Suitcase | null) =>
+    fromMenu(() => setBuilder({ bag: edit, key: edit?.id ?? uid() }));
   const includedCount = state.items.filter((i) => i.included).length;
   const tripName = trips.find((t) => t.id === tripId)?.name ?? "";
   const storageProblem = storageStatus === "Not saving" || storageStatus === "Needs reset";
@@ -528,7 +541,7 @@ export default function Workspace({
         {tab === "suitcase" ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Suitcase: ${bag.name}, ${bag.subtitle}. Change suitcase`}
+            accessibilityLabel={`Bag: ${bag.name}, ${bag.subtitle}. Change bag`}
             onPress={() => setSheet("bags")}
             style={({ pressed }) => [styles.headerMain, pressed && { opacity: 0.6 }]}
           >
@@ -664,23 +677,62 @@ export default function Workspace({
           />
         )}
       </SafeAreaView>
-      <Sheet visible={sheet === "bags"} title="Choose a suitcase" onClose={() => setSheet(null)}>
+      <Sheet visible={sheet === "bags"} title="Choose a bag" onClose={() => setSheet(null)}>
         <Group>
-          {bags.map((b) => (
-            <ActionRow
-              key={b.id}
-              icon="briefcase-outline"
-              label={b.name}
-              hint={`${b.subtitle} · ${formatSize(b.dimensions)}`}
-              onPress={() => {
-                dispatch({ type: "bag", id: b.id });
-                setSheet(null);
-              }}
-              trailing={b.id === bag.id ? <Icon name="checkmark-circle" size={24} color={colors.green} /> : undefined}
-            />
-          ))}
+          {bags.map((b) => {
+            const own = b.id.startsWith(customBagPrefix);
+            return (
+              <ActionRow
+                key={b.id}
+                icon={b.kind === "backpack" ? "school-outline" : b.mesh ? "cube-outline" : "briefcase-outline"}
+                label={b.name}
+                hint={`${b.subtitle} · ${formatSize(b.dimensions)}`}
+                onPress={() => {
+                  if (b.id !== bag.id) dispatch({ type: "bag", id: b.id });
+                  setSheet(null);
+                }}
+                trailing={
+                  <View style={styles.bagTrailing}>
+                    {b.id === bag.id && <Icon name="checkmark-circle" size={24} color={colors.green} />}
+                    {own && <EditBagButton name={b.name} onPress={() => openBuilder(b)} />}
+                  </View>
+                }
+              />
+            );
+          })}
+        </Group>
+        <Group>
+          <ActionRow
+            icon="camera-outline"
+            label="Add your own bag"
+            hint={
+              ownBags >= maxCustomBags
+                ? `You can keep up to ${maxCustomBags} of your own bags. Delete one to add another.`
+                : "Photograph it from a few angles, or enter its size"
+            }
+            disabled={ownBags >= maxCustomBags}
+            onPress={() => openBuilder(null)}
+          />
         </Group>
       </Sheet>
+      {builder && (
+        <BagBuilder
+          key={builder.key}
+          visible
+          bag={builder.bag}
+          onClose={() => setBuilder(null)}
+          onSave={(saved) => {
+            dispatch({ type: "save-bag", bag: saved });
+            setBuilder(null);
+            setTab("suitcase");
+            setNotice(`Packing into ${saved.name}.`);
+          }}
+          onDelete={(id) => {
+            dispatch({ type: "delete-bag", id });
+            setBuilder(null);
+          }}
+        />
+      )}
       <Sheet visible={sheet === "more"} onClose={() => setSheet(null)}>
         <Group>
           <ActionRow
@@ -786,6 +838,7 @@ const styles = StyleSheet.create({
   },
   headerMain: { flex: 1 },
   bagTitle: { flexDirection: "row", alignItems: "center", gap: 4 },
+  bagTrailing: { flexDirection: "row", alignItems: "center", gap: 2 },
   storageProblem: { color: colors.warn, fontSize: 13, fontWeight: "600" },
   storageNote: { ...type.secondary, textAlign: "center" },
   notice: {
