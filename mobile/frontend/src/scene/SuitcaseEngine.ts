@@ -24,11 +24,26 @@ import {
   Vector3,
   WebGLRenderer,
 } from "three";
-import { type Item, type Placement, type Plan, type Suitcase, type Vec3, permutations, sizeOf } from "../domain";
+import {
+  type Item,
+  type Placement,
+  type Plan,
+  type Suitcase,
+  type Vec3,
+  anchorAtPoint,
+  outsideCase,
+  packedSize,
+  permutations,
+  sizeOf,
+  softness,
+  weightOf,
+} from "../domain";
 import { styledBag, styledClamshell } from "./bags";
 import { ModelKit, clamshellCase, clamshellPose, itemModel, openBag, selectionBox } from "./models";
 
 const unit = 100;
+/** Gravity in scene units (10 cm) per second squared: a little slower than life, so drops read. */
+const gravity = 38;
 
 export type SceneProps = {
   items: Item[];
@@ -132,7 +147,32 @@ type Entity = {
   modelKey: string;
   item: Item;
   orientation: number;
+  parent: Object3D;
+  /** Size in scene units along the scene's x, y (up) and z, as placed. */
+  extent: Vector3;
+  /** Vertical speed while falling (units per second, negative is down). */
+  fall: number;
+  /** Squash and stretch: >0 flattened, <0 stretched; a damped spring back to 0. */
+  squash: number;
+  squashSpeed: number;
+  /** Seconds to hold before dropping, so belongings land one after another in packing order. */
+  delay: number;
 };
+
+/** How an item answers a landing: how much it flattens, how stiff the spring back is, and its bounce. */
+function feel(item: Item) {
+  const s = softness[item.category];
+  // Heavier things land harder; the softest give the most and settle slowest.
+  const mass = Math.min(3, 0.4 + weightOf(item));
+  return {
+    give: 0.012 + s.squish * 0.06,
+    maxSquash: 0.06 + s.squish * 0.6,
+    stiffness: 260 - s.squish * 420,
+    damping: 2 * Math.sqrt(260 - s.squish * 420) * (0.55 - s.bounce * 0.4),
+    bounce: s.bounce,
+    mass,
+  };
+}
 
 export class SuitcaseEngine {
   private renderer: WebGLRenderer;
@@ -160,6 +200,7 @@ export class SuitcaseEngine {
   private dirty = 3;
   private raycaster = new Raycaster();
   private drag: { id: string; plane: Plane; offset: Vector3; origin: Vector3; moved: boolean } | null = null;
+  private landing: Group | null = null;
 
   constructor(
     private gl: ExpoWebGLRenderingContext,
@@ -193,7 +234,7 @@ export class SuitcaseEngine {
     const w = bag.dimensions[0] / unit,
       l = bag.dimensions[1] / unit;
     const depth = bag.dimensions[2] / (bag.clamshell ? 2 : 1);
-    const wanted = new Map<string, { item: Item; parent: Object3D; position: Vec3; orientation: number }>();
+    const wanted = new Map<string, { item: Item; parent: Object3D; position: Vec3; orientation: number; squish: number; order: number }>();
     for (const p of plan?.placements ?? []) {
       const item = items.find((i) => i.id === p.id);
       if (
@@ -202,12 +243,14 @@ export class SuitcaseEngine {
         p.position[2] > bag.clearance + ((depth - bag.clearance) * layer) / 100 + 0.001
       )
         continue;
-      const size = sizeOf(item);
+      const size = packedSize(item, p.squish);
       const dims = permutations[p.orientation].map((k) => size[k]);
       wanted.set(p.id, {
         item,
         parent: p.compartment === "lid" ? parents.lid : parents.base,
         orientation: p.orientation,
+        squish: p.squish ?? 0,
+        order: p.order,
         position: [
           (p.position[0] + dims[0] / 2) / unit - w / 2,
           (p.position[2] + dims[2] / 2) / unit + (exploded ? p.position[2] / 80 : 0),
@@ -225,7 +268,7 @@ export class SuitcaseEngine {
     );
     for (const u of overflow) {
       const item = items.find((i) => i.id === u.id);
-      if (item) wanted.set(u.id, { item, parent: this.frame, position: u.position, orientation: 0 });
+      if (item) wanted.set(u.id, { item, parent: this.frame, position: u.position, orientation: 0, squish: 0, order: 0 });
     }
     for (const [id, entity] of this.entities)
       if (!wanted.has(id)) {
@@ -267,7 +310,7 @@ export class SuitcaseEngine {
 
   private syncEntity(
     id: string,
-    next: { item: Item; parent: Object3D; position: Vec3; orientation: number },
+    next: { item: Item; parent: Object3D; position: Vec3; orientation: number; squish: number; order: number },
     props: SceneProps,
   ) {
     const { item } = next;
@@ -286,21 +329,42 @@ export class SuitcaseEngine {
       const selection = selectionBox(this.kit, item);
       inner.add(selection);
       group.add(inner);
-      // New belongings settle into place from above.
-      group.position.set(next.position[0], next.position[1] + (props.reduceMotion ? 0 : 2), next.position[2]);
+      // New belongings drop in from above and land under gravity.
+      group.position.set(next.position[0], next.position[1] + (props.reduceMotion ? 0 : 2.4), next.position[2]);
       next.parent.add(group);
-      entity = { group, inner, selection, target: new Vector3(...next.position), modelKey, item, orientation: -1 };
+      entity = {
+        group,
+        inner,
+        selection,
+        target: new Vector3(...next.position),
+        modelKey,
+        item,
+        orientation: -1,
+        parent: next.parent,
+        extent: new Vector3(),
+        fall: 0,
+        squash: 0,
+        squashSpeed: 0,
+        delay: props.reduceMotion ? 0 : Math.min(1.6, Math.max(0, next.order - 1) * 0.09),
+      };
+      // Waiting its turn to drop: out of sight rather than hovering over the bag.
+      group.visible = entity.delay <= 0;
       this.entities.set(id, entity);
     } else if (entity.group.parent !== next.parent) next.parent.attach(entity.group);
+    entity.parent = next.parent;
     entity.item = item;
     if (this.drag?.id !== id) entity.target.set(...next.position);
     if (entity.orientation !== next.orientation) {
       entity.orientation = next.orientation;
       entity.group.quaternion.copy(itemQuaternion(next.orientation));
     }
-    const d = sizeOf(item);
-    entity.inner.scale.set(d[0] / unit, d[2] / unit, d[1] / unit);
+    const d = packedSize(item, next.squish);
+    entity.inner.userData.baseScale = new Vector3(d[0] / unit, d[2] / unit, d[1] / unit);
+    // Its footprint and height in the scene, for landings on what's beneath.
+    const dims = permutations[Math.max(0, entity.orientation)].map((k) => d[k] / unit);
+    entity.extent.set(dims[0], dims[2], dims[1]);
     entity.selection.visible = props.selected === id;
+    this.applySquash(entity);
   }
 
   private syncReserved(props: SceneProps) {
@@ -416,10 +480,15 @@ export class SuitcaseEngine {
     const entity = id ? this.entities.get(id) : undefined;
     if (!id || !entity) return null;
     const center = entity.group.getWorldPosition(new Vector3());
-    const plane = new Plane(new Vector3(0, 1, 0), -center.y);
+    // Lift it clear of the bag while dragging, so it falls into place when let go.
+    const bag = this.props?.bag;
+    const rim = bag ? bag.dimensions[2] / unit / (bag.clamshell ? 2 : 1) : 0;
+    const lifted = Math.max(center.y, rim + entity.extent.y / 2 + 0.35);
+    const plane = new Plane(new Vector3(0, 1, 0), -lifted);
     const hit = this.ray(x, y).ray.intersectPlane(plane, new Vector3());
     if (!hit) return null;
-    this.drag = { id, plane, offset: center.clone().sub(hit), origin: entity.target.clone(), moved: false };
+    const offset = new Vector3(center.x - hit.x, 0, center.z - hit.z);
+    this.drag = { id, plane, offset, origin: entity.target.clone(), moved: false };
     return id;
   }
 
@@ -432,7 +501,62 @@ export class SuitcaseEngine {
     drag.moved = true;
     entity.target.copy(entity.group.parent.worldToLocal(hit.add(drag.offset)));
     entity.group.position.copy(entity.target);
+    entity.fall = 0;
+    this.showLanding(entity);
     this.dirty = Math.max(this.dirty, 2);
+  }
+
+  /** A ghost where the dragged item will come to rest if let go here: on top of things, or down a gap. */
+  private showLanding(entity: Entity) {
+    const props = this.props;
+    if (!props) return;
+    const { bag, plan } = props;
+    const local = this.frame.worldToLocal(entity.group.getWorldPosition(new Vector3()));
+    const point = local.toArray() as Vec3;
+    const orientation = Math.max(0, entity.orientation);
+    const anchor = outsideCase(bag, point)
+      ? null
+      : anchorAtPoint(entity.item, bag, point, orientation, plan?.placements ?? []);
+    if (!anchor) {
+      this.landing?.removeFromParent();
+      return;
+    }
+    const size = sizeOf(entity.item);
+    const dims = permutations[orientation].map((k) => size[k]);
+    const parent = anchor.compartment === "lid" && this.clamshell ? this.clamshell.lid : this.clamshell ? this.clamshell.base : this.frame;
+    const landing = (this.landing ??= this.makeLanding());
+    landing.scale.set(dims[0] / unit, dims[2] / unit, dims[1] / unit);
+    landing.position.set(
+      (anchor.position[0] + dims[0] / 2) / unit - bag.dimensions[0] / unit / 2,
+      (anchor.position[2] + dims[2] / 2) / unit,
+      (anchor.position[1] + dims[1] / 2) / unit - bag.dimensions[1] / unit / 2,
+    );
+    if (landing.parent !== parent) parent.add(landing);
+  }
+
+  private makeLanding() {
+    const group = new Group();
+    const box = new BoxGeometry(1, 1, 1);
+    group.add(new Mesh(box, new MeshBasicMaterial({ color: "#3f5b3f", transparent: true, opacity: 0.16, depthWrite: false })));
+    group.add(new LineSegments(new EdgesGeometry(box), new LineBasicMaterial({ color: "#3f5b3f" })));
+    group.traverse((o) => (o.raycast = () => {}));
+    return group;
+  }
+
+  /** Something landed on whatever is directly beneath it: soft things give under the load. */
+  private loadBelow(entity: Entity, impact: number) {
+    const f = feel(entity.item);
+    const bottom = entity.target.y - entity.extent.y / 2;
+    for (const other of this.entities.values()) {
+      if (other === entity || other.parent !== entity.parent) continue;
+      const top = other.target.y + other.extent.y / 2;
+      if (Math.abs(top - bottom) > 0.12) continue;
+      const overlapX = Math.abs(other.target.x - entity.target.x) < (other.extent.x + entity.extent.x) / 2;
+      const overlapZ = Math.abs(other.target.z - entity.target.z) < (other.extent.z + entity.extent.z) / 2;
+      if (!overlapX || !overlapZ) continue;
+      const g = feel(other.item);
+      other.squashSpeed += impact * g.give * f.mass * 1.4;
+    }
   }
 
   endDrag(cancel = false) {
@@ -446,6 +570,10 @@ export class SuitcaseEngine {
       accepted = this.onDrop(entity.item, local.toArray() as Vec3, Math.max(0, entity.orientation));
     }
     if (!accepted) entity.target.copy(drag.origin);
+    // Accepted: fall toward where it will land now, before the new plan arrives to confirm it.
+    else if (this.landing?.parent && this.landing.parent === entity.group.parent)
+      entity.target.copy(this.landing.position);
+    this.landing?.removeFromParent();
     this.dirty = Math.max(this.dirty, 2);
   }
 
@@ -454,14 +582,53 @@ export class SuitcaseEngine {
     const props = this.props;
     if (!props) return;
     let moving = false;
+    const dt = Math.min(delta, 1 / 30);
     for (const entity of this.entities.values()) {
       if (this.drag?.id === entity.group.userData.itemId) continue;
       const position = entity.group.position;
-      if (position.distanceToSquared(entity.target) > 1e-6) {
-        if (props.reduceMotion) position.copy(entity.target);
-        else position.lerp(entity.target, 1 - Math.exp(-delta * 10));
+      if (props.reduceMotion) {
+        if (position.distanceToSquared(entity.target) > 1e-6) moving = true;
+        position.copy(entity.target);
+        entity.squash = entity.squashSpeed = entity.fall = 0;
+        this.applySquash(entity);
+        continue;
+      }
+      if (entity.delay > 0) {
+        entity.delay -= dt;
+        entity.group.visible = entity.delay <= 0;
+        moving = true;
+        continue;
+      }
+      const f = feel(entity.item);
+      // Sideways moves glide; anything above its resting place falls under gravity.
+      const ease = 1 - Math.exp(-dt * 10);
+      position.x += (entity.target.x - position.x) * ease;
+      position.z += (entity.target.z - position.z) * ease;
+      if (position.y > entity.target.y + 1e-4 || entity.fall > 0) {
+        entity.fall -= gravity * dt;
+        position.y += entity.fall * dt;
+        if (position.y <= entity.target.y) {
+          const impact = -entity.fall;
+          position.y = entity.target.y;
+          entity.squashSpeed += impact * f.give * 10;
+          // Springy things hop back up a little; soft ones just flatten and settle.
+          entity.fall = impact > 1.5 ? impact * f.bounce * 0.6 : 0;
+          if (impact > 1.5) this.loadBelow(entity, impact);
+        }
+        moving = true;
+      } else if (position.y < entity.target.y - 1e-4) {
+        position.y += (entity.target.y - position.y) * ease;
+        entity.fall = 0;
         moving = true;
       }
+      // The squash spring.
+      if (Math.abs(entity.squash) > 1e-4 || Math.abs(entity.squashSpeed) > 1e-3) {
+        entity.squashSpeed += (-f.stiffness * entity.squash - f.damping * entity.squashSpeed) * dt;
+        entity.squash = MathUtils.clamp(entity.squash + entity.squashSpeed * dt, -f.maxSquash * 0.5, f.maxSquash);
+        moving = true;
+      } else entity.squash = entity.squashSpeed = 0;
+      this.applySquash(entity);
+      if (position.distanceToSquared(entity.target) > 1e-6) moving = true;
     }
     if (this.clamshell) {
       const closed = props.step > (props.plan?.placements.length ?? 0) && !props.exploded;
@@ -480,6 +647,20 @@ export class SuitcaseEngine {
     this.applyCamera();
     this.renderer.render(this.scene, this.camera);
     this.gl.endFrameEXP();
+  }
+
+  /** Flatten (or stretch) about the item's base, bulging sideways to keep its volume. */
+  private applySquash(entity: Entity) {
+    const s = entity.squash;
+    const scale = entity.inner.userData.baseScale as Vector3 | undefined;
+    if (!scale) return;
+    // The inner group is in the item's own frame; flatten along the scene's up axis.
+    const up = new Vector3(0, 1, 0).applyQuaternion(entity.group.quaternion.clone().invert());
+    const sx = 1 + s * 0.5 * (1 - Math.abs(up.x)) - s * Math.abs(up.x);
+    const sy = 1 + s * 0.5 * (1 - Math.abs(up.y)) - s * Math.abs(up.y);
+    const sz = 1 + s * 0.5 * (1 - Math.abs(up.z)) - s * Math.abs(up.z);
+    entity.inner.scale.set(scale.x * sx, scale.y * sy, scale.z * sz);
+    entity.inner.position.set(0, (-s * entity.extent.y) / 2, 0).applyQuaternion(entity.group.quaternion.clone().invert());
   }
 
   dispose() {

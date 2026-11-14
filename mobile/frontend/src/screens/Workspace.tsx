@@ -470,7 +470,8 @@ export default function Workspace({
       setSelected(item.id);
       return true;
     }
-    const anchor = anchorAtPoint(item, bag, point, orientation);
+    // It falls onto what's packed beneath it now, or down a gap to the floor.
+    const anchor = anchorAtPoint(item, bag, point, orientation, current?.placements ?? []);
     // Dropped where it can't fit: it slides back to where it was.
     if (!anchor) return false;
     dispatch({ type: "move", id: item.id, anchor });

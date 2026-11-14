@@ -13,7 +13,21 @@ import type { BagMaterial } from "../domain";
 import type { ModelKit } from "./models";
 
 /** Surfaces a bag is made of: its outer fabric, plus the parts every bag shares. */
-export type Surface = BagMaterial | "lining" | "mesh" | "webbing" | "zipper" | "binding" | "rubber" | "metal";
+export type Surface =
+  | BagMaterial
+  | "lining"
+  | "mesh"
+  | "webbing"
+  | "zipper"
+  | "binding"
+  | "rubber"
+  | "metal"
+  | "cotton"
+  | "denim"
+  | "knit"
+  | "pages"
+  | "plastic"
+  | "glass";
 
 const size = 128;
 
@@ -95,6 +109,25 @@ const patterns: Record<Surface, (x: number, y: number) => number> = {
   binding: (x, y) => (y % 4 < 2 ? 0.95 : 0.85),
   rubber: (x, y) => 0.9 + (hash(x, y, size) - 0.5) * 0.08,
   metal: () => 1,
+  // Cotton jersey: a fine knit with soft unevenness.
+  cotton: (x, y) => (x % 4 < 2 ? 0.95 : 0.89) * (0.93 + fbm(x, y, 3, 8) * 0.1),
+  // Denim: a steep diagonal twill with white weft showing through.
+  denim: (x, y) => {
+    const twill = (x * 2 + y) % 8 < 4 ? 1 : 0.78;
+    return twill * (0.8 + fbm(x, y, 3, 4) * 0.3);
+  },
+  // Chunky knit: rows of chevron stitches.
+  knit: (x, y) => {
+    const col = x % 16,
+      row = y % 12;
+    const v = Math.abs(col - 8) / 8;
+    const stitch = Math.abs(row - 6 - (v - 0.5) * 6) < 3.5 ? 1 : 0.66;
+    return stitch * (0.9 + fbm(x, y, 2, 8) * 0.12);
+  },
+  // Page edges: fine parallel lines.
+  pages: (x, y) => (y % 3 === 0 ? 0.82 : 0.98) * (0.97 + hash(x >> 4, y, size) * 0.03),
+  plastic: (x, y) => 0.97 + (hash(x, y, size) - 0.5) * 0.03,
+  glass: () => 1,
 };
 
 const finish: Record<Surface, { roughness: number; metalness: number; bump: number }> = {
@@ -112,6 +145,12 @@ const finish: Record<Surface, { roughness: number; metalness: number; bump: numb
   binding: { roughness: 0.7, metalness: 0, bump: 0.5 },
   rubber: { roughness: 0.92, metalness: 0, bump: 0.4 },
   metal: { roughness: 0.3, metalness: 0.45, bump: 0 },
+  cotton: { roughness: 0.9, metalness: 0, bump: 0.5 },
+  denim: { roughness: 0.92, metalness: 0, bump: 0.9 },
+  knit: { roughness: 0.95, metalness: 0, bump: 2 },
+  pages: { roughness: 0.85, metalness: 0, bump: 0.4 },
+  plastic: { roughness: 0.35, metalness: 0, bump: 0.05 },
+  glass: { roughness: 0.08, metalness: 0.1, bump: 0 },
 };
 
 function texture(kit: ModelKit, surface: Surface) {
@@ -136,11 +175,22 @@ function texture(kit: ModelKit, surface: Surface) {
   });
 }
 
+/** A surface texture tiled `repeat` times across 0-1 UVs, for unit-sized item models. */
+function repeated(kit: ModelKit, surface: Surface, repeat: number) {
+  if (repeat === 1) return texture(kit, surface);
+  return kit.cached(`tex|${surface}|${repeat}`, () => {
+    const t = texture(kit, surface).clone();
+    t.repeat.set(repeat, repeat);
+    t.needsUpdate = true;
+    return t;
+  });
+}
+
 /** A textured material for one surface in one color, shared across the scene. */
-export function surfaceMaterial(kit: ModelKit, surface: Surface, color: string) {
-  return kit.cached(`mat|${surface}|${color}`, () => {
+export function surfaceMaterial(kit: ModelKit, surface: Surface, color: string, repeat = 1) {
+  return kit.cached(`mat|${surface}|${color}|${repeat}`, () => {
     const f = finish[surface];
-    const map = surface === "metal" ? null : texture(kit, surface);
+    const map = surface === "metal" || surface === "glass" ? null : repeated(kit, surface, repeat);
     return new MeshStandardMaterial({
       color,
       roughness: f.roughness,

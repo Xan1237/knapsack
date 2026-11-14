@@ -11,10 +11,10 @@ import {
   Material,
   Mesh,
   MeshStandardMaterial,
-  TorusGeometry,
 } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { Item, ItemMesh, Suitcase, Vec3 } from "../domain";
+import { belongingModel } from "./items";
 
 /** Clamshell pose: both halves are floor-up while open; the lid rotates over the center seam. */
 export function clamshellPose(width: number, halfDepth: number, closing: number) {
@@ -75,10 +75,20 @@ export class ModelKit {
     let geometry = this.meshGeometries.get(data);
     if (!geometry) {
       geometry = new BufferGeometry();
+      // Stretch the mesh to fill its unit cube exactly, so it takes up just the space it's packed in.
+      const range = (axis: "x" | "y" | "z") => {
+        const values = data.vertices.map((v) => v[axis]);
+        const min = Math.min(...values),
+          span = Math.max(...values) - min;
+        return (n: number) => (span > 1e-6 ? (n - min) / span - 0.5 : n);
+      };
+      const fx = range("x"),
+        fy = range("y"),
+        fz = range("z");
       geometry.setAttribute(
         "position",
         new Float32BufferAttribute(
-          data.vertices.flatMap(({ x, y, z }) => [x, z, y]),
+          data.vertices.flatMap(({ x, y, z }) => [fx(x), fz(z), fy(y)]),
           3,
         ),
       );
@@ -134,64 +144,9 @@ function cylinder(kit: ModelKit, args: [number, number, number, number], at: Vec
   return place(new Mesh(geometry, kit.material(color, roughness)), at, rotation);
 }
 
-/** A unit-cube model; the caller scales it to the item's envelope. */
-export function categoryModel(kit: ModelKit, item: Item) {
-  const c = item.color;
-  const parts: Mesh[] = [];
-  const b = (size: Vec3, at: Vec3 | undefined, color: string) => parts.push(block(kit, size, at, color));
-  switch (item.category) {
-    case "clothing":
-      b([0.96, 0.88, 0.96], undefined, c);
-      b([0.88, 0.025, 0.025], [0, 0.447, 0.24], c);
-      b([0.025, 0.025, 0.74], [-0.25, 0.447, 0], c);
-      b([0.24, 0.025, 0.13], [0, 0.45, -0.34], "#e9e4d8");
-      break;
-    case "shoes":
-      b([0.96, 0.15, 0.96], [0, -0.405, 0], "#e9e3d7");
-      b([0.89, 0.45, 0.6], [0, -0.13, 0.16], c);
-      b([0.78, 0.72, 0.38], [0, 0.04, -0.25], c);
-      for (const z of [-0.14, -0.03, 0.08]) b([0.6, 0.045, 0.035], [0, 0.18, z], "#f7f4ec");
-      b([0.46, 0.05, 0.2], [0, 0.405, -0.24], "#706f65");
-      break;
-    case "bottle":
-      parts.push(cylinder(kit, [0.42, 0.42, 0.72, 24], [0, -0.07, 0], c, 0.42));
-      parts.push(cylinder(kit, [0.27, 0.27, 0.17, 18], [0, 0.36, 0], "#eee8d7"));
-      b([0.55, 0.26, 0.025], [0, -0.03, 0.405], "#eee9dc");
-      break;
-    case "pouch":
-      b([0.94, 0.88, 0.92], undefined, c);
-      b([0.82, 0.035, 0.035], [0, 0.455, 0], "#e9d7b3");
-      b([0.09, 0.025, 0.13], [0.32, 0.46, 0.055], "#6a6357");
-      break;
-    case "camera":
-      b([0.94, 0.75, 0.68], undefined, c);
-      parts.push(cylinder(kit, [0.28, 0.3, 0.3, 20], [0, 0, 0.34], "#293b34", 0.85, [Math.PI / 2, 0, 0]));
-      b([0.24, 0.13, 0.3], [-0.22, 0.4, 0], "#c7c6b7");
-      break;
-    case "headphones": {
-      const band = kit.geometry("band", () => new TorusGeometry(0.35, 0.055, 10, 28, Math.PI));
-      parts.push(place(new Mesh(band, kit.material(c)), [0, -0.15, 0]));
-      for (const side of [-1, 1]) b([0.23, 0.5, 0.68], [side * 0.34, -0.2, 0], c);
-      break;
-    }
-    case "book":
-      b([0.95, 0.9, 0.96], undefined, c);
-      b([0.9, 0.65, 0.94], [0.02, 0, 0], "#eee8d8");
-      b([0.96, 0.04, 0.97], [0, 0.46, 0], c);
-      break;
-    default:
-      b([0.94, 0.91, 0.94], undefined, c);
-      b([0.81, 0.02, 0.74], [0, 0.465, 0], "#e9dfcc");
-      b([0.5, 0.022, 0.05], [0, 0.48, -0.18], c);
-  }
-  const group = new Group();
-  group.add(...parts);
-  return group;
-}
-
-/** The generated mesh when Astra made one, otherwise a category shape. */
+/** The generated mesh when Astra made one, otherwise a detailed model of its category. */
 export function itemModel(kit: ModelKit, item: Item) {
-  if (!item.mesh) return categoryModel(kit, item);
+  if (!item.mesh) return belongingModel(kit, item);
   const group = new Group();
   group.add(kit.generated(item.mesh));
   return group;

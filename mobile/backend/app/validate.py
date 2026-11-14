@@ -2,7 +2,7 @@
 
 import math
 
-from .domain import Item, Plan, Suitcase, revision_of, size_of
+from .domain import Item, Plan, Suitcase, max_squish, revision_of, size_of
 
 _ORIENTATIONS = ((0, 1, 2), (1, 0, 2), (0, 2, 1), (2, 0, 1), (1, 2, 0), (2, 1, 0))
 _EPSILON = 1e-5
@@ -37,7 +37,13 @@ def validate_plan(plan: Plan, items: list[Item], bag: Suitcase) -> tuple[bool, l
         if p.orientation not in item.orientations:
             errors.append(f"Forbidden orientation {p.id}")
         else:
-            d = size_of(item)
+            squish = getattr(p, "squish", 0.0) or 0.0
+            if not math.isfinite(squish) or squish < 0 or squish > max_squish(item) + _EPSILON:
+                errors.append(f"Squeezed too far {p.id}")
+                squish = 0.0
+            natural = size_of(item)
+            # Only the item's own height gives; computed here independently of the packer.
+            d = (natural[0], natural[1], math.floor(natural[2] * (1 - squish) * 100 + 0.5) / 100)
             rotation = _ORIENTATIONS[p.orientation]
             if any(
                 not math.isfinite(n) or n <= 0 or abs(n - d[rotation[k]]) > _EPSILON

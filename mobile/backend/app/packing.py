@@ -1,6 +1,28 @@
 """Deterministic bounded extreme-edge grid search; no claim of global optimality."""
 
-from .domain import PERMUTATIONS, Item, Placement, Plan, Suitcase, revision_of, size_of
+from .domain import (
+    PERMUTATIONS,
+    Item,
+    Placement,
+    Plan,
+    Suitcase,
+    max_squish,
+    revision_of,
+    size_of,
+    squeezed,
+    weight_of,
+)
+
+
+def squish_levels(item: Item, start: int = 0) -> list[float]:
+    """
+    Natural size first, then halfway, then as squeezed as the item allows. `start` skips the
+    gentler levels, for passes that squeeze every soft item evenly.
+    """
+    limit = max_squish(item)
+    if limit < 0.02:
+        return [0.0]
+    return [0.0, round(limit / 2, 4), round(limit, 4)][start:]
 
 
 def _volume(d) -> float:
@@ -37,7 +59,11 @@ def _supported(p: Placement, placed: list[Placement], gap: float) -> bool:
 
 
 def anchored_placement(item: Item, bag: Suitcase, size=None) -> Placement | None:
-    """Invalidated anchors from older or imported bags fall back to automatic packing."""
+    """
+    The traveler's hand placement. On the floor it is reserved before anything else; dropped onto
+    other belongings (z above the floor) it is settled by gravity after them, see `_drop`.
+    Invalidated anchors from older or imported bags fall back to automatic packing.
+    """
     anchor = item.anchor
     if not anchor or anchor.orientation not in item.orientations:
         return None
@@ -50,9 +76,12 @@ def anchored_placement(item: Item, bag: Suitcase, size=None) -> Placement | None
         bag.dimensions[1],
         bag.dimensions[2] / (2 if bag.clamshell else 1),
     )
-    if abs(anchor.position[2] - bag.clearance) > 1e-5 or any(
+    # A drop above the floor only needs its footprint inside; gravity settles its height.
+    floor = abs(anchor.position[2] - bag.clearance) < 1e-5
+    if anchor.position[2] < bag.clearance - 1e-5 or any(
         n < bag.clearance - 1e-5 or n + dimensions[k] > cavity[k] - bag.clearance + 1e-5
         for k, n in enumerate(anchor.position)
+        if floor or k < 2
     ):
         return None
     return Placement(
@@ -65,7 +94,48 @@ def anchored_placement(item: Item, bag: Suitcase, size=None) -> Placement | None
     )
 
 
-def _find_spot(item, d, placed, compartments, cavity, gap, anchor, budget, evaluations):
+def on_floor(p: Placement, gap: float) -> bool:
+    return abs(p.position[2] - gap) < 1e-5
+
+
+def _drop(
+    anchor: Placement, size, placed: list[Placement], cavity, gap, squishes: list[float]
+) -> Placement | None:
+    """
+    Let a dropped item fall at its x, y: it rests on whatever is beneath it, or slips into a gap
+    down to the floor. A soft item squeezes to fit under the lid if it has to.
+    """
+    same_side = [p for p in placed if p.compartment == anchor.compartment]
+    for squish in squishes:
+        d = squeezed(size, squish)
+        dims = tuple(d[axis] for axis in PERMUTATIONS[anchor.orientation])
+        x, y = anchor.position[0], anchor.position[1]
+        heights = sorted(
+            {gap}
+            | {
+                p.position[2] + p.dimensions[2] + gap
+                for p in same_side
+                if p.position[0] < x + dims[0] + gap and x < p.position[0] + p.dimensions[0] + gap
+                and p.position[1] < y + dims[1] + gap and y < p.position[1] + p.dimensions[1] + gap
+            }
+        )
+        for z in heights:
+            if z + dims[2] > cavity[2] - gap + 1e-6:
+                break
+            candidate = Placement(
+                anchor.id, (x, y, z), dims, anchor.orientation, len(placed) + 1,
+                anchor.compartment, squish,
+            )
+            if any(_overlap(candidate, b, gap) for b in same_side):
+                continue
+            # Gravity: it can only rest at the lowest clear height with something under it.
+            if _supported(candidate, same_side, gap):
+                return candidate
+            break
+    return None
+
+
+def _find_spot(item, d, placed, compartments, cavity, gap, anchor, budget, evaluations, squish=0.0):
     """Return (placement or None, evaluations so far, whether the budget ran out)."""
     side_volume = {
         c: sum(_volume(p.dimensions) for p in placed if p.compartment == c) for c in compartments
@@ -100,7 +170,7 @@ def _find_spot(item, d, placed, compartments, cavity, gap, anchor, budget, evalu
                         ):
                             continue
                         candidate = Placement(
-                            item.id, (x, y, z), dims, orientation, len(placed) + 1, compartment
+                            item.id, (x, y, z), dims, orientation, len(placed) + 1, compartment, squish
                         )
                         if any(_overlap(candidate, b, gap) for b in same_side):
                             continue
@@ -123,7 +193,8 @@ def pack(items: list[Item], bag: Suitcase, budget: int = 80000) -> Plan:
     by_id = {i.id: i for i in included}
     conflicts: list[str] = []
     for i in included:
-        d = sizes[i.id]
+        # Too large even squeezed as far as it goes.
+        d = squeezed(sizes[i.id], max_squish(i))
         if not any(
             all(d[axis] + gap * 2 <= cavity[k] for k, axis in enumerate(PERMUTATIONS[o]))
             for o in i.orientations
@@ -132,7 +203,10 @@ def pack(items: list[Item], bag: Suitcase, budget: int = 80000) -> Plan:
     if any(n <= gap * 2 for n in cavity):
         raise ValueError("Invalid suitcase")
     usable = (cavity[0] - gap * 2) * (cavity[1] - gap * 2) * (cavity[2] - gap * 2)
-    volume_conflict = sum(_volume(sizes[i.id]) for i in included) > usable * len(compartments)
+    volume_conflict = (
+        sum(_volume(squeezed(sizes[i.id], max_squish(i))) for i in included)
+        > usable * len(compartments)
+    )
 
     def vol(i: Item) -> float:
         return _volume(sizes[i.id])
@@ -145,6 +219,8 @@ def pack(items: list[Item], bag: Suitcase, budget: int = 80000) -> Plan:
         sorted(included, key=lambda i: (-max(sizes[i.id]), i.id)),
         sorted(included, key=lambda i: (len(i.orientations), -vol(i), i.id)),
         sorted(included, key=lambda i: (-sizes[i.id][0] * sizes[i.id][1], i.id)),
+        # Heaviest first, so dense things end up at the bottom as a person would pack them.
+        sorted(included, key=lambda i: (-weight_of(i), i.id)),
     ]
     if any(i.required or priority(i) != 3 for i in included):
         orders.insert(
@@ -170,23 +246,51 @@ def pack(items: list[Item], bag: Suitcase, budget: int = 80000) -> Plan:
     best: list[Placement] = []
     attempts = 0
     exhausted = False
-    # The latest moved item is reserved first; every other item may move around it.
-    anchor = next(
+    # The latest moved item: on the floor it is reserved first and everything else moves around
+    # it; dropped onto other belongings it settles by gravity once they are in place.
+    moved = next(
         (p for p in (anchored_placement(i, bag, sizes[i.id]) for i in included) if p), None
     )
-    for order in orders:
+    anchor = moved if moved and on_floor(moved, gap) else None
+    dropped = moved if moved and not anchor else None
+    # Soft things squeeze one at a time as needed; if that still leaves something out, try
+    # again with every soft item squeezed evenly, halfway and then fully.
+    passes = [(order, start) for start in (0, 1, 2) for order in orders]
+    for order, start in passes:
+        if start and len(best) == len(included):
+            break
         attempts += 1
         placed: list[Placement] = [anchor] if anchor else []
         evaluations = 0
         for item in order:
-            if anchor and item.id == anchor.id:
+            if moved and item.id == moved.id:
                 continue
             if item.id in conflicts:
                 continue
-            found, evaluations, ran_out = _find_spot(
-                item, sizes[item.id], placed, compartments, cavity, gap, anchor, budget, evaluations
-            )
-            exhausted = exhausted or ran_out
+            found = None
+            # A soft item squeezes only when it doesn't fit at its natural size.
+            for squish in squish_levels(item, start):
+                found, evaluations, ran_out = _find_spot(
+                    item, squeezed(sizes[item.id], squish), placed, compartments, cavity, gap,
+                    anchor, budget, evaluations, squish,
+                )
+                exhausted = exhausted or ran_out
+                if found or ran_out:
+                    break
+            if found:
+                placed.append(found)
+        if dropped:
+            item = by_id[dropped.id]
+            found = _drop(dropped, sizes[item.id], placed, cavity, gap, squish_levels(item))
+            if not found and item.id not in conflicts:
+                for squish in squish_levels(item):
+                    found, evaluations, ran_out = _find_spot(
+                        item, squeezed(sizes[item.id], squish), placed, compartments, cavity,
+                        gap, None, budget, evaluations, squish,
+                    )
+                    exhausted = exhausted or ran_out
+                    if found or ran_out:
+                        break
             if found:
                 placed.append(found)
         if quality(placed) > quality(best):

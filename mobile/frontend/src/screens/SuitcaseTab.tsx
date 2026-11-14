@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { afterSheet, Sheet } from "../components/Sheet";
 import SuitcaseView from "../components/SuitcaseView";
 import { Banner, Button, Group, Icon, Section, Slider } from "../components/ui";
-import { type Item, type Placement, type Plan, type Suitcase, type Vec3, formatSize, sizeOf } from "../domain";
+import { type Item, type Placement, type Plan, type Suitcase, type Vec3, formatSize, sizeOf, weightOf } from "../domain";
 import type { Action, InventoryState } from "../state";
 import { colors, radius, shadow, type } from "../theme";
 
@@ -199,6 +199,17 @@ export default function SuitcaseTab(p: Props) {
               <Text style={styles.statValue}>{fill}%</Text>
               <Text style={type.secondary}>Full</Text>
             </View>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>
+                {(
+                  current.placements.reduce((sum, x) => {
+                    const item = state.items.find((i) => i.id === x.id);
+                    return sum + (item ? weightOf(item) : 0);
+                  }, 0)
+                ).toFixed(1)}
+              </Text>
+              <Text style={type.secondary}>kg, about</Text>
+            </View>
             {bag.clamshell && (
               <>
                 <View style={styles.stat}>
@@ -212,6 +223,26 @@ export default function SuitcaseTab(p: Props) {
               </>
             )}
           </View>
+        )}
+
+        {current && current.placements.some((x) => x.squish) && (
+          <Section title="Squeezed to fit">
+            <Group>
+              {current.placements
+                .filter((x) => x.squish)
+                .map((x) => {
+                  const item = state.items.find((i) => i.id === x.id);
+                  return (
+                    <View key={x.id} style={styles.unplaced}>
+                      <Text style={type.bodyStrong}>{item?.label}</Text>
+                      <Text style={type.secondary}>
+                        Pressed {Math.round((x.squish ?? 0) * 100)}% flatter. Soft things give a little; it fits once squashed down.
+                      </Text>
+                    </View>
+                  );
+                })}
+            </Group>
+          </Section>
         )}
 
         {current && current.unplaced.length > 0 && (
