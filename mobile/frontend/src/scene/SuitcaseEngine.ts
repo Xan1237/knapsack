@@ -25,6 +25,7 @@ import {
   WebGLRenderer,
 } from "three";
 import { type Item, type Placement, type Plan, type Suitcase, type Vec3, permutations, sizeOf } from "../domain";
+import { styledBag, styledClamshell } from "./bags";
 import { ModelKit, clamshellCase, clamshellPose, itemModel, openBag, selectionBox } from "./models";
 
 const unit = 100;
@@ -80,11 +81,14 @@ function itemQuaternion(orientation: number) {
   return new Quaternion().setFromRotationMatrix(swap.clone().multiply(solver).multiply(swap));
 }
 
-/** Give each overflow item its own floor space beyond both open suitcase halves. */
-function explorerLayout(items: Item[], bag: Suitcase) {
+/**
+ * Give each overflow item its own floor space beyond both open suitcase halves. `extent` is the
+ * bag model's own footprint, which reaches past the packing space for straps and open panels.
+ */
+function explorerLayout(items: Item[], bag: Suitcase, extent: Box3 | null) {
   const width = bag.dimensions[0] / unit;
   const length = bag.dimensions[1] / unit;
-  const right = bag.clamshell ? width : width / 2;
+  const right = Math.max(bag.clamshell ? width : width / 2, extent?.max.x ?? -Infinity);
   const start = right + 0.8;
   const gap = 0.45;
   const sizes = items.map((item) => sizeOf(item).map((n) => n / unit) as Vec3);
@@ -93,6 +97,12 @@ function explorerLayout(items: Item[], bag: Suitcase) {
     min: [-right - 0.5, -0.45, -length / 2 - 0.7] as Vec3,
     max: [right + 0.5, bag.dimensions[2] / unit + 0.7, length / 2 + 0.7] as Vec3,
   };
+  if (extent) {
+    for (let k = 0; k < 3; k++) {
+      bounds.min[k] = Math.min(bounds.min[k], extent.min.getComponent(k) - 0.2);
+      bounds.max[k] = Math.max(bounds.max[k], extent.max.getComponent(k) + 0.2);
+    }
+  }
   let x = start,
     z = -length / 2,
     rowDepth = 0;
@@ -134,6 +144,8 @@ export class SuitcaseEngine {
   private entities = new Map<string, Entity>();
   private bagKey = "";
   private bagGroup: Group | null = null;
+  /** The open bag model's bounds in the frame, for framing and overflow layout. */
+  private bagExtent: Box3 | null = null;
   private clamshell: ReturnType<typeof clamshellCase> | null = null;
   private closing = 0;
   private reserved: Group | null = null;
@@ -209,6 +221,7 @@ export class SuitcaseEngine {
     const { overflow, bounds } = explorerLayout(
       items.filter((i) => i.included && (i.aside || unplacedIds.has(i.id))),
       bag,
+      this.bagExtent,
     );
     for (const u of overflow) {
       const item = items.find((i) => i.id === u.id);
@@ -226,20 +239,30 @@ export class SuitcaseEngine {
 
   private syncBag(props: SceneProps) {
     const { bag } = props;
-    const key = JSON.stringify([bag.id, bag.dimensions, bag.color, !!bag.clamshell]);
+    const key = JSON.stringify([bag.id, bag.dimensions, bag.color, !!bag.clamshell, bag.kind, bag.style]);
     if (key === this.bagKey) return;
     this.bagKey = key;
     for (const entity of this.entities.values()) entity.group.removeFromParent();
     this.entities.clear();
-    if (this.bagGroup) this.frame.remove(this.bagGroup);
+    if (this.bagGroup) {
+      this.frame.remove(this.bagGroup);
+      // Styled bags build their geometry per bag; shared materials and textures stay in the kit.
+      this.bagGroup.traverse((o) => {
+        if (o instanceof Mesh && o.userData.ownsGeometry) o.geometry.dispose();
+      });
+    }
     this.clamshell = null;
     this.reservedKey = "";
     this.reserved = null;
+    // The traveler's own bags are drawn from their kind and style; built-in and imported ones keep their case.
+    const styled = !!bag.kind;
     if (bag.clamshell) {
-      this.clamshell = clamshellCase(this.kit, bag);
+      this.clamshell = styled ? styledClamshell(this.kit, bag) : clamshellCase(this.kit, bag);
       this.bagGroup = this.clamshell.root;
-    } else this.bagGroup = openBag(this.kit, bag);
+    } else this.bagGroup = styled ? styledBag(this.kit, bag).group : openBag(this.kit, bag);
     this.frame.add(this.bagGroup);
+    this.bagGroup.updateMatrixWorld(true);
+    this.bagExtent = styled ? new Box3().setFromObject(this.bagGroup) : null;
   }
 
   private syncEntity(

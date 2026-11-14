@@ -33,6 +33,7 @@ export class ModelKit {
   private materials = new Map<string, Material>();
   private meshGeometries = new WeakMap<ItemMesh, BufferGeometry>();
   private owned: { dispose(): void }[] = [];
+  private extras = new Map<string, { dispose(): void }>();
 
   geometry(key: string, build: () => BufferGeometry) {
     let geometry = this.geometries.get(key);
@@ -50,6 +51,15 @@ export class ModelKit {
       this.materials.set(key, material);
     }
     return material;
+  }
+  /** Anything disposable built once per scene, such as textures and textured materials. */
+  cached<T extends { dispose(): void }>(key: string, build: () => T): T {
+    let value = this.extras.get(key) as T | undefined;
+    if (!value) {
+      value = build();
+      this.extras.set(key, value);
+    }
+    return value;
   }
   line(color: string) {
     const key = `line|${color}`;
@@ -101,6 +111,7 @@ export class ModelKit {
     this.geometries.forEach((g) => g.dispose());
     this.materials.forEach((m) => m.dispose());
     this.owned.forEach((o) => o.dispose());
+    this.extras.forEach((o) => o.dispose());
   }
 }
 

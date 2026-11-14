@@ -78,6 +78,67 @@ export const bagKindNames: Record<BagKind, string> = {
   tote: "Tote",
   other: "Bag",
 };
+export const bagMaterials = ["nylon", "polyester", "canvas", "leather", "hardshell", "aluminum"] as const;
+export type BagMaterial = (typeof bagMaterials)[number];
+export const bagMaterialNames: Record<BagMaterial, string> = {
+  nylon: "Nylon",
+  polyester: "Polyester",
+  canvas: "Canvas",
+  leather: "Leather",
+  hardshell: "Hard shell",
+  aluminum: "Aluminium",
+};
+/** The silhouettes each kind of bag can take. The first is the default. */
+export const bagShapes = {
+  backpack: ["daypack", "travel", "rolltop"],
+  suitcase: ["hard", "soft"],
+  duffel: ["barrel", "boxy"],
+  tote: ["tapered", "structured"],
+  other: ["soft", "boxy"],
+} as const satisfies Record<BagKind, readonly string[]>;
+export type BagShape = (typeof bagShapes)[BagKind][number];
+export const bagShapeNames: Record<BagShape, string> = {
+  daypack: "Daypack",
+  travel: "Travel pack",
+  rolltop: "Roll-top",
+  hard: "Hard-sided",
+  soft: "Soft-sided",
+  barrel: "Barrel",
+  boxy: "Boxy",
+  tapered: "Tapered",
+  structured: "Structured",
+};
+/** How a bag looks, read from its photos or chosen by the traveler. Never affects packing. */
+export type BagStyle = {
+  shape: BagShape;
+  material: BagMaterial;
+  /** Zips, straps, handles and trim. */
+  accent: string;
+  frontPocket: boolean;
+  sidePockets: boolean;
+  wheels: boolean;
+};
+/** A sensible look for a kind of bag in a color, for bags without a reading. */
+export function defaultBagStyle(kind: BagKind, color = "#4f5d57"): BagStyle {
+  const shape = bagShapes[kind][0];
+  const material: BagMaterial =
+    kind === "suitcase" ? "hardshell" : kind === "tote" ? "canvas" : kind === "duffel" ? "polyester" : "nylon";
+  return {
+    shape,
+    material,
+    accent: color,
+    frontPocket: kind === "backpack" || kind === "duffel",
+    sidePockets: kind === "backpack",
+    wheels: kind === "suitcase",
+  };
+}
+/** A style whose shape belongs to this kind; repairs styles saved for another kind. */
+export function bagStyleFor(kind: BagKind, style: BagStyle | undefined, color?: string): BagStyle {
+  const base = style ?? defaultBagStyle(kind, color);
+  const shapes = bagShapes[kind] as readonly string[];
+  return shapes.includes(base.shape) ? base : { ...base, shape: bagShapes[kind][0] };
+}
+
 /** `dimensions` is always the usable packing space. Photographed bags add the rest. */
 export type Suitcase = {
   id: string;
@@ -98,6 +159,7 @@ export type Suitcase = {
   meshModel?: string;
   /** How many photos Astra built it from; 0 for a bag measured by hand. */
   photoCount?: number;
+  style?: BagStyle;
 };
 export const maxCustomBags = 8;
 /** Ids of bags the traveler made, so they never collide with built-in or imported ones. */

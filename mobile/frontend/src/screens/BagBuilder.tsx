@@ -16,17 +16,24 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as api from "../api";
-import ItemPreview from "../components/ItemPreview";
+import BagPreview from "../components/BagPreview";
 import { Banner, Button, Group, Icon, IconButton, Section, ToggleRow } from "../components/ui";
 import {
   type BagKind,
+  type BagMaterial,
+  type BagShape,
+  type BagStyle,
   type Suitcase,
   type Vec3,
   bagKindNames,
   bagKinds,
+  bagMaterialNames,
+  bagMaterials,
+  bagShapeNames,
+  bagShapes,
+  bagStyleFor,
   bagSubtitle,
   bagUsable,
-  createItem,
   customBagPrefix,
   uid,
 } from "../domain";
@@ -34,8 +41,23 @@ import * as storage from "../storage";
 import { colors, radius, type } from "../theme";
 
 export const maxBagPhotos = 4;
-const axisNames = ["Width", "Length", "Depth"] as const;
-const axisHints = ["Side to side", "Top to bottom", "Front to back"] as const;
+/**
+ * How each kind sits while being packed, so the three sizes read naturally: backpacks and
+ * suitcases lie on their back, duffels rest on their base, totes stand up.
+ */
+const axes: Record<BagKind, [string, string][]> = {
+  backpack: [["Width", "Side to side"], ["Height", "Top to bottom"], ["Depth", "Front to back"]],
+  suitcase: [["Width", "Side to side"], ["Height", "Top to bottom"], ["Depth", "Front to back"]],
+  duffel: [["Length", "End to end"], ["Width", "Front to back"], ["Height", "Base to opening"]],
+  tote: [["Width", "Side to side"], ["Depth", "Front to back"], ["Height", "Base to opening"]],
+  other: [["Width", "Side to side"], ["Length", "Front to back"], ["Depth", "Base to opening"]],
+};
+/** Colors to choose from; the bag's own reading is added in front when it's not one of these. */
+const swatches = [
+  "#1f2326", "#3d4a5c", "#2c3b33", "#56653f", "#7a2e2a", "#b8452f",
+  "#c98f3e", "#d8c7a6", "#8fa7b8", "#6b3b2a", "#9a9c98", "#e9e5dc",
+];
+const defaultColor = "#3d4a5c";
 // Packing space in whole centimetres; larger than this is furniture, not luggage.
 const minCm = 8;
 const maxCm = 200;
@@ -46,10 +68,10 @@ type Draft = {
   kind: BagKind;
   sizeCm: [string, string, string];
   clamshell: boolean;
-  color?: string;
+  color: string;
+  style: BagStyle;
   appearance?: string;
   exterior?: Vec3;
-  mesh?: Suitcase["mesh"];
   meshModel?: string;
   photoCount: number;
   assumptions: string;
@@ -60,20 +82,24 @@ const blankDraft = (): Draft => ({
   kind: "backpack",
   sizeCm: ["30", "45", "18"],
   clamshell: false,
+  color: defaultColor,
+  style: bagStyleFor("backpack", undefined, defaultColor),
   photoCount: 0,
   assumptions: "",
 });
 
 function draftFrom(bag: Suitcase, assumptions = ""): Draft {
+  const kind = bag.kind ?? (bag.clamshell ? "suitcase" : "other");
+  const color = bag.color ?? defaultColor;
   return {
     name: bag.name,
-    kind: bag.kind ?? (bag.clamshell ? "suitcase" : "other"),
+    kind,
     sizeCm: bag.dimensions.map((n) => String(Math.round(n / 10))) as Draft["sizeCm"],
     clamshell: !!bag.clamshell,
-    color: bag.color,
+    color,
+    style: bagStyleFor(kind, bag.style, color),
     appearance: bag.appearance,
     exterior: bag.exterior,
-    mesh: bag.mesh,
     meshModel: bag.meshModel,
     photoCount: bag.photoCount ?? 0,
     assumptions,
@@ -100,25 +126,74 @@ export function bagFromDraft(draft: Draft, id: string): Suitcase | null {
     clamshell: draft.clamshell,
     kind: draft.kind,
     photoCount: draft.photoCount,
-    ...(draft.color ? { color: draft.color } : {}),
+    color: draft.color,
+    style: draft.style,
     ...(draft.appearance ? { appearance: draft.appearance } : {}),
     ...(draft.exterior ? { exterior: draft.exterior } : {}),
-    ...(draft.mesh ? { mesh: draft.mesh, meshModel: draft.meshModel } : {}),
+    ...(draft.meshModel ? { meshModel: draft.meshModel } : {}),
   };
   return bagUsable(bag) ? bag : null;
 }
 
-/** The bag's 3D model, turning slowly, through the item preview. */
-function BagPreview({ draft }: { draft: Draft }) {
-  const size = draftSize(draft) ?? [300, 450, 180];
-  const outside = draft.exterior ?? size;
-  const item = {
-    ...createItem("other", "bag-preview"),
-    color: draft.color ?? colors.green,
-    mesh: draft.mesh,
-    estimate: [...outside] as Vec3,
-  };
-  return <ItemPreview item={item} background={colors.canvas} />;
+/** The draft as the suitcase view will draw it, at a stand-in size while a side is invalid. */
+function previewBag(draft: Draft): Suitcase {
+  return (
+    bagFromDraft(draft, "preview") ??
+    bagFromDraft({ ...draft, sizeCm: draft.kind === "duffel" ? ["55", "28", "28"] : draft.kind === "tote" ? ["40", "15", "32"] : ["30", "45", "18"] }, "preview") ?? {
+      id: "preview",
+      name: "",
+      subtitle: "",
+      dimensions: [300, 450, 180],
+      clearance: 5,
+      kind: draft.kind,
+      color: draft.color,
+      style: draft.style,
+    }
+  );
+}
+
+/** A row of tappable color dots. */
+function Swatches({ label, value, onChange }: { label: string; value: string; onChange: (color: string) => void }) {
+  const options = swatches.includes(value.toLowerCase()) ? swatches : [value, ...swatches];
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.swatches}>
+      {options.map((color) => {
+        const selected = color.toLowerCase() === value.toLowerCase();
+        return (
+          <Pressable
+            key={color}
+            accessibilityRole="button"
+            accessibilityLabel={`${label} color ${color}`}
+            accessibilityState={{ selected }}
+            hitSlop={4}
+            onPress={() => onChange(color)}
+            style={[styles.swatch, selected && styles.swatchSelected]}
+          >
+            <View style={[styles.swatchFill, { backgroundColor: color }]} />
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+/** Pill buttons for one choice among a few. */
+function Chips<T extends string>({ options, names, value, onChange }: { options: readonly T[]; names: Record<T, string>; value: T; onChange: (value: T) => void }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+      {options.map((option) => (
+        <Pressable
+          key={option}
+          accessibilityRole="button"
+          accessibilityState={{ selected: value === option }}
+          style={[styles.chip, value === option && styles.chipActive]}
+          onPress={() => onChange(option)}
+        >
+          <Text style={[styles.chipText, value === option && styles.chipTextActive]}>{names[option]}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
 }
 
 /**
@@ -146,6 +221,19 @@ export default function BagBuilder({
   useEffect(() => () => request.current?.abort(), []);
 
   const update = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+  const restyle = (patch: Partial<BagStyle>) => setDraft((d) => ({ ...d, style: { ...d.style, ...patch } }));
+  const changeKind = (kind: BagKind) =>
+    setDraft((d) => ({
+      ...d,
+      kind,
+      clamshell: kind === "suitcase" ? d.clamshell : false,
+      // Keep the colors and material; take the new kind's usual shape and details.
+      style: {
+        ...bagStyleFor(kind, undefined, d.color),
+        material: kind === "suitcase" || !["hardshell", "aluminum"].includes(d.style.material) ? d.style.material : "nylon",
+        accent: d.style.accent,
+      },
+    }));
   const result = bagFromDraft(draft, bag?.id ?? `${customBagPrefix}${uid()}`);
 
   async function addShots(source: "camera" | "library") {
@@ -329,11 +417,11 @@ export default function BagBuilder({
           {step === "review" && (
             <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
               <View style={styles.preview}>
-                {visible && <BagPreview draft={draft} />}
+                {visible && <BagPreview bag={previewBag(draft)} background={colors.canvas} />}
                 <Text style={styles.previewTag} pointerEvents="none">
-                  {draft.mesh
-                    ? `Astra 3D model · from ${draft.photoCount} photo${draft.photoCount === 1 ? "" : "s"}`
-                    : "Measured by hand"}
+                  {draft.photoCount
+                    ? `Read by Astra from ${draft.photoCount} photo${draft.photoCount === 1 ? "" : "s"}`
+                    : "Your own design"}
                 </Text>
               </View>
               {!!draft.assumptions && <Banner>{draft.assumptions}</Banner>}
@@ -350,33 +438,57 @@ export default function BagBuilder({
               </Section>
 
               <Section title="Type">
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-                  {bagKinds.map((kind) => (
-                    <Pressable
-                      key={kind}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: draft.kind === kind }}
-                      style={[styles.chip, draft.kind === kind && styles.chipActive]}
-                      onPress={() => update({ kind, clamshell: kind === "suitcase" ? draft.clamshell : false })}
-                    >
-                      <Text style={[styles.chipText, draft.kind === kind && styles.chipTextActive]}>
-                        {bagKindNames[kind]}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
+                <Chips options={bagKinds} names={bagKindNames} value={draft.kind} onChange={changeKind} />
               </Section>
+
+              <Section title="Look">
+                <Text style={styles.label}>Shape</Text>
+                <Chips
+                  options={bagShapes[draft.kind] as readonly BagShape[]}
+                  names={bagShapeNames}
+                  value={draft.style.shape}
+                  onChange={(shape) => restyle({ shape })}
+                />
+                <Text style={styles.label}>Material</Text>
+                <Chips
+                  options={bagMaterials.filter((m) => draft.kind === "suitcase" || (m !== "hardshell" && m !== "aluminum")) as BagMaterial[]}
+                  names={bagMaterialNames}
+                  value={draft.style.material}
+                  onChange={(material) => restyle({ material })}
+                />
+                <Text style={styles.label}>Color</Text>
+                <Swatches label="Body" value={draft.color} onChange={(color) => update({ color })} />
+                <Text style={styles.label}>Zips, straps and trim</Text>
+                <Swatches label="Accent" value={draft.style.accent} onChange={(accent) => restyle({ accent })} />
+              </Section>
+
+              {(draft.kind === "backpack" || draft.kind === "duffel" || draft.kind === "suitcase") && (
+                <Group>
+                  {draft.kind === "backpack" && (
+                    <ToggleRow label="Padded front pocket" value={draft.style.frontPocket} onChange={(frontPocket) => restyle({ frontPocket })} />
+                  )}
+                  {draft.kind === "backpack" && (
+                    <ToggleRow label="Bottle pocket" value={draft.style.sidePockets} onChange={(sidePockets) => restyle({ sidePockets })} />
+                  )}
+                  {draft.kind === "duffel" && (
+                    <ToggleRow label="End pockets" value={draft.style.frontPocket} onChange={(frontPocket) => restyle({ frontPocket })} />
+                  )}
+                  {draft.kind === "suitcase" && (
+                    <ToggleRow label="Wheels" value={draft.style.wheels} onChange={(wheels) => restyle({ wheels })} />
+                  )}
+                </Group>
+              )}
 
               <Section
                 title="Packing space"
                 right={<Text style={type.secondary}>{result ? result.subtitle.split(" · ")[1] : "Check the sizes"}</Text>}
               >
                 <Group>
-                  {axisNames.map((label, index) => (
+                  {axes[draft.kind].map(([label, hint], index) => (
                     <View key={label} style={styles.sizeRow}>
                       <View style={styles.flex}>
                         <Text style={type.body}>{label}</Text>
-                        <Text style={type.secondary}>{axisHints[index]}</Text>
+                        <Text style={type.secondary}>{hint}</Text>
                       </View>
                       <TextInput
                         accessibilityLabel={`${label} in centimetres`}
@@ -425,7 +537,7 @@ export default function BagBuilder({
               />
               {!bag && (
                 <Button
-                  label={draft.mesh ? "Retake photos" : "Use photos instead"}
+                  label={draft.photoCount ? "Retake photos" : "Use photos instead"}
                   kind="quiet"
                   onPress={() => {
                     setDraft(blankDraft());
@@ -496,6 +608,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   chips: { gap: 8 },
+  label: { ...type.secondary, paddingHorizontal: 4, marginTop: 2 },
+  swatches: { gap: 10, paddingVertical: 2, paddingHorizontal: 2 },
+  swatch: { width: 34, height: 34, borderRadius: 17, padding: 3, borderWidth: 2, borderColor: "transparent" },
+  swatchSelected: { borderColor: colors.green },
+  swatchFill: { flex: 1, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(0,0,0,0.2)" },
   chip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: radius.pill, backgroundColor: colors.soft },
   chipActive: { backgroundColor: colors.green },
   chipText: { color: colors.ink, fontSize: 14 },

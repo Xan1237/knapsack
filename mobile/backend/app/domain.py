@@ -129,6 +129,29 @@ class Item(Proposal):
 
 BagKind = Literal["suitcase", "backpack", "duffel", "tote", "other"]
 BAG_KINDS = ("suitcase", "backpack", "duffel", "tote", "other")
+BagMaterial = Literal["nylon", "polyester", "canvas", "leather", "hardshell", "aluminum"]
+BagShape = Literal[
+    "daypack", "travel", "rolltop", "hard", "soft", "barrel", "boxy", "tapered", "structured"
+]
+# The silhouettes each kind can take; the first is the default. Mirrors the app's bagShapes.
+BAG_SHAPES: dict[str, tuple[str, ...]] = {
+    "backpack": ("daypack", "travel", "rolltop"),
+    "suitcase": ("hard", "soft"),
+    "duffel": ("barrel", "boxy"),
+    "tote": ("tapered", "structured"),
+    "other": ("soft", "boxy"),
+}
+
+
+class BagStyle(ApiModel):
+    """How a bag looks. Drawing only: packing never reads it."""
+
+    shape: BagShape
+    material: BagMaterial
+    accent: str = Field(pattern=HEX_COLOR)
+    front_pocket: bool = False
+    side_pockets: bool = False
+    wheels: bool = False
 
 
 class Suitcase(ApiModel):
@@ -150,6 +173,7 @@ class Suitcase(ApiModel):
     mesh: Mesh | None = None
     mesh_model: str | None = Field(default=None, min_length=1, max_length=100)
     photo_count: int | None = Field(default=None, ge=0, le=6)
+    style: BagStyle | None = None
 
 
 class PackingInput(ApiModel):
