@@ -60,14 +60,58 @@ function superellipse(a: number, top: number, bottom: number, n: number): Outlin
     return Math.pow(Math.pow(Math.abs(c) / a, n) + Math.pow(Math.abs(s) / b, n), -1 / n);
   };
 }
-/** The packing box's own outline: the inner wall can never come closer than this. */
-function boxOutline(a: number, b: number): Outline {
+/**
+ * A rounded rectangle from -top to +bottom in z (top is the bag's top end, z < 0) and +-hx in x,
+ * with its own corner radius at each end. Radius along each direction, by bisecting its SDF.
+ */
+function roundedRect(hx: number, top: number, bottom: number, rTop: number, rBottom: number): Outline {
+  const zc = (bottom - top) / 2,
+    hz = (top + bottom) / 2;
+  const inside = (x: number, z: number) => {
+    const r = Math.min(z < zc ? rTop : rBottom, hx, hz);
+    const qx = Math.abs(x) - (hx - r),
+      qz = Math.abs(z - zc) - (hz - r);
+    return Math.hypot(Math.max(qx, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qz), 0) - r < 0;
+  };
   return (t) => {
-    const c = Math.abs(Math.cos(t)),
-      s = Math.abs(Math.sin(t));
-    return Math.min(c > 1e-6 ? a / c : Infinity, s > 1e-6 ? b / s : Infinity);
+    const c = Math.cos(t),
+      s = Math.sin(t);
+    let lo = 0,
+      hi = hx + top + bottom;
+    for (let i = 0; i < 26; i++) {
+      const mid = (lo + hi) / 2;
+      if (inside(mid * c, mid * s)) lo = mid;
+      else hi = mid;
+    }
+    return lo;
   };
 }
+
+/**
+ * The outside of a bag that hugs its packing box: walls `wall` thick along the sides, and corner
+ * arcs of radius rBottom / rTop placed so every box corner keeps at least `wall` of padding.
+ * A large rTop gives a daypack's arched top; large radii both ends give a duffel's round ends.
+ */
+function hugOutline(a: number, b: number, wall: number, rBottom: number, rTop = rBottom): Outline {
+  // Side thickness so a corner arc of radius r clears the box corner by `wall` (symmetric case).
+  const symmetric = (r: number) => (r <= wall ? wall : r - (r - wall) / Math.SQRT2);
+  const side = symmetric(Math.min(rBottom, a + wall, b + wall));
+  const hx = a + side;
+  // The end's reach that keeps the box corner `wall` inside an arc of radius r at this side.
+  const end = (r: number) => {
+    const radius = Math.min(r, hx);
+    const dx = radius - side;
+    if (dx <= 0) return wall;
+    return Math.max(wall, radius - Math.sqrt(Math.max(0, (radius - wall) ** 2 - dx * dx)));
+  };
+  return roundedRect(hx, b + end(rTop), b + end(rBottom), Math.min(rTop, hx), Math.min(rBottom, hx));
+}
+
+/** The lining: the packing box with corners just soft enough not to touch an item's corner. */
+function liningOutline(a: number, b: number) {
+  return roundedRect(a + 0.004, b + 0.004, b + 0.004, 0.06, 0.06);
+}
+
 /** Uniform angles plus the box's four corners, so walls hug the box exactly at its corners. */
 function angles(a: number, b: number, count = 72) {
   const list = Array.from({ length: count }, (_, i) => -Math.PI + (i / count) * Math.PI * 2);
@@ -197,10 +241,16 @@ function outerRadius(spec: ShellSpec, t: number, y: number) {
  */
 function shell(spec: ShellSpec) {
   const ts = angles(spec.a, spec.b);
-  const box = boxOutline(spec.a + 0.004, spec.b + 0.004);
+  const lining = liningOutline(spec.a, spec.b);
   const top = spec.h + spec.rise;
+  // The lining hugs the packing box, so packed things sit right against the walls and into the
+  // corners. Only a flared tote's lining follows its sloping walls outward.
   const inner = (t: number, y: number) =>
-    Math.max(box(t), outerRadius({ ...spec, bulge: 0, wrinkle: 0 }, t, y) - spec.wall);
+    spec.flare > 0 ? Math.max(lining(t), outerRadius({ ...spec, bulge: 0, wrinkle: 0 }, t, y) - spec.wall) : lining(t);
+  // Where the outside reaches well past the lining (an arched top, round ends) the rim swells
+  // into a padded roll rather than a flat ledge.
+  const rimHeight = (t: number) =>
+    Math.max(spec.wall / 2, Math.min(0.3, (outerRadius(spec, t, top) - inner(t, top)) * 0.32));
   const rows: Row[] = [];
   const rb = Math.min(spec.baseRound, spec.base + spec.h * 0.5);
   rows.push({ points: point(ts, [0, -spec.base, 0]), group: 0 });
@@ -218,10 +268,12 @@ function shell(spec: ShellSpec) {
   // The rolled rim: a half round from the outside over to the lining.
   for (let k = 1; k <= 8; k++) {
     const phi = (k / 8) * Math.PI;
-    const y = top + (spec.wall / 2) * Math.sin(phi);
     const f = (1 - Math.cos(phi)) / 2;
     rows.push({
-      points: ring(ts, (t) => outerRadius(spec, t, top) * (1 - f) + inner(t, top) * f, y),
+      points: ts.map((t) => {
+        const r = outerRadius(spec, t, top) * (1 - f) + inner(t, top) * f;
+        return [r * Math.cos(t), top + rimHeight(t) * Math.sin(phi), r * Math.sin(t)] as Vec3;
+      }),
       group: 1,
     });
   }
@@ -234,8 +286,14 @@ function shell(spec: ShellSpec) {
     geometry: loft(rows),
     /** A closed path along the crest of the rim, where the zip runs. */
     rim: ts.map((t) => {
-      const r = (outerRadius(spec, t, top) + inner(t, top)) / 2;
-      return new Vector3(r * Math.cos(t), top + spec.wall / 2, r * Math.sin(t));
+      // The zip runs along the inner edge of the rim, where the opening is: on the rim's surface,
+      // half a wall in from the lining (or at the crest where the rim is narrow).
+      const outer = outerRadius(spec, t, top),
+        lin = inner(t, top);
+      const fromLining = Math.min(0.5, spec.wall / 2 / Math.max(1e-6, outer - lin));
+      const f = 1 - fromLining; // the rim's own parameter, 0 at the outside, 1 at the lining
+      const r = outer * (1 - f) + lin * f;
+      return new Vector3(r * Math.cos(t), top + rimHeight(t) * Math.sin(Math.acos(1 - 2 * f)), r * Math.sin(t));
     }),
     reach: (t: number) => Math.max(...[0, 0.25, 0.5, 0.75, 1].map((s) => outerRadius(spec, t, s * top))),
     /** A ring hugging the outside at height y, for moulded ribs. */
@@ -397,13 +455,12 @@ function carryHandle(b: BagBuilder, from: Vec3, to: Vec3, lift: Vec3) {
 function backpack(b: BagBuilder, style: BagStyle, a: number, l2: number, h: number): Built {
   const shape = style.shape;
   const wall = 0.11;
-  const n = shape === "travel" ? 5 : shape === "rolltop" ? 4 : 3.2;
-  const k = Math.pow(2, 1 / n);
-  const A = (a + wall) * k;
-  // A daypack's top arches well beyond the packing box; its base is flatter.
-  const top = (l2 + wall) * k * (shape === "daypack" ? 1.22 : 1.04);
-  const bottom = (l2 + wall) * k * (shape === "daypack" ? 0.98 : 1);
-  const outline = superellipse(A, top, bottom, n);
+  // A daypack's top arches over in padding; a travel pack is squarer; a roll-top in between.
+  const rBottom = shape === "travel" ? 0.3 : shape === "rolltop" ? 0.35 : 0.45;
+  const rTop = shape === "daypack" ? a + 1 : rBottom;
+  const outline = hugOutline(a, l2, wall, rBottom, rTop);
+  const A = outline(0);
+  const bottom = outline(Math.PI / 2);
   const soft = b.body !== "hardshell" && b.body !== "aluminum";
   const body = shell({
     a,
@@ -523,9 +580,7 @@ function backpack(b: BagBuilder, style: BagStyle, a: number, l2: number, h: numb
 function suitcaseBody(b: BagBuilder, style: BagStyle, a: number, l2: number, h: number): Built {
   const hard = style.shape === "hard";
   const wall = hard ? 0.07 : 0.11;
-  const n = hard ? 7 : 5;
-  const k = Math.pow(2, 1 / n);
-  const outline = superellipse((a + wall) * k, (l2 + wall) * k * 1.01, (l2 + wall) * k * 1.01, n);
+  const outline = hugOutline(a, l2, wall, hard ? 0.28 : 0.38);
   const body = shell({ a, b: l2, h, outline, wall, base: 0.18, baseRound: hard ? 0.12 : 0.2, bulge: hard ? 0.005 : 0.04, flare: 0, rise: 0.02, wrinkle: hard ? 0 : 0.025 });
   b.add(body.geometry, [b.bodyMat, b.mat("binding", b.colors.binding), b.mat("lining", b.colors.lining)]);
   const zip = b.zip(body.rim, 0.03);
@@ -551,9 +606,8 @@ function suitcaseBody(b: BagBuilder, style: BagStyle, a: number, l2: number, h: 
 function duffel(b: BagBuilder, style: BagStyle, a: number, l2: number, h: number): Built {
   const barrel = style.shape === "barrel";
   const wall = 0.1;
-  const n = barrel ? 2.6 : 4.5;
-  const k = Math.pow(2, 1 / n);
-  const outline = superellipse((a + wall) * k, (l2 + wall) * k, (l2 + wall) * k, n);
+  // A barrel's ends round right over; a boxy duffel keeps firm corners.
+  const outline = hugOutline(a, l2, wall, barrel ? l2 + wall : 0.35);
   const body = shell({ a, b: l2, h, outline, wall, base: 0.16, baseRound: barrel ? 0.35 : 0.2, bulge: barrel ? 0.12 : 0.05, flare: 0, rise: 0.04, wrinkle: 0.04 });
   b.add(body.geometry, [b.bodyMat, b.mat("binding", b.colors.binding), b.mat("lining", b.colors.lining)]);
   const zip = b.zip(body.rim);
@@ -591,12 +645,11 @@ function duffel(b: BagBuilder, style: BagStyle, a: number, l2: number, h: number
 function tote(b: BagBuilder, style: BagStyle, a: number, l2: number, h: number): Built {
   const tapered = style.shape === "tapered";
   const wall = 0.06;
-  const n = tapered ? 3.5 : 6;
-  const k = Math.pow(2, 1 / n);
-  const flare = tapered ? 0.18 : 0;
-  // The rim is the widest point; the base is narrower by `flare`, still around the box.
+  const flare = tapered ? 0.1 : 0;
+  // The rim is the widest point; the base, narrower by `flare`, hugs the box.
   const widen = 1 / (1 - flare);
-  const outline = superellipse((a + wall) * k * widen, (l2 + wall) * k * (tapered ? 1.1 : 1), (l2 + wall) * k * (tapered ? 1.1 : 1), n);
+  const hug = hugOutline(a, l2, wall, tapered ? 0.3 : 0.18);
+  const outline: Outline = (t) => hug(t) * widen;
   const body = shell({ a, b: l2, h, outline, wall, base: 0.1, baseRound: 0.12, bulge: tapered ? 0.03 : 0.01, flare, rise: 0.06, wrinkle: b.body === "leather" ? 0.01 : 0.03 });
   b.add(body.geometry, [b.bodyMat, b.mat("binding", b.colors.binding), b.mat("lining", b.colors.lining)]);
   // Two shoulder handles, standing up and leaning out over the long sides.
@@ -638,11 +691,9 @@ export function styledBag(kit: ModelKit, bag: Suitcase): Built {
 function styledHalf(b: BagBuilder, style: BagStyle, w: number, l: number, h: number, lid: boolean) {
   const hard = style.shape === "hard";
   const wall = hard ? 0.07 : 0.1;
-  const n = hard ? 7 : 5;
   const a = w / 2,
     l2 = l / 2;
-  const k = Math.pow(2, 1 / n);
-  const outline = superellipse((a + wall) * k, (l2 + wall) * k, (l2 + wall) * k, n);
+  const outline = hugOutline(a, l2, wall, hard ? 0.28 : 0.38);
   const group = new Group();
   const half = shell({ a, b: l2, h, outline, wall, base: 0.16, baseRound: hard ? 0.1 : 0.18, bulge: hard ? 0.004 : 0.03, flare: 0, rise: 0.015, wrinkle: hard ? 0 : 0.02 });
   group.add(mesh(half.geometry, [b.bodyMat, b.mat("binding", b.colors.binding), b.mat("lining", b.colors.lining)]));
